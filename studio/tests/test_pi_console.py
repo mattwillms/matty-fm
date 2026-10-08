@@ -359,3 +359,30 @@ def test_a_late_repeat_push_of_the_song_on_air_is_ignored():
     assert eng.status()["queued"] == 0
     eng.push(item("r4", voice_s=2.0))
     assert eng.status()["queued"] == 1
+
+
+def test_the_music_swells_back_up_in_the_dj_s_pauses():
+    # like a real DJ: dip under the talk, music back up in a pause, dip again when he carries on
+    eng, clock, players, mixer = make()
+    run(eng, clock, 1)
+    v0 = clock.t + console.DUCK_S                       # the voice starts after the dip
+    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 6.0, gaps=[[2.0, 3.6], [4.5, 4.8]]) is True
+    levels = {}
+    while clock.t < v0 + 6.0 + console.RESTORE_S + 0.3:
+        clock.t += 0.05
+        eng.tick()
+        levels[round(clock.t - v0, 2)] = mixer.level["SomaVol"]
+    at = lambda t: levels[min(levels, key=lambda k: abs(k - t))]
+    assert at(1.5) == console.DUCK_PCT                  # talking
+    assert at(2.9) == 100                               # the pause: music up
+    assert at(3.55) == console.DUCK_PCT                 # back down before he speaks again
+    assert at(4.65) == console.DUCK_PCT                 # a short breath: no swell
+    assert at(6.0 + console.RESTORE_S + 0.2) == 100
+
+
+def test_odd_gaps_are_ignored_not_fatal():
+    eng, clock, players, mixer = make()
+    run(eng, clock, 1)
+    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 4.0, gaps=[["x", 2], [3.0, 99], None, [2.5, 1.0]]) is True
+    run(eng, clock, 2.0)
+    assert mixer.level["SomaVol"] == console.DUCK_PCT

@@ -32,7 +32,7 @@ def test_voice_break_and_skip_bumper():
     pi = PiLink("http://pi:8042", "tok", httpx.Client(transport=httpx.MockTransport(handler)))
     assert pi.voice("breaks/id1.mp3", 3.2) is True
     pi.skip(bumper={"url": "breaks/skip1.mp3", "voiceS": 1.5})
-    assert seen == [("/voice", {"url": "breaks/id1.mp3", "voiceS": 3.2, "somaOnly": False}),
+    assert seen == [("/voice", {"url": "breaks/id1.mp3", "voiceS": 3.2, "somaOnly": False, "gaps": []}),
                     ("/skip", {"bumper": {"url": "breaks/skip1.mp3", "voiceS": 1.5}})]
 
 
@@ -55,3 +55,11 @@ def test_scheduled_breaks_ask_for_soma_only_and_learn_when_declined():
     pi = PiLink("http://pi:8042", "tok", httpx.Client(transport=httpx.MockTransport(handler)))
     assert pi.voice("breaks/live-1.mp3", 5.0, soma_only=True) is False
     assert pi.voice("breaks/id1.mp3", 3.0) is True
+
+
+def test_voice_break_sends_the_pauses_to_swell_into():
+    seen = []
+    pi = PiLink("http://pi:8042", "tok", httpx.Client(transport=httpx.MockTransport(
+        lambda r: seen.append(json.loads(r.content)) or httpx.Response(200, json={}))))
+    pi.voice("breaks/live-1.mp3", 6.0, gaps=[(2.0, 3.6)])
+    assert seen[0]["gaps"] == [[2.0, 3.6]]

@@ -1,3 +1,4 @@
+import json
 import httpx
 
 from mattyfm import tts
@@ -49,3 +50,19 @@ def test_a_voice_that_is_not_audio_falls_through_to_the_generic_clip(tmp_path, m
     (tmp_path / "generic-funny.mp3").write_bytes(b"ID3generic")
     assert tts.speak("hi", "funny", tmp_path / "x.mp3", http=html, aura=lambda t: b'{"error":"bad"}',
                      assets=tmp_path, names={}) == "generic"
+
+
+def test_pause_cues_go_to_elevenlabs_but_never_to_aura(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    sent = {}
+
+    def handler(req):
+        sent["eleven"] = json.loads(req.content)["text"]
+        return httpx.Response(500)
+    def aura(text):
+        sent["aura"] = text
+        return b"ID3voice"
+    tts.speak("You're on OrrFM. [pause] All requests, all night.", "funny", tmp_path / "v.mp3",
+              http=client(handler), aura=aura, assets=tmp_path, names={})
+    assert "[pause]" in sent["eleven"]
+    assert "[" not in sent["aura"] and "OrrFM" in sent["aura"]

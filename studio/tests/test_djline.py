@@ -209,3 +209,14 @@ def test_prompt_says_the_requester_sends_the_song_not_receives_it():
     # live 2026-10-08: "This one goes out to Marie" when Marie requested it for her sweetheart
     s = djline.SYSTEM.lower()
     assert "from them" in s and "never say it goes out to" in s
+
+
+def test_backannounce_keeps_one_pause_cue_and_drops_other_tags():
+    reply = json.dumps({"script": "You're on OrrFM. [pause] [whispers] Here's America with Ventura Highway. [pause] [laughs]"})
+    line = djline.backannounce(None, {"title": "Ventura Highway", "artist": "America"}, FakeClient(reply))
+    assert line.script.count(djline.PAUSE) == 1 and "whispers" not in line.script and "laughs" not in line.script
+    assert djline.display(line.script) == "You're on OrrFM. Here's America with Ventura Highway."
+
+
+def test_backannounce_prompt_invites_an_occasional_pause():
+    assert "[pause]" in djline.BACKANNOUNCE_SYSTEM

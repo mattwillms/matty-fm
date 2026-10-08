@@ -38,6 +38,22 @@ def duration(path: Path) -> float:
     return float(out.stdout.strip())
 
 
+def speech_gaps(path: Path, min_s: float = 0.6) -> list[tuple[float, float]]:
+    """The pauses in a voice, as (start, end) seconds: where the console swells the music back up.
+    Measured on the audio, so it doesn't matter how long the voice model made each pause."""
+    err = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af",
+                          f"silencedetect=noise=-35dB:d={min_s}", "-f", "null", "-"], stdin=subprocess.DEVNULL,
+                         capture_output=True, text=True, check=True, timeout=30).stderr
+    gaps, start = [], None
+    for m in re.finditer(r"silence_(start|end): (-?[\d.]+)", err):
+        if m[1] == "start":
+            start = max(0.0, float(m[2]))
+        elif start is not None:
+            gaps.append((round(start, 2), round(float(m[2]), 2)))
+            start = None
+    return gaps   # a silence still open at the end is the tail, not a pause
+
+
 def decoded_duration(path: Path) -> float:
     """Seconds of audio that actually decode: what a truncated download really holds."""
     out = subprocess.run(["ffmpeg", "-v", "error", "-nostats", "-i", str(path), "-map", "0:a:0", "-f", "null",

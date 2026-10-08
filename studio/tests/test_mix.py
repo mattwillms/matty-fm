@@ -40,3 +40,12 @@ def test_rejects_short_song(parts):
     tone(parts / "tiny.mp3", 220, 5)
     with pytest.raises(ValueError):
         mix.prepare_files(parts / "tiny.mp3", parts / "voice.mp3", parts / "o.mp3", parts / "v.mp3", 44100)
+
+
+def test_speech_gaps_finds_the_pauses_in_a_voice(tmp_path):
+    import subprocess
+    v = tmp_path / "v.mp3"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=300:d=1.5", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono:d=1.4",
+                    "-f", "lavfi", "-i", "sine=f=300:d=1.0", "-filter_complex", "[0][1][2]concat=n=3:v=0:a=1", str(v)], check=True)
+    gaps = mix.speech_gaps(v)
+    assert len(gaps) == 1 and abs(gaps[0][0] - 1.5) < 0.15 and abs(gaps[0][1] - 2.9) < 0.15

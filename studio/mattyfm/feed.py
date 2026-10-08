@@ -37,7 +37,7 @@ def decide(status: dict, reply: dict) -> list[tuple]:
     return actions
 
 
-def replay_dj(station, media, rid, duration) -> bool:
+def replay_dj(station, media, rid, duration, gaps_of=None) -> bool:
     """The admin's Replay: the song's DJ read again, over whatever is on air (the console dips
     the music, as for a break). False when the id is odd, the voice file is gone, or the
     console declines (e.g. too near the song's end)."""
@@ -46,4 +46,8 @@ def replay_dj(station, media, rid, duration) -> bool:
     path = Path(media) / "voice" / f"{rid}.mp3"
     if not path.exists():
         return False
-    return bool(station.voice(f"voice/{rid}.mp3", duration(path), soma_only=False))
+    try:
+        gaps = gaps_of(path) if gaps_of else []
+    except Exception:   # the swell is a nicety: never lose the replay over it
+        gaps = []
+    return bool(station.voice(f"voice/{rid}.mp3", duration(path), soma_only=False, **({"gaps": gaps} if gaps else {})))

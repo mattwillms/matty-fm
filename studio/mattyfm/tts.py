@@ -46,7 +46,7 @@ def speak(text: str, tone: str, dest: Path, *, http: httpx.Client,
           aura: Callable[[str], bytes], assets: Path, names: dict[str, str]) -> str:
     spoken = respell(text, names)
     for engine, make in (("eleven", lambda: _eleven(spoken, tone, http)),
-                         ("aura", lambda: aura(spoken))):
+                         ("aura", lambda: aura(re.sub(r"\s*\[[^\]]*\]\s*", "... ", spoken).strip()))):   # Aura would read "[pause]" aloud
         try:
             audio = make()
             if looks_like_audio(audio):

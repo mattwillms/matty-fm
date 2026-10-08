@@ -66,7 +66,7 @@ def main() -> None:
                                    assets=cfg.media_dir / "assets", names=deps.names)
                 seconds = mix.prepare_voice(raw, out, cfg.sample_rate)
                 raw.unlink(missing_ok=True)
-                url, text = f"breaks/{out.name}", line.script
+                url, text, path = f"breaks/{out.name}", line.script, out
                 log.info("break back-announce via %s (%.1fs): %s", engine, seconds, text)
             else:
                 pool_kind = kind if clips.get(kind) else next((k for k in ("id", "goof") if clips.get(k)), None)
@@ -75,7 +75,13 @@ def main() -> None:
                     return
                 clip = random.choice(clips[pool_kind])
                 url, seconds, text = f"breaks/{clip['file']}", clip["seconds"], clip["text"]
-            if station.voice(url, seconds, soma_only=soma_only):
+                path = cfg.media_dir / "breaks" / clip["file"]
+            try:
+                gaps = mix.speech_gaps(path)   # his pauses: the console brings the music up in them
+            except Exception:
+                gaps = []
+            text = djline.display(text)
+            if station.voice(url, seconds, soma_only=soma_only, gaps=gaps):
                 log.info("break on air (%s): %s", kind, text)
                 last_dj.update({"kind": kind, "text": text, "at": int(time.time() * 1000)})
                 sched.done(time.monotonic(), kind)
@@ -183,7 +189,7 @@ def main() -> None:
             for c in reply["commands"]:
                 if c["type"] == "replay":   # the admin's Replay on the DJ read
                     try:
-                        played = feed.replay_dj(station, cfg.media_dir, c.get("target"), mix.duration)
+                        played = feed.replay_dj(station, cfg.media_dir, c.get("target"), mix.duration, mix.speech_gaps)
                         log.info("command: replay DJ read of %s: %s", c.get("target"), "on air" if played else "declined")
                     except Exception as e:
                         log.warning("replay of %s failed: %s", c.get("target"), e)
