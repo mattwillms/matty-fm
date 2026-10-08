@@ -124,9 +124,12 @@
                   background: radial-gradient(circle at 35% 35%, #fff, #9a948a 60%, #6d675e); }
   .plate .slit { top: 3px; height: 1.5px; background: #5d574e; }
   .plate .screw.ml { left: 6px; } .plate .screw.mr { right: 6px; }
-  .plate-label { font: 400 .5rem/1.05 Michroma, sans-serif; letter-spacing: .1em; white-space: nowrap;   /* wide hi-fi faceplate lettering */   /* engraved: dark cut, lit lower edge */
-                 color: #1f1604; text-shadow: 0 1px 0 #c8b37488, 0 -1px 0 #0a060133; }
-  .lcd.name-screen { flex: 1; min-width: 0; padding: 2px 8px 3px; }   /* .lcd comes later in the file: match its weight to win */
+  /* wide hi-fi faceplate lettering, engraved and paint-filled cream as on old gear: the cut's upper
+     wall is in shadow (dark above), its lower lip catches the light */
+  .plate-label { font: 400 .58rem/1.1 Michroma, sans-serif; letter-spacing: .08em; min-width: 0;   /* folds to two lines before the name screen gets squeezed */
+                 color: #f1e6c6; text-shadow: 0 -1px 0 #1a1204cc, 0 1px 0 #ffffff22; }
+  .lcd.name-screen { flex: 1 0 90px; min-width: 90px; padding: 2px 8px 3px; }   /* .lcd comes later in the file: match its weight to win */
+  @media (max-width: 360px) { .lcd.name-screen { flex-basis: 70px; min-width: 70px; } }   /* small phones: room for the folded label */
   .msg-screen { margin-top: 12px; }
   /* the request VFD: dark glass, glowing teal dot-matrix, same family as the display above */
   .lcd { position: relative; border-radius: var(--glass-r); padding: 7px 10px 8px; overflow: hidden; background: var(--glass);
