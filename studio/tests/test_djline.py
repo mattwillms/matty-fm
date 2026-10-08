@@ -85,3 +85,13 @@ def test_deny_catches_obfuscated_words():
     for script in ("This is for that f u c k e r Bob.", "Big sh!t energy, Bob.", "A c.u.n.t move."):
         reply = json.dumps({"ok": True, "tone": "funny", "script": script})
         assert djline.write_line(item(), FakeClient(reply)).fallback, script
+
+
+def test_filter_and_voice_see_the_same_text():
+    # Full-width and look-alike letters must be caught, and what is voiced is exactly what was checked.
+    for script in ("Big ｆｕｃｋ to Bob.", "This is for Bob, you shіt."):
+        reply = json.dumps({"ok": True, "tone": "funny", "script": script})
+        assert djline.write_line(item(), FakeClient(reply)).fallback, script
+    reply = json.dumps({"ok": True, "tone": "sweet", "script": "For Tía Rosa — ¡Azúcar!"})
+    line = djline.write_line(item(), FakeClient(reply))
+    assert line.script == "For Tia Rosa - Azucar!" and line.script.isascii()

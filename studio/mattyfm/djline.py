@@ -2,6 +2,7 @@
 
 import json
 import re
+import unicodedata
 from dataclasses import dataclass
 
 MODEL = "claude-haiku-5-5"
@@ -11,9 +12,29 @@ DENY_STEMS = ("fuck", "shit", "cunt", "bitch", "whore", "slut", "retard", "nigg"
 LOOKALIKE = str.maketrans({"!": "i", "1": "i", "|": "i", "3": "e", "0": "o", "@": "a", "$": "s", "5": "s", "4": "a", "*": "u"})
 
 
+# Cyrillic and Greek letters that look like Latin ones, plus typographic punctuation.
+CONFUSABLE = str.maketrans({
+    "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "у": "y", "х": "x", "і": "i", "ј": "j", "ѕ": "s",
+    "А": "A", "Е": "E", "О": "O", "Р": "P", "С": "C", "Х": "X", "І": "I", "К": "K", "М": "M", "Т": "T", "Н": "H",
+    "α": "a", "ε": "e", "ι": "i", "κ": "k", "ν": "v", "ο": "o", "ρ": "p", "τ": "t", "υ": "u", "χ": "x",
+    "—": "-", "–": "-", "’": "'", "‘": "'", "“": "", "”": "",
+})
+
+
+def speech_text(text: str) -> str:
+    """The exact text that is checked AND voiced: plain ASCII, single spaces.
+
+    Full-width and accented letters fold to ASCII; look-alike foreign letters
+    map to the Latin letter they imitate; anything else is dropped.
+    """
+    text = unicodedata.normalize("NFKC", str(text)).translate(CONFUSABLE)
+    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
+    return " ".join(text.split())
+
+
 def is_offensive(text: str) -> bool:
     words, run = [], ""
-    for raw in str(text).lower().translate(LOOKALIKE).split():
+    for raw in speech_text(text).lower().translate(LOOKALIKE).split():
         token = re.sub(r"[^a-z.]", "", raw)
         if len(token.replace(".", "")) == 1:      # f u c k  -> one word
             run += token.replace(".", "")
@@ -29,7 +50,7 @@ def is_offensive(text: str) -> bool:
 
 def _safe(text: str) -> str:
     """Guest text inside the prompt: no angle brackets, so it cannot close the <request> tag."""
-    return " ".join(str(text).replace("<", " ").replace(">", " ").split())
+    return speech_text(str(text).replace("<", " ").replace(">", " "))
 
 SYSTEM = """You are the DJ of MattyFM, a pretend 1970s FM radio station playing at \
 a family reunion with kids and grandparents in the room. Write what the DJ says \
@@ -111,7 +132,7 @@ def write_line(item: dict, client) -> DJLine:
         return template(item)
     if not isinstance(data, dict) or not data.get("ok"):
         return template(item, ok=False)
-    script = " ".join(str(data.get("script", "")).split())
+    script = speech_text(data.get("script", ""))
     if not script or is_offensive(script) or len(script) > 400:
         return template(item)
     tone = "sweet" if data.get("tone") == "sweet" else "funny"
