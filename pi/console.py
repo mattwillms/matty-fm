@@ -8,11 +8,12 @@ Channels (each an ALSA softvol control into dmix on the USB card):
   dj    DjVol     the DJ voice, always at full level
 
 One transition rule for every change (SomaFM->song, song->song, song->SomaFM,
-skips): the outgoing channel starts fading down LEAD_PAD_S before the voice;
-the incoming channel fades up across from it and lands at full volume exactly
-as the voice ends. No voice: a plain PLAIN_FADE_S crossfade. A song's next
-transition starts that lead time before the song ends; with nothing queued, the
-song crossfades to SomaFM over its last OUTRO_S seconds.
+skips), with NO overlap between outgoing and incoming: the outgoing fades to
+silence over DOWN_S; the DJ starts LEAD_PAD_S after the fade begins; after a
+GAP_S beat of silence the incoming starts and fades up while the DJ is still
+talking, landing at full volume as the voice ends. A song's next transition
+starts DOWN_S before it ends; with nothing queued the song fades out over its
+last OUTRO_S seconds and SomaFM fades back in after the gap.
 
 The studio (workstation) drives this over a token-protected HTTP API:
   GET /status  POST /push {id,title,artist,songS,voiceS}  POST /skip  POST /clear
@@ -33,9 +34,14 @@ import time
 import urllib.request
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-LEAD_PAD_S = 0.5        # outgoing starts down this long before the voice
-PLAIN_FADE_S = 3.0      # transition without a voice
-OUTRO_S = 5.0           # song -> SomaFM over the song's last seconds
+LEAD_PAD_S = 0.5        # the voice starts this long after the outgoing begins fading down
+DOWN_S = 1.5            # outgoing fades to silence over this
+GAP_S = 0.4             # a beat of silence (only the DJ) before the incoming starts
+MIN_UP_S = 1.0          # incoming never jumps up faster than this
+PLAIN_UP_S = 1.5        # incoming fade without a voice
+PLAIN_FADE_S = DOWN_S   # kept for skips
+OUTRO_S = 3.0           # song -> SomaFM: the song fades out over its last seconds
+SOMA_UP_S = 2.0
 DEAD_AFTER_S = 1.0      # a deck that stopped this long after starting is treated as ended
 TICK_S = 0.1
 SOMA_STALL_S = 4.0
@@ -94,6 +100,7 @@ class Engine:
         self.ramps: list[tuple[str, int, int, float, float]] = []   # control, start, end, t0, dur
         self.started_at: dict[str, float] = {}
         self.pending_dj: tuple[str, float] | None = None
+        self.pending_play: tuple[str, str, float] | None = None
         self.pending_stop: list[tuple[str, float]] = []
         self.transition_until = 0.0
         self.backup: list = []
@@ -150,28 +157,26 @@ class Engine:
         return "deckB" if self.on_air[0] == "deckA" else "deckA"
 
     def _transition(self, to_ch: str, to_item: dict | None, voice_url: str | None, voice_s: float,
-                    fade_s: float | None = None) -> None:
+                    down_s: float = DOWN_S, up_s: float = PLAIN_UP_S) -> None:
         now = self.clock()
         from_ch = self.on_air[0]
-        lead = fade_s if fade_s is not None else (LEAD_PAD_S + voice_s if voice_url else PLAIN_FADE_S)
-        if to_ch in DECKS:
-            self.mixer.set(CONTROLS[to_ch], 0)
-            self.players.play(to_ch, self._url("ready", to_item))
-            self.started_at[to_ch] = now
+        in_start = now + down_s + GAP_S
+        in_full = max(now + LEAD_PAD_S + voice_s, in_start + MIN_UP_S) if voice_url else in_start + up_s
         self.ramps = [r for r in self.ramps if r[0] not in (CONTROLS[from_ch], CONTROLS[to_ch])]
-        self.ramps.append((CONTROLS[from_ch], self.mixer.level[CONTROLS[from_ch]], 0, now, lead))
-        self.ramps.append((CONTROLS[to_ch], self.mixer.level[CONTROLS[to_ch]], 100, now, lead))
+        self.ramps.append((CONTROLS[from_ch], self.mixer.level[CONTROLS[from_ch]], 0, now, down_s))
+        self.ramps.append((CONTROLS[to_ch], 0, 100, in_start, in_full - in_start))
+        self.mixer.set(CONTROLS[to_ch], 0)
+        if to_ch in DECKS:
+            self.pending_play = (to_ch, self._url("ready", to_item), in_start)
         self.pending_dj = (voice_url, now + LEAD_PAD_S) if voice_url else None
         if from_ch in DECKS:
-            self.pending_stop.append((from_ch, now + lead + 0.2))
+            self.pending_stop.append((from_ch, now + down_s + 0.2))
         self.on_air = (to_ch, to_item)
-        self.transition_until = now + lead
+        self.transition_until = in_full
         label = to_item["id"] if to_item and not to_item.get("backup") else ("backup" if to_item else "SomaFM")
-        self.log(f"transition {from_ch} -> {to_ch} ({label}) over {lead:.1f}s"
-                 + (f", DJ at +{LEAD_PAD_S}s for {voice_s:.1f}s" if voice_url else ""))
+        self.log(f"transition {from_ch} -> {to_ch} ({label}): down {down_s:.1f}s, gap {GAP_S}s, "
+                 f"up {in_full - in_start:.1f}s" + (f", DJ at +{LEAD_PAD_S}s for {voice_s:.1f}s" if voice_url else ""))
 
-    def _lead(self, item: dict) -> float:
-        return LEAD_PAD_S + item["voiceS"] if item.get("voiceS") else PLAIN_FADE_S
 
     def _to_request(self) -> None:
         item, self.queued = self.queued, None
@@ -182,7 +187,7 @@ class Engine:
         if not self.soma_up() and self.backup:
             self._to_backup()
             return
-        self._transition("soma", None, None, 0.0, fade_s=fade_s)
+        self._transition("soma", None, None, 0.0, down_s=fade_s, up_s=SOMA_UP_S)
 
     def _to_backup(self) -> None:
         entry = self.backup[self.backup_i % len(self.backup)]
@@ -201,6 +206,11 @@ class Engine:
                 # sent every step: a softvol control created mid-fade must not keep its default
                 self.mixer.set(control, level_at(now - t0, start, end, dur))
             self.ramps = [r for r in self.ramps if now - r[3] < r[4]]
+            if self.pending_play and now >= self.pending_play[2]:
+                ch, url, _ = self.pending_play
+                self.players.play(ch, url)
+                self.started_at[ch] = now
+                self.pending_play = None
             if self.pending_dj and now >= self.pending_dj[1]:
                 self.players.play("dj", self.pending_dj[0])
                 self.pending_dj = None
@@ -219,6 +229,8 @@ class Engine:
                     self.log("SomaFM down: backup playlist")
                     self._to_backup()
                 return
+            if self.pending_play and self.pending_play[0] == ch:
+                return
             elapsed = now - self.started_at.get(ch, now)
             remaining = it.get("songS", 0) - elapsed
             dead = elapsed > DEAD_AFTER_S and not self.players.running(ch)
@@ -228,13 +240,13 @@ class Engine:
                 if self.queued:
                     self._to_request()
                 elif self.soma_up():
-                    self._transition("soma", None, None, 0.0, fade_s=PLAIN_FADE_S)
+                    self._transition("soma", None, None, 0.0, up_s=SOMA_UP_S)
                 elif dead or remaining <= PLAIN_FADE_S:
                     self._to_backup()
                 return
             if dead:
                 self._to_request() if self.queued else self._to_soma(PLAIN_FADE_S)
-            elif self.queued and remaining <= self._lead(self.queued):
+            elif self.queued and remaining <= DOWN_S:
                 self._to_request()
             elif not self.queued and remaining <= OUTRO_S:
                 self._to_soma(OUTRO_S)
