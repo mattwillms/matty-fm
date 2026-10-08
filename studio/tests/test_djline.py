@@ -203,3 +203,9 @@ def test_a_shortened_or_accented_song_name_counts_as_named():
     assert djline.write_line(it, FakeClient(reply)).script.count("September") == 1
     reply = json.dumps({"ok": True, "tone": "funny", "script": "Bob loves Earth, Wind and Fire."})   # artist alone is not the song
     assert djline.write_line(it, FakeClient(reply)).script.endswith("September (Remastered 2003).")
+
+
+def test_prompt_says_the_requester_sends_the_song_not_receives_it():
+    # live 2026-10-08: "This one goes out to Marie" when Marie requested it for her sweetheart
+    s = djline.SYSTEM.lower()
+    assert "from them" in s and "never say it goes out to" in s

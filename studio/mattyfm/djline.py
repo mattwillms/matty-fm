@@ -129,6 +129,9 @@ Rules:
 stage directions, no quotation marks.
 - Name who requested it (up to three names, then "and friends") and paraphrase \
 their message in a few words, if there is one.
+- The requester is the sender: the song comes from them ("From Marie...", "Marie \
+sends this one..."). Never say it goes out to, is for, or is dedicated to the \
+requester; if their message names who it's for, it goes out to that person.
 - Never assume relationships, ages or roles (no grandparents, kids, couples, \
 anniversaries) unless the message says so.
 - Always end with the artist and the song, like: "...here's Earth, Wind and Fire \
