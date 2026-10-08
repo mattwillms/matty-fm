@@ -210,6 +210,9 @@
   /* ---- song rows ---- */
   ul { list-style: none; margin: 0; padding: 0; }
   .song { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid #ffffff12; }
+  .song.tappable { cursor: pointer; margin: 0 -8px; padding: 10px 8px; border-radius: 8px; transition: background .15s; -webkit-tap-highlight-color: transparent; }
+  .song.tappable:hover, .song.tappable:active { background: #ffffff0d; }
+  .song.tappable:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; }
   li:first-child > .song, .song:first-child { border-top: 0; }
   .song > img, .song > .art { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; background: #2f1f15; flex: none; }
   .song .art { display: grid; place-items: center; font-size: 24px; }
@@ -453,9 +456,10 @@ function setSleeveArt(src, fallback) {
   if (src) img.src = src; else return box.querySelector("#sleeveArt, .noart").replaceWith(noCover("noart"));
   box.querySelector("#sleeveArt, .noart").replaceWith(img);
 }
-async function openSleeve() {
-  const np = onAir;
+let sleeveFor = null;   // the song whose sleeve is open: on air, or one of this phone's requests
+async function openSleeve(np = onAir) {
   if (!np) return;
+  sleeveFor = np;
   $("sleeveTitle").textContent = cleanTitle(np.title);
   $("sleeveArtist").textContent = np.artist;
   $("sleeveAlbum").textContent = "";
@@ -469,14 +473,20 @@ async function openSleeve() {
   $("sleeve").classList.remove("closing");
   $("sleeve").showModal();
   const info = await releaseInfo(np);
-  if (!info || onAir !== np || !$("sleeve").open) return;
+  if (!info || sleeveFor !== np || !$("sleeve").open) return;
   $("sleeveYear").textContent = info.year; $("sleeveYear").hidden = false;
   $("sleeveAlbum").textContent = info.album;
   if (info.apple) $("toApple").href = info.apple;
   if (info.art && (!np.artwork || document.querySelector(".sleeve .noart"))) setSleeveArt(info.art);   // ours missing or broken
 }
-$("glass").onclick = openSleeve;
+$("glass").onclick = () => openSleeve();
 $("glass").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSleeve(); } };
+function sleeveOnTap(row, song) {
+  row.classList.add("tappable"); row.tabIndex = 0; row.setAttribute("role", "button");
+  row.setAttribute("aria-label", `Show the record sleeve for ${cleanTitle(song.title)}`);
+  row.onclick = () => openSleeve(song);
+  row.onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSleeve(song); } };
+}
 function closeSleeve() {
   const d = $("sleeve");
   if (!d.open || d.classList.contains("closing")) return;
@@ -634,6 +644,7 @@ async function refresh() {
       lastBadge.set(m.id, label);
       const row = songRow(m.status === "failed" ? { ...m, names: "" } : m, label, cls + (changed ? " flash" : ""));
       if (m.status === "failed") row.querySelector(".a").textContent = "Try a different version, or another song";
+      else sleeveOnTap(row, m);
       return row;
     }));
     // refresh faster while one of this phone's requests is still on its way
