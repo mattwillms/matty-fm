@@ -14,7 +14,8 @@ DEFAULT_GAP_S = 10 * 60
 MIN_GAP_S, MAX_GAP_S, STEP_S = 5 * 60, 30 * 60, 5 * 60
 BACKANNOUNCE_WINDOW_S = (10, 75)   # seconds after a SomaFM song started (its intro)
 ROTATION = ("backannounce", "id", "goof")
-JOKE_GAP_S = 5 * 60   # guests' jokes go first, one every 5 minutes, until all are told
+JOKE_GAP_S = 5 * 60   # guests' jokes: one every 5 minutes (their own clock; requests don't delay it)
+BREAK_SPACING_S = 60  # never a joke right on top of another break
 
 
 class Scheduler:
@@ -23,12 +24,24 @@ class Scheduler:
     def __init__(self, gap_s: float = DEFAULT_GAP_S, now: float = 0.0):
         self.gap_s = DEFAULT_GAP_S
         self.set_gap(gap_s)
-        self.last = now          # the last break, or the last moment a request was on air
+        self.last = now          # the last break, or the last moment a request was on air (bumpers)
+        self.last_break = -1e9   # the last break of any kind actually played
+        self.last_joke = None    # the last guest joke told
         self.turn = 0
 
     def set_gap(self, gap_s: float) -> None:
         stepped = round(gap_s / STEP_S) * STEP_S
         self.gap_s = min(MAX_GAP_S, max(MIN_GAP_S, stepped))
+
+    def joke_due(self, now: float) -> bool:
+        """A joke may go now: none told yet, or 5 minutes since the last. Played at the next song
+        change (in front of a request's intro) or over SomaFM, whichever comes first."""
+        return self.last_joke is None or now - self.last_joke >= JOKE_GAP_S
+
+    def joke_told(self, now: float) -> None:
+        self.last_joke = now
+        self.last_break = now
+        self.last = max(self.last, now)   # the bumper clock restarts after it too
 
     def gap(self, joke_ready: bool = False) -> float:
         return JOKE_GAP_S if joke_ready else self.gap_s
@@ -38,7 +51,9 @@ class Scheduler:
         return self.last + self.gap_s
 
     def seconds_left(self, now: float, joke_ready: bool = False) -> float:
-        return max(0.0, self.last + self.gap(joke_ready) - now)
+        if joke_ready:
+            return 0.0 if self.last_joke is None else max(0.0, self.last_joke + JOKE_GAP_S - now)
+        return max(0.0, self.last + self.gap_s - now)
 
     def due(self, status: dict, now: float, soma_age: float | None, joke_ready: bool = False) -> str | None:
         """The kind of break to play now, or None. `soma_age`: seconds since SomaFM's song began.
@@ -46,10 +61,12 @@ class Scheduler:
         if status["source"] == "requests":
             self.last = max(self.last, now)
             return None
-        if now < self.last + self.gap(joke_ready) or status["source"] != "soma" or status["queued"]:
+        if status["source"] != "soma" or status["queued"]:
             return None
-        if joke_ready:
+        if joke_ready and self.joke_due(now) and now - self.last_break >= BREAK_SPACING_S:
             return "joke"
+        if now < self.last + self.gap_s:
+            return None
         lo, hi = BACKANNOUNCE_WINDOW_S
         fresh_song = soma_age is not None and lo <= soma_age <= hi
         for i in range(len(ROTATION)):
@@ -61,9 +78,12 @@ class Scheduler:
     def done(self, now: float, kind: str | None = None) -> None:
         # the next turn follows the kind that actually played, so a skipped back-announce
         # doesn't make the station ID come round twice in a row
-        if kind != "joke":   # a joke doesn't take a turn from the station's own rotation
-            self.turn = (ROTATION.index(kind) if kind in ROTATION else self.turn) + 1
+        if kind == "joke":   # a joke doesn't take a turn from the station's own rotation
+            self.joke_told(now)
+            return
+        self.turn = (ROTATION.index(kind) if kind in ROTATION else self.turn) + 1
         self.last = now
+        self.last_break = now
 
 
 def library(media: Path) -> dict[str, list[dict]]:

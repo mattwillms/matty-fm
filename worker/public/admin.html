@@ -179,11 +179,6 @@
     <div id="up"></div>
   </section>
 
-  <section aria-label="Jokes">
-    <h2>Jokes<span class="count" id="jokeCount"></span></h2>
-    <div id="jokes"></div>
-  </section>
-
   <section id="mutedBox" hidden aria-label="Muted phones">
     <h2>Muted phones</h2>
     <div id="muted"></div>
@@ -403,37 +398,39 @@ function itemBlock(it, lead, tools, detailButtons, showTags) {
   return wrap;
 }
 
+const JOKE = { pending: "Waiting", preparing: "Being written up", ready: "Recorded, told at the next song change",
+               played: "Told on air", rejected: "DJ passed", failed: "Couldn't record" };
+function jokeBlock(j) {
+  const box = el("div", "joke");
+  box.append(el("div", "jhead", `🎤 Joke from ${j.name} · ${JOKE[j.status] || j.status}`), el("div", "jtext", j.text));
+  if (j.script) box.append(quote("The DJ says", j.script));
+  if (["pending", "preparing", "ready"].includes(j.status)) {
+    const row = el("div", "jbtns");
+    row.append(btn("sm danger", "Delete", (e) => act({ action: "deleteJoke", id: j.id }, e)),
+               btn("sm ghost", `Mute ${j.name}'s phone`, (e) => confirm(`Mute ${j.name}'s phone? Their waiting requests and jokes are removed.`) && act({ action: "mute", device: j.device }, e)));
+    box.append(row);
+  }
+  return box;
+}
 function render() {
   if (!state) return;
   renderStatus(); renderNow(); renderSwitches(); renderTimer();
 
   const waiting = state.items.filter((i) => ["pending", "preparing", "ready", "queued"].includes(i.status));
-  $("upCount").textContent = waiting.length ? String(waiting.length) : "";
-  $("up").replaceChildren(...(waiting.length ? waiting.map((it, i) => {
+  // guests' jokes, worked in as they'll be told: one at each song change, before the next song
+  const jokes = state.jokes || [];
+  const jokesWaiting = jokes.filter((j) => ["pending", "preparing", "ready"].includes(j.status)).sort((a, b) => a.createdAt - b.createdAt);
+  $("upCount").textContent = waiting.length || jokesWaiting.length ? String(waiting.length + jokesWaiting.length) : "";
+  const songRows = waiting.map((it, i) => {
     const up = btn("icon", "▲", (e) => act({ action: "move", id: it.id, dir: -1 }, e), "Move up"); up.disabled = i === 0;
     const down = btn("icon", "▼", (e) => act({ action: "move", id: it.id, dir: 1 }, e), "Move down"); down.disabled = i === waiting.length - 1;
     return itemBlock(it, el("span", "num", String(i + 1)), [up, down],
       (x) => [btn("sm danger", "Delete", (e) => act({ action: "delete", id: x.id }, e)), ...muteButtons(x)], true);
-  }) : [el("div", "empty", "No requests waiting.")]));
-
-  // guests' jokes: waiting ones first (told one every 5 minutes, before the usual bumpers)
-  const JOKE = { pending: "Waiting", preparing: "Being written up", ready: "Recorded, up next", played: "Told on air",
-                 rejected: "DJ passed", failed: "Couldn't record" };
-  const jokes = state.jokes || [];
-  const live = jokes.filter((j) => ["pending", "preparing", "ready"].includes(j.status));
-  $("jokeCount").textContent = live.length ? String(live.length) : "";
-  $("jokes").replaceChildren(...(jokes.length ? jokes.map((j) => {
-    const box = el("div", "joke");
-    box.append(el("div", "jhead", `${j.name} · ${JOKE[j.status] || j.status}`), el("div", "jtext", j.text));
-    if (j.script) box.append(quote("The DJ says", j.script));
-    if (["pending", "preparing", "ready"].includes(j.status)) {
-      const row = el("div", "jbtns");
-      row.append(btn("sm danger", "Delete", (e) => act({ action: "deleteJoke", id: j.id }, e)),
-                 btn("sm ghost", `Mute ${j.name}'s phone`, (e) => confirm(`Mute ${j.name}'s phone? Their waiting requests and jokes are removed.`) && act({ action: "mute", device: j.device }, e)));
-      box.append(row);
-    }
-    return box;
-  }) : [el("div", "empty", "No jokes yet. Guests can send one from the request page.")]));
+  });
+  const lineup = [];
+  songRows.forEach((row, i) => { if (jokesWaiting[i]) lineup.push(jokeBlock(jokesWaiting[i])); lineup.push(row); });
+  lineup.push(...jokesWaiting.slice(songRows.length).map(jokeBlock));
+  $("up").replaceChildren(...(lineup.length ? lineup : [el("div", "empty", "No requests waiting.")]));
 
   const muted = state.muted || [];
   $("mutedBox").hidden = !muted.length;
@@ -445,10 +442,11 @@ function render() {
   }));
 
   const past = state.items.filter((i) => ["played", "failed"].includes(i.status));
-  $("histCount").textContent = past.length ? String(past.length) : "";
-  $("history").replaceChildren(...(past.length ? past.map((it) => itemBlock(it, null,
+  const jokesDone = jokes.filter((j) => ["played", "rejected", "failed"].includes(j.status));
+  $("histCount").textContent = past.length + jokesDone.length ? String(past.length + jokesDone.length) : "";
+  $("history").replaceChildren(...(past.length || jokesDone.length ? [...past.map((it) => itemBlock(it, null,
       [btn("sm", "Resend", (e) => act({ action: "resend", id: it.id }, e))], muteButtons,
-      it.status === "failed" || (it.confidence != null && it.confidence < 50)))
+      it.status === "failed" || (it.confidence != null && it.confidence < 50))), ...jokesDone.map(jokeBlock)]
     : [el("div", "empty", "Nothing played yet.")]));
 }
 let lastGood = 0;

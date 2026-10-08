@@ -562,4 +562,14 @@ describe("QA round", () => {
     await p.jokeResult({ id: id!, status: "ready", file: "j.mp3", seconds: 9, script: "x" });
     expect((await p.beat(beat)).nextJoke).toBeNull();
   });
+  it("waiting jokes show in Up next, one in front of each song, in the order they'll be told", async () => {
+    const p = stub("jokes-upnext");
+    await p.submit("a", { track: T("Voulez-Vous"), name: "A" });
+    await p.submit("b", { track: T("Eagle"), name: "B" });
+    await p.submitJoke("m", { name: "Matt", text: "Why did the chicken cross the road? Worms." });
+    await p.submitJoke("n", { name: "Nan", text: "What do you call a sleeping bull? A bulldozer." });
+    const up = (await p.guestState("x")).upNext as { joke?: boolean; title: string; names: string }[];
+    expect(up.map((u) => (u.joke ? `joke:${u.names}` : u.title))).toEqual(["joke:Matt", "Voulez-Vous", "joke:Nan", "Eagle"]);
+    expect((await p.guestState("x")).waitingCount).toBe(2);   // songs only
+  });
 });

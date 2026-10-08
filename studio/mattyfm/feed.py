@@ -44,10 +44,44 @@ def replay_dj(station, media, rid, duration, speech_of=None) -> bool:
     if not isinstance(rid, str) or not re.fullmatch(r"r\d+", rid):   # it becomes a file path
         return False
     path = Path(media) / "voice" / f"{rid}.mp3"
+    if (Path(media) / "voice" / f"{rid}.intro.mp3").exists():   # a joke rode in front of it: replay just the intro
+        path = Path(media) / "voice" / f"{rid}.intro.mp3"
     if not path.exists():
         return False
     try:
         speech = speech_of(path) if speech_of else []
     except Exception:   # following the speech is a nicety: never lose the replay over it
         speech = []
-    return bool(station.voice(f"voice/{rid}.mp3", duration(path), soma_only=False, **({"speech": speech} if speech else {})))
+    return bool(station.voice(f"voice/{path.name}", duration(path), soma_only=False, **({"speech": speech} if speech else {})))
+
+
+def attach_joke(media, rid: str, joke: Path, replace: bool = False) -> float:
+    """A guest's joke told at a song change: voice/<rid>.mp3 becomes joke, a breath, then the
+    request's own intro (kept as <rid>.intro.mp3 for Replay and for taking the joke off again).
+    The console fades the song up under the whole read. Returns the new voice length."""
+    from . import mix
+    voice = Path(media) / "voice" / f"{rid}.mp3"
+    intro = Path(media) / "voice" / f"{rid}.intro.mp3"
+    if not intro.exists():
+        voice.replace(intro)
+    tmp = voice.with_name(f"{rid}.joke.mp3")
+    if replace:   # a request with no message: the joke stands in for its intro
+        mix._ffmpeg("-i", str(joke), "-c:a", "libmp3lame", "-b:a", "192k", str(tmp))
+        tmp.replace(voice)
+        return mix.duration(voice)
+    mix._ffmpeg("-i", str(joke), "-i", str(intro), "-filter_complex",
+                "[0:a]aformat=sample_rates=44100:channel_layouts=stereo,apad=pad_dur=0.4[j];"
+                "[1:a]aformat=sample_rates=44100:channel_layouts=stereo[i];[j][i]concat=n=2:v=0:a=1[out]",
+                "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", str(tmp))
+    tmp.replace(voice)
+    return mix.duration(voice)
+
+
+def detach_joke(media, rid: str) -> float:
+    """Back to the request's own intro (its joke went elsewhere, or was removed)."""
+    from . import mix
+    voice = Path(media) / "voice" / f"{rid}.mp3"
+    intro = Path(media) / "voice" / f"{rid}.intro.mp3"
+    if intro.exists():
+        intro.replace(voice)
+    return mix.duration(voice)

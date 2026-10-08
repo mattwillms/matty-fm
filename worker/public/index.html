@@ -140,6 +140,7 @@
   .meter i.scan3 { background: #6fe3c82e; }
   .meter i { background: #6fe3c814; border-radius: 1px; }
   .meter i.lit { background: var(--teal); box-shadow: 0 0 4px #6fe3c8aa; }
+  #next li.joke-up { font-style: italic; }   /* the note card's own ink */
   .jokes-head { margin: 18px 0 0; font-size: .85rem; font-weight: 600; letter-spacing: .02em; color: var(--cream-dim); }
   .jokes { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
   .jokes li { background: #0000002e; border-radius: 10px; padding: 10px 12px; }
@@ -1072,11 +1073,16 @@ async function refresh() {
     if (nextKey !== lastNextKey) {
       lastNextKey = nextKey;
       $("next").replaceChildren(...s.upNext.slice(0, 4).map((x) => {
+        if (x.joke) {   // a guest's joke, told at the song change before the song after it
+          const li = el("li", "joke-up");
+          li.append(document.createTextNode("A joke "), el("span", "by", `from ${x.names}`));
+          return li;
+        }
         const li = el("li");
         const by = [x.artist && `by ${x.artist}`, x.names && `for ${x.names}`].filter(Boolean).join(", ");   // no stray commas
         li.append(document.createTextNode(cleanTitle(x.title) + " "), el("span", "by", by));
         return li;
-      }), ...(waiting > 4 ? [el("li", "more", `…and ${waiting - 4} more`)] : []));
+      }), ...((more) => more > 0 ? [el("li", "more", `…and ${more} more`)] : [])(waiting - s.upNext.slice(0, 4).filter((x) => !x.joke).length));
     }
     $("mineBox").hidden = !s.mine.length;
     const mineKey = JSON.stringify(s.mine);

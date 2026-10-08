@@ -132,6 +132,13 @@ def main() -> None:
     joke_working: set[str] = set()   # guests' jokes being written up and recorded
     jokes_played: list[str] = []     # told on air, not yet confirmed by the Worker
     next_joke: dict | None = None    # the oldest recorded joke, from the last beat
+    joke_on: dict[str, tuple[str, int]] = {}   # request id -> (joke id, beat it was pushed): told when that song starts
+    last_push: dict | None = None    # what the console holds queued (Skip may put a joke in front of it)
+    beat_no = 0
+
+    def joke_file(j: dict | None) -> Path | None:
+        p = cfg.media_dir / "breaks" / str((j or {}).get("file", ""))
+        return p if j and p.is_file() else None
 
     def run_joke(job: dict) -> None:
         """Write the joke up in the DJ's voice, record it, and hand it back as a ready break."""
@@ -227,7 +234,19 @@ def main() -> None:
                         "nextBreakS": round(sched.seconds_left(time.monotonic(), joke_ready=bool(next_joke))),
                         "cached": sorted(p.stem for p in (cfg.media_dir / "cache").glob("*.mp3"))}
             reply = api.beat(body)
+            beat_no += 1
             pushed = []
+            # a joke rode in front of a request's intro: told once that song is on air; dropped if the
+            # console no longer holds the song (cleared or re-handed: the next push decides afresh)
+            for rid, (jid, at) in list(joke_on.items()):
+                if status["source"] == "requests" and status["current"] == rid:
+                    with lock:
+                        jokes_played.append(jid)
+                    sched.joke_told(time.monotonic())
+                    del joke_on[rid]
+                    log.info("joke %s told in front of %s", jid, rid)
+                elif beat_no - at >= 2 and not status["queued"] and status["current"] != rid:
+                    del joke_on[rid]
             with lock:   # the Worker has these now (marking played twice is harmless)
                 del jokes_played[:len(body["jokesPlayed"])]
             next_joke = reply.get("nextJoke")
@@ -277,9 +296,23 @@ def main() -> None:
                     log.info("command: skip")
                     skip_clips = clips.get("skip") or []
                     clip = rotation.pick(skip_clips) if skip_clips else None
-                    if clip:
-                        rotation.played(clip["file"])
-                    station.skip(bumper={"url": f"breaks/{clip['file']}", "voiceS": clip["seconds"]} if clip else None)
+                    jf = joke_file(next_joke) if next_joke and next_joke["id"] not in [j for j, _ in joke_on.values()] else None
+                    if jf and status["queued"] and last_push:   # a joke waiting: told in front of the song skipped to
+                        voice_s = feed.attach_joke(cfg.media_dir, last_push["id"], jf)
+                        station.push({**last_push, "voiceS": voice_s})
+                        joke_on[last_push["id"]] = (next_joke["id"], beat_no)
+                        station.skip()
+                        log.info("skip: joke %s in front of %s", next_joke["id"], last_push["id"])
+                    elif jf:                                      # back to SomaFM: the joke is the skip bumper
+                        station.skip(bumper={"url": f"breaks/{jf.name}", "voiceS": float(next_joke["seconds"])})
+                        with lock:
+                            jokes_played.append(next_joke["id"])
+                        sched.joke_told(time.monotonic())
+                        log.info("skip: joke %s as the bumper", next_joke["id"])
+                    else:
+                        if clip:
+                            rotation.played(clip["file"])
+                        station.skip(bumper={"url": f"breaks/{clip['file']}", "voiceS": clip["seconds"]} if clip else None)
                 elif action[0] == "clear":
                     log.info("command: clear station queue")
                     station.clear()
@@ -289,13 +322,30 @@ def main() -> None:
                     voice = cfg.media_dir / "voice" / f"{item['id']}.mp3"
                     try:
                         song_s = mix.duration(song)
-                        voice_s = mix.duration(voice) if voice.exists() else 0.0
+                        jf = joke_file(next_joke)
+                        told_elsewhere = next_joke and any(j == next_joke["id"] and r != item["id"] for r, (j, _) in joke_on.items())
+                        has_message = any(r.get("message") for r in item.get("requesters") or [])
+                        if voice.exists() and jf and not told_elsewhere and not has_message:
+                            # no shout-out to read: the joke stands in for the intro (no 5-minute wait: it replaces talk)
+                            voice_s = feed.attach_joke(cfg.media_dir, item["id"], jf, replace=True)
+                            joke_on[item["id"]] = (next_joke["id"], beat_no)
+                            log.info("joke %s stands in for %s's intro", next_joke["id"], item["id"])
+                        elif voice.exists() and jf and not told_elsewhere and sched.joke_due(time.monotonic()):
+                            voice_s = feed.attach_joke(cfg.media_dir, item["id"], jf)   # joke, then the shout-out
+                            joke_on[item["id"]] = (next_joke["id"], beat_no)
+                            log.info("joke %s rides in front of %s", next_joke["id"], item["id"])
+                        elif voice.exists():
+                            joke_on.pop(item["id"], None)
+                            voice_s = feed.detach_joke(cfg.media_dir, item["id"])   # just its own intro
+                        else:
+                            voice_s = 0.0
                     except Exception as e:   # a missing or broken file: fail this one, never block the line behind it
                         log.warning("push %s failed, marking it failed: %s", item["id"], e)
                         api.result({"id": item["id"], "status": "failed", "error": f"Song file unreadable: {e}"[:300]})
                         continue
-                    station.push({"id": item["id"], "title": item["title"], "artist": item["artist"],
-                                  "songS": song_s, "voiceS": voice_s})
+                    last_push = {"id": item["id"], "title": item["title"], "artist": item["artist"],
+                                 "songS": song_s, "voiceS": voice_s}
+                    station.push(last_push)
                     pushed.append(item["id"])
                     log.info("pushed %s: %s - %s (station was source=%s remaining=%.0fs)", item["id"],
                              item["artist"], item["title"], status["source"], status["remaining"])

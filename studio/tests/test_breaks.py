@@ -115,18 +115,25 @@ def test_rotation_survives_a_missing_or_corrupt_counts_file(tmp_path):
     assert Rotation(f).counts == {"a.mp3": 1}
 
 
-def test_waiting_jokes_come_first_every_5_minutes_then_the_slider_gap():
+def test_jokes_keep_their_own_5_minute_clock_and_requests_dont_delay_them():
     from mattyfm.breaks import Scheduler, JOKE_GAP_S
     soma = {"source": "soma", "current": "", "remaining": -1, "queued": 0}
-    s = Scheduler(gap_s=20 * 60, now=0)
-    assert s.due(soma, JOKE_GAP_S - 1, None, joke_ready=True) is None
-    assert s.due(soma, JOKE_GAP_S, None, joke_ready=True) == "joke"        # 5 min, not the slider's 20
-    s.done(JOKE_GAP_S, "joke")
-    assert s.seconds_left(JOKE_GAP_S, joke_ready=True) == JOKE_GAP_S
-    assert s.due(soma, 2 * JOKE_GAP_S, None, joke_ready=False) is None      # no jokes left: back to the slider
-    assert s.due(soma, JOKE_GAP_S + 20 * 60, None, joke_ready=False) == "id"   # the rotation didn't move for the joke
-    s2 = Scheduler(gap_s=5 * 60, now=0)
-    s2.done(0, "backannounce")
-    assert s2.due(soma, 300, None, joke_ready=True) == "joke"
-    s2.done(300, "joke")
-    assert s2.due(soma, 600, None) == "id"
+    req = {"source": "requests", "current": "r1", "remaining": 100, "queued": 0}
+    s = Scheduler(gap_s=10 * 60, now=0)
+    assert s.joke_due(0) and s.joke_due(1)                   # no joke yet today: the first one goes as soon as it's ready
+    s.joke_told(100)
+    assert not s.joke_due(100 + JOKE_GAP_S - 1)
+    s.due(req, 200, None)                                    # a request on air...
+    assert s.joke_due(100 + JOKE_GAP_S)                      # ...doesn't push the next joke back
+    assert s.due(soma, 100 + JOKE_GAP_S, None, joke_ready=True) == "joke"
+    s.joke_told(100 + JOKE_GAP_S)
+    assert s.due(soma, 100 + 2 * JOKE_GAP_S - 1, None, joke_ready=True) is None
+
+
+def test_a_joke_isnt_crammed_right_after_another_break():
+    from mattyfm.breaks import Scheduler
+    soma = {"source": "soma", "current": "", "remaining": -1, "queued": 0}
+    s = Scheduler(gap_s=10 * 60, now=0)
+    s.done(1000, "id")
+    assert s.due(soma, 1030, None, joke_ready=True) is None   # a bumper just played
+    assert s.due(soma, 1070, None, joke_ready=True) == "joke"

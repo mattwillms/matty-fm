@@ -309,6 +309,17 @@ export class Party extends DurableObject<Env> {
     return null;
   }
 
+  /** Songs with the waiting jokes worked in, one in front of each song, in the order they'll be told
+   *  (a joke goes at a song change, so the next one is told before the next song). */
+  private lineup<T>(songs: T[]): (T | { joke: true; id: string; title: string; artist: string; names: string })[] {
+    const jokes = this.all("SELECT id, name FROM jokes WHERE status IN ('ready','preparing','pending') ORDER BY created_at")
+      .map((j) => ({ joke: true as const, id: String(j.id), title: "A joke", artist: "",
+                     names: displayText(String(j.name), "a guest") }));
+    const out: (T | (typeof jokes)[number])[] = [];
+    songs.forEach((song, i) => { if (jokes[i]) out.push(jokes[i]); out.push(song); });
+    return [...out, ...jokes.slice(songs.length)];
+  }
+
   async guestState(device: string) {
     const waiting = this.display();
     // newest of this phone's own asks first (joining an older song puts it at the top too)
@@ -316,7 +327,7 @@ export class Party extends DurableObject<Env> {
       WHERE r.device=? GROUP BY i.id ORDER BY mine_at DESC LIMIT 6`, device);
     return {
       nowPlaying: this.nowPlaying(),
-      upNext: waiting.slice(0, 6).map((i) => this.pub(i)),
+      upNext: this.lineup(waiting.slice(0, 6).map((i) => this.pub(i))),
       waitingCount: waiting.length,
       mine: mine.map((i) => ({ ...this.pub(i), status: String(i.status),
         position: waiting.findIndex((w) => w.id === i.id) + 1 || null })),
@@ -492,11 +503,11 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "jokes-1",          // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "jokes-2",          // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: this.all("SELECT * FROM jokes WHERE status<>'deleted' ORDER BY CASE WHEN status IN ('pending','preparing','ready') THEN 0 ELSE 1 END, created_at DESC LIMIT 20")
         .map((j) => ({ id: String(j.id), name: String(j.name), text: String(j.text), status: String(j.status),
-                       script: String(j.script ?? ""), device: String(j.device) })),
+                       script: String(j.script ?? ""), device: String(j.device), createdAt: Number(j.created_at) })),
       items: items.map((i) => ({
         id: String(i.id), title: String(i.title), artist: String(i.artist), status: String(i.status),
         confidence: i.confidence == null ? null : Number(i.confidence), djLine: i.dj_line, tone: i.tone,
