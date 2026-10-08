@@ -140,9 +140,16 @@
   .meter i.scan3 { background: #6fe3c82e; }
   .meter i { background: #6fe3c814; border-radius: 1px; }
   .meter i.lit { background: var(--teal); box-shadow: 0 0 4px #6fe3c8aa; }
-  .jokes { list-style: none; margin: 10px 0 0; padding: 0; }
-  .jokes li { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid #ffffff12; color: var(--cream-dim); font-size: .92rem; }
-  .jokes li .jt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .jokes-head { margin: 18px 0 0; font-size: .85rem; font-weight: 600; letter-spacing: .02em; color: var(--cream-dim); }
+  .jokes { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
+  .jokes li { background: #0000002e; border-radius: 10px; padding: 10px 12px; }
+  .jokes .jt { color: var(--cream); font-size: .95rem; line-height: 1.35; overflow-wrap: anywhere;
+               display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .jokes .js { display: flex; align-items: center; gap: 7px; margin-top: 6px; font-size: .82rem; color: var(--cream-dim); }
+  .jokes .js::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--cream-dim); flex: none; }
+  .jokes .js.prep::before { background: var(--gold); }
+  .jokes .js.up::before, .jokes .js.playing::before { background: #9DBF5A; box-shadow: 0 0 5px #9DBF5A88; }
+  .jokes .js.bad::before { background: var(--bad); }
   .song .cancel { background: none; border: 0; padding: 8px 0 2px; margin: 0; font: inherit; font-size: .8rem; color: var(--cream-dim);
                   text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
   .song .cancel.armed { color: var(--bad); font-weight: 700; }
@@ -429,6 +436,7 @@
     <label for="jname">Your name</label><input id="jname" maxlength="40" autocomplete="given-name">
     <div class="row"><button id="jsend" type="button">Send the joke</button></div>
     <p id="jokeErr" class="hint" style="color:var(--bad)"></p>
+    <p class="jokes-head" id="myJokesHead" hidden>Your jokes</p>
     <ul id="myJokes" class="jokes"></ul>
   </section>
 
@@ -996,7 +1004,7 @@ const lastBadge = new Map();   // request id -> badge text, to flash changes
 let pollTimer = null, lastNextKey = "", lastMineKey = "";
 
 // Jokes: written up in the DJ's voice by the studio and told between songs.
-const JOKE_STATUS = { pending: ["The DJ is reading it over", ""], preparing: ["The DJ is reading it over", "prep"],
+const JOKE_STATUS = { pending: ["The DJ is reading it over", "prep"], preparing: ["The DJ is reading it over", "prep"],
   ready: ["Coming up on air", "up"], played: ["Told on air", "playing"], rejected: ["The DJ passed on this one", "bad"],
   failed: ["Didn't make it on air", "bad"] };
 try { $("jname").value = localStorage.getItem("mfm_name") || ""; } catch {}
@@ -1005,10 +1013,11 @@ function showJokes(list) {
   const key = JSON.stringify(list || []);
   if (key === lastJokesKey) return;
   lastJokesKey = key;
+  $("myJokesHead").hidden = !(list || []).length;
   $("myJokes").replaceChildren(...(list || []).map((j) => {
     const [label, cls] = JOKE_STATUS[j.status] || [j.status, ""];
     const li = el("li");
-    li.append(el("span", "jt", j.text), el("span", "chip " + cls, label));
+    li.append(el("div", "jt", `“${j.text}”`), el("div", "js " + cls, label));
     return li;
   }));
 }
