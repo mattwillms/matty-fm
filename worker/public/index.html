@@ -141,9 +141,6 @@
   .sleeve img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 2px; }
   .sleeve::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 2px;   /* ring wear from the record inside */
                    background: radial-gradient(circle, transparent 40%, #ffffff12 41.5%, transparent 44%), linear-gradient(135deg, #ffffff17, transparent 45%); }
-  .sleeve .noart { width: 100%; height: 100%; display: grid; place-items: center; border-radius: 2px;
-                   background: linear-gradient(160deg, #dcc290, #b18d55); }
-  .sleeve .noart img { width: 48%; height: 48%; border-radius: 50%; object-fit: cover; }
   .sticker { position: absolute; top: -16px; left: -16px; width: 72px; height: 72px; border-radius: 50%; z-index: 1;
              display: grid; place-items: center; background: var(--gold); color: var(--cocoa); transform: rotate(-11deg);
              font: 900 1.2rem/1 Fraunces, serif; font-variation-settings: "SOFT" 100, "WONK" 1;
@@ -155,9 +152,6 @@
   .sl-al:empty { display: none; }
   @media (prefers-reduced-motion: reduce) { .vinyl { animation: none; transform: translateX(31%); } .disc { animation: none; }
     dialog.sleeve-box[open], dialog.sleeve-box.closing { animation-name: fade; } }
-  .art.record { border-radius: 50%; filter: none; display: grid; place-items: center;
-                background: repeating-radial-gradient(circle, #141414 0 1.2px, #222 1.2px 2.4px); box-shadow: 0 2px 6px #0008; }
-  .art.record img { width: 48%; height: 48%; border-radius: 50%; object-fit: cover; }
   .track { display: inline-flex; }
   .track span { flex: none; }
   .ticking .track span { padding-right: 3em; }
@@ -356,11 +350,11 @@ function cleanTitle(t) {
     .replace(/\s*[(\[][^)\]]*(remaster|version|edit|mono|stereo|mix|single|live|from)[^)\]]*[)\]]/gi, "")
     .replace(/\s+-\s+.*(remaster|version|edit|mono|stereo).*$/i, "").trim();
 }
-// No cover anywhere (some SomaFM deep cuts aren't in any catalog): a plain record with the hen on its label.
-function record() { const r = el("div", "art record"), h = el("img"); h.alt = ""; h.src = "/hen.png"; r.append(h); return r; }
+// No cover anywhere (some SomaFM deep cuts aren't in any catalog): the OrrFM hen cover.
+function noCover(cls) { const img = el("img", cls); img.alt = ""; img.src = "/nocover.webp"; return img; }
 function art(src) {
-  if (!src) return record();
-  const img = el("img"); img.alt = ""; img.src = src; img.onerror = () => img.replaceWith(record()); return img;
+  if (!src) return noCover();
+  const img = el("img"); img.alt = ""; img.src = src; img.onerror = () => img.replaceWith(noCover()); return img;
 }
 function songRow(s, extra, chipClass) {
   const li = el("li", "song"), box = el("div", "meta");
@@ -451,12 +445,11 @@ async function releaseInfo(np) {
   sleeveInfo.set(key, info);
   return info;
 }
-function paperSleeve() { const d = el("div", "noart"), h = el("img"); h.alt = ""; h.src = "/hen.png"; d.append(h); return d; }
 function setSleeveArt(src, fallback) {
   const box = document.querySelector(".sleeve");
   const img = el("img"); img.id = "sleeveArt"; img.alt = "";
-  img.onerror = () => { if (fallback && img.src !== fallback) img.src = fallback; else img.replaceWith(paperSleeve()); };
-  if (src) img.src = src; else return box.querySelector("#sleeveArt, .noart").replaceWith(paperSleeve());
+  img.onerror = () => { if (fallback && img.src !== fallback) img.src = fallback; else img.replaceWith(noCover("noart")); };
+  if (src) img.src = src; else return box.querySelector("#sleeveArt, .noart").replaceWith(noCover("noart"));
   box.querySelector("#sleeveArt, .noart").replaceWith(img);
 }
 async function openSleeve() {
