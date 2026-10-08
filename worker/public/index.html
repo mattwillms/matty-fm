@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="icon" type="image/png" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,100,1&family=Jost:wght@400;500;700&family=Kalam:wght@400;700&family=VT323&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,100,1&family=Jost:wght@400;500;700&family=Kalam:wght@400;700&family=Doto:ROND,wght@0..100,400..900&family=Michroma&display=swap" rel="stylesheet">
 <style>
   :root {
     --cocoa: #2A1A12; --walnut: #4A2E1E; --walnut-2: #5B3A26;
@@ -92,38 +92,34 @@
   .display { display: flex; gap: 14px; align-items: center; min-height: 92px; }
   .display > img, .display > .art { width: 92px; height: 92px; border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
   .display .art { display: grid; place-items: center; font-size: 42px; background: #16201d; }
-  .vfd { min-width: 0; color: var(--teal); text-shadow: 0 0 6px #6fe3c899, 0 0 1px #b8fff0; font-family: VT323, monospace; }
+  /* LED dot matrix: every letter drawn from round dots, as on a 70s receiver display */
+  .vfd, .lcd { font-family: Doto, monospace; font-weight: 800; font-variation-settings: "ROND" 100; }
+  .vfd { min-width: 0; color: var(--teal); text-shadow: 0 0 6px #6fe3c899, 0 0 1px #b8fff0; }
   .vfd .t { font-size: 2.6rem; line-height: 1; }
   .vfd .a { font-size: 1.95rem; line-height: 1.05; }
   .vfd .t, .vfd .a { white-space: nowrap; overflow: hidden; }   /* a VFD never wraps: it scrolls */
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
   /* the request module: a dark gunmetal plate (lamp, label, name screen), the script screen under it */
-  /* a sliver of old, much-handled gold: dulled and grimy, rubbed bright where fingers land */
+  /* a sliver of old brushed gold: muted, matte, fine strokes all one way, a touch darker at the ends */
   .plate { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 4px 28px; border-radius: var(--glass-r);   /* 14px clear of each screw; corners match the screens */
-           background: radial-gradient(ellipse 18% 70% at 30% 55%, #f3d58a38, #0000),   /* rubbed bright by hands */
-                       radial-gradient(ellipse 14% 60% at 74% 40%, #f3d58a2e, #0000),
-                       radial-gradient(ellipse 10% 55% at 52% 70%, #2a1a0640, #0000),   /* a greasy thumbprint */
-                       radial-gradient(ellipse 12% 50% at 88% 65%, #2a1a0638, #0000),
-                       linear-gradient(100deg, #fff0 25%, #fff2 45%, #fff0 62%),   /* a faint, tired sheen */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 300px 60px,   /* brush strokes, worn shallow */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .16 0 0 0 0 .11 0 0 0 0 .03 0 0 0 1.6 -.55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 240px,   /* grime in the low spots */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='1' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .07 0 0 0 0 .02 0 0 0 2.2 -1.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 120px,   /* pitting */
-                       linear-gradient(#a07a34, #87652a 50%, #6e5019);   /* deep old gold */
-           background-blend-mode: normal, normal, normal, normal, soft-light, overlay, normal, normal, normal;
-           box-shadow: inset 0 1px 0 #e9c97a88, inset 0 -1px 0 #9c7633, 0 1px 0 #fff6, 0 0 0 1px #8d6b2c; }   /* gold rim, no black edge */
+           background: linear-gradient(90deg, #3a2a0a40, #0000 14%, #0000 86%, #3a2a0a40),   /* ends a shade darker */
+                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.003 1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .75 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 400px 80px,   /* fine brush strokes */
+                       linear-gradient(#c4ab68, #b29856 50%, #9f8648);   /* muted old gold */
+           background-blend-mode: normal, overlay, normal;
+           box-shadow: inset 0 1px 0 #ecdca288, inset 0 -1px 0 #a68d4c, 0 1px 0 #fff6, 0 0 0 1px #8f7740; }   /* gold rim, no black edge */
   .plate .lamp { flex: none; width: 9px; height: 9px; }
   .plate .screw { width: 8px; height: 8px; top: 50%; margin-top: -4px; box-shadow: 0 1px 0 #fff4c066, 0 0 0 1px #0006;   /* black */
                   background: radial-gradient(circle at 35% 35%, #7a7a7a, #2a2a2a 50%, #0b0b0b); }
   .plate .slit { top: 3px; height: 1.5px; background: #000; }
   .plate .screw.ml { left: 6px; } .plate .screw.mr { right: 6px; }
-  .plate-label { font: 700 .55rem/1.05 Jost, sans-serif; letter-spacing: .08em; white-space: nowrap;   /* engraved: dark cut, lit lower edge */
-                 color: #2e1f06; text-shadow: 0 1px 0 #d9b46a99, 0 -1px 0 #1a100333; }
+  .plate-label { font: 400 .5rem/1.05 Michroma, sans-serif; letter-spacing: .1em; white-space: nowrap;   /* wide hi-fi faceplate lettering */   /* engraved: dark cut, lit lower edge */
+                 color: #3b2e10; text-shadow: 0 1px 0 #efe0aa99, 0 -1px 0 #1a100333; }
   .lcd.name-screen { flex: 1; min-width: 0; padding: 2px 8px 3px; }   /* .lcd comes later in the file: match its weight to win */
   .msg-screen { margin-top: 12px; }
   /* the request VFD: dark glass, glowing teal dot-matrix, same family as the display above */
   .lcd { position: relative; border-radius: var(--glass-r); padding: 7px 10px 8px; overflow: hidden; background: var(--glass);
-         box-shadow: inset 0 3px 8px #000, 0 1px 0 #fff8; font-family: VT323, monospace; color: var(--teal);
+         box-shadow: inset 0 3px 8px #000, 0 1px 0 #fff8; color: var(--teal);
          text-shadow: 0 0 6px #6fe3c899, 0 0 1px #b8fff0; }
   .lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none;
                 background: repeating-linear-gradient(0deg, #0000 0 2px, #00000026 2px 3px), linear-gradient(170deg, #ffffff12 0 25%, transparent 25%); }
@@ -732,7 +728,7 @@ function showNow(np, force) {
   const song = `${np.title}|${np.artist}`;
   if (song !== lastNow) { lastNow = song; tune(song); }
 }
-// Scroll speed comes from the text's width: measure again once VT323 has loaded.
+// Scroll speed comes from the text's width: measure again once the dot-matrix font has loaded.
 document.fonts.ready.then(() => { if (screenKey !== null) { lcdKey = ""; showNow(onAir, true); } });
 function songKeyOf(t) {
   const n = (x) => String(x || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
