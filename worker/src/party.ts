@@ -72,7 +72,7 @@ export class Party extends DurableObject<Env> {
       accepting: this.setting("accepting", "1") === "1",
       stopAfterCurrent: this.setting("stopAfterCurrent", "0") === "1",
       somaOnly: this.setting("somaOnly", "0") === "1",
-      breakEveryMin: Number(this.setting("breakEveryMin", "20")),
+      breakEveryMin: Number(this.setting("breakEveryMin", "10")),
     };
   }
   private command(type: "skip" | "clear" | "break" | `pad${number}`): void {

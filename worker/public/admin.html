@@ -203,9 +203,9 @@
       <button class="toggle warn" role="switch" id="somaOnly" aria-label="SomaFM only"></button>
     </div>
     <div class="slider-row">
-      <div class="what">Bumper every <output id="breakEveryOut" for="breakEvery">20</output> min</div>
+      <div class="what">Bumper every <output id="breakEveryOut" for="breakEvery">10</output> min</div>
       <div class="why">How often the DJ cuts in over SomaFM. A request resets the clock.</div>
-      <input type="range" id="breakEvery" min="5" max="30" step="5" value="20" aria-label="Minutes between bumpers">
+      <input type="range" id="breakEvery" min="5" max="30" step="5" value="10" aria-label="Minutes between bumpers">
       <div class="ticks" aria-hidden="true"><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
     </div>
   </section>
@@ -315,7 +315,7 @@ function renderSwitches() {
   set("stopAfterCurrent", s.stopAfterCurrent, "stopAfterCurrent");
   set("somaOnly", s.somaOnly, "somaOnly");
   const r = $("breakEvery");
-  if (document.activeElement !== r) { r.value = String(s.breakEveryMin ?? 20); showEvery(r); }
+  if (document.activeElement !== r) { r.value = String(s.breakEveryMin ?? 10); showEvery(r); }
 }
 function showEvery(r) {
   $("breakEveryOut").textContent = r.value;
@@ -330,7 +330,7 @@ function renderTimer() {
   const out = $("nextBumper"), h = state && state.health;
   const wait = (text) => { out.textContent = text; out.className = "when wait"; };
   if (!h || h.nextBreakS == null || h.ageS == null || h.ageS > 60) return wait("Studio not reporting");
-  if (h.source === "requests") return wait(`${state.settings.breakEveryMin ?? 20} min after the requests end`);
+  if (h.source === "requests") return wait(`${state.settings.breakEveryMin ?? 10} min after the requests end`);
   if (h.source !== "soma") return wait("Waits for SomaFM");
   const left = Math.max(0, Math.round(h.nextBreakS - h.ageS - (Date.now() - state.loadedAt) / 1000));   // server age, not this phone's clock
   if (!left) return wait(h.queued ? "Due: waits for the queue" : "Due now");

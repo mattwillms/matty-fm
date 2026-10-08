@@ -8,10 +8,10 @@ def make():
     return breaks.Scheduler(now=0.0)
 
 
-def test_first_break_not_before_twenty_minutes():
+def test_first_break_not_before_ten_minutes():
     s = make()
-    assert s.due(SOMA, now=19 * 60, soma_age=30) is None
-    assert s.due(SOMA, now=29 * 60, soma_age=30) is not None
+    assert s.due(SOMA, now=9 * 60, soma_age=30) is None
+    assert s.due(SOMA, now=10 * 60, soma_age=30) is not None
 
 
 def test_only_while_soma_is_on_air_and_nothing_queued():
@@ -39,7 +39,7 @@ def test_back_announce_only_near_the_start_of_a_soma_song():
     assert set(kinds) <= {"id", "goof"}
 
 
-def test_breaks_rotate_and_stay_at_least_twenty_minutes_apart():
+def test_breaks_rotate_and_stay_at_least_ten_minutes_apart():
     s = make()
     times, kinds = [], []
     t = 0
@@ -50,7 +50,7 @@ def test_breaks_rotate_and_stay_at_least_twenty_minutes_apart():
             times.append(t)
             kinds.append(k)
             s.done(now=t)
-    assert all(b - a >= 20 * 60 for a, b in zip(times, times[1:]))
+    assert all(b - a >= 10 * 60 for a, b in zip(times, times[1:]))
     assert {"backannounce", "id", "goof"} <= set(kinds)
 
 
@@ -70,7 +70,7 @@ def test_gap_is_clamped_to_five_to_thirty_minutes_in_fives():
 
 def test_seconds_left_counts_down_to_the_next_break():
     s = make()
-    assert s.seconds_left(now=5 * 60) == 15 * 60
+    assert s.seconds_left(now=5 * 60) == 5 * 60
     s.done(now=21 * 60)
-    assert s.seconds_left(now=21 * 60) == 20 * 60
+    assert s.seconds_left(now=21 * 60) == 10 * 60
     assert s.seconds_left(now=99 * 60) == 0

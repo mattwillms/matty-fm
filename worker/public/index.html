@@ -99,13 +99,14 @@
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
   /* the request module: a dark gunmetal plate (lamp, label, name screen), the script screen under it */
-  /* a sliver of brushed brass: lamp, engraved label and name screen in one thin strip */
+  /* a sliver of brushed, patinated gold: lamp, engraved label and name screen in one thin strip */
   .plate { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 4px 28px; border-radius: var(--glass-r);   /* 14px clear of each screw; corners match the screens */
            background: linear-gradient(100deg, #fff0 20%, #fff5 42%, #fff0 62%),   /* the sheen brushed metal throws */
                        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 300px 60px,   /* the brush strokes, all one way */
-                       linear-gradient(#d9b766, #b38c3c 55%, #96722c);
-           background-blend-mode: soft-light, overlay, normal;
-           box-shadow: inset 0 1px 0 #fff3c0aa, inset 0 -1px 0 #5a4214, 0 1px 0 #fff8, 0 0 0 1px #5a4214; }
+                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .25 0 0 0 0 .2 0 0 0 0 .05 0 0 0 1.1 -.35'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 220px,   /* patina: soft blotches where the shine has worn */
+                       linear-gradient(#f0c65a, #d6a33a 50%, #b9862a);   /* deep old gold */
+           background-blend-mode: soft-light, overlay, multiply, normal;
+           box-shadow: inset 0 1px 0 #fff4c2cc, inset 0 -1px 0 #e9bd5a, 0 1px 0 #fff8, 0 0 0 1px #c4922f; }   /* gold rim, no dark edge */
   .plate .lamp { flex: none; width: 9px; height: 9px; }
   .plate .screw { width: 8px; height: 8px; top: 50%; margin-top: -4px; box-shadow: 0 1px 0 #fff4c066, 0 0 0 1px #0006;   /* black */
                   background: radial-gradient(circle at 35% 35%, #7a7a7a, #2a2a2a 50%, #0b0b0b); }

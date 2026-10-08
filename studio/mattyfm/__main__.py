@@ -137,7 +137,7 @@ def main() -> None:
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]
             done_cmds = {c["id"] for c in reply["commands"]} | {c["id"] for c in fresh}
             reply = {**reply, "commands": fresh}
-            sched.set_gap(60 * reply["settings"].get("breakEveryMin", 20))
+            sched.set_gap(60 * reply["settings"].get("breakEveryMin", 10))
             if reply["settings"]["somaOnly"] or reply["settings"]["stopAfterCurrent"]:
                 log.debug("settings: %s", reply["settings"])
             for job in reply["jobs"]:

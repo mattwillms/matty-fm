@@ -1,4 +1,4 @@
-"""When the DJ speaks between requests: every N minutes (the admin slider, 5 to 30), over SomaFM only.
+"""When the DJ speaks between requests: every N minutes (the admin slider, 5 to 30, default 10), over SomaFM only.
 
 Kinds rotate: a back-announce of the SomaFM song that just started (voiced fresh),
 a station ID, a goof (both pre-made clips with sound effects). A request on air
@@ -8,7 +8,7 @@ pushes the next break out to a full gap after it.
 import json
 from pathlib import Path
 
-DEFAULT_GAP_S = 20 * 60
+DEFAULT_GAP_S = 10 * 60
 MIN_GAP_S, MAX_GAP_S, STEP_S = 5 * 60, 30 * 60, 5 * 60
 BACKANNOUNCE_WINDOW_S = (10, 75)   # seconds after a SomaFM song started (its intro)
 ROTATION = ("backannounce", "id", "goof")
