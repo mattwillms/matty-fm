@@ -6,6 +6,7 @@ Channels (each an ALSA softvol control into dmix on the USB card):
   deckA DeckAVol  requested songs (and backup songs), alternating with deckB
   deckB DeckBVol
   dj    DjVol     the DJ voice, always at full level
+  fx    FxVol     sound pads from the admin page: over everything, nothing ducks
 
 One transition rule for every change (SomaFM->song, song->song, song->SomaFM,
 skips), with NO overlap between outgoing and incoming: the outgoing fades to
@@ -16,7 +17,7 @@ starts DOWN_S before it ends; with nothing queued the song fades out over its
 last OUTRO_S seconds and SomaFM fades back in after the gap.
 
 The studio (workstation) drives this over a token-protected HTTP API:
-  GET /status  POST /push {id,title,artist,songS,voiceS}  POST /skip  POST /clear
+  GET /status  POST /push {id,title,artist,songS,voiceS}  POST /skip  POST /clear  POST /fx {url}
 Song and voice files come from the workstation's file server.
 
 Config: /etc/mattyfm.conf — CARD, FILES_URL, SOMA_URLS, TOKEN, PORT.
@@ -162,6 +163,12 @@ class Engine:
             self.transition_until = back_at + RESTORE_S
             self.log(f"voice break on {ch}: {voice_s:.1f}s")
             return True
+
+    def fx(self, url: str) -> None:
+        """A sound pad: its own channel, laid over whatever is on air. A new tap replaces the last."""
+        with self.lock:
+            self.players.play("fx", self.resolve(url))
+            self.log(f"pad: {url}")
 
     def status(self) -> dict:
         with self.lock:
@@ -429,6 +436,8 @@ def serve(engine: Engine, token: str, port: int) -> None:
                     return self._reply(409, {"error": "busy"})
             elif self.path == "/clear":
                 engine.clear()
+            elif self.path == "/fx":
+                engine.fx(body["url"])
             else:
                 return self._reply(404, {})
             self._reply(200, engine.status())
@@ -454,12 +463,12 @@ def main(conf_path: str) -> None:
         t.start()
     # A softvol control exists only once something has played through it, and starts at
     # full volume: open every channel with a moment of silence first, then set levels.
-    for ch in CONTROLS:
+    for ch in [*CONTROLS, "fx"]:
         subprocess.run(["aplay", "-q", "-D", ch, "-f", "cd", "-d", "1", "/dev/zero"], check=False)
     time.sleep(1)
-    for control, pct in (("SomaVol", 100), ("DeckAVol", 0), ("DeckBVol", 0), ("DjVol", 100)):
+    for control, pct in (("SomaVol", 100), ("DeckAVol", 0), ("DeckBVol", 0), ("DjVol", 100), ("FxVol", 100)):
         mixer.set(control, pct)
-    log("console ready: SomaVol 100, DeckAVol 0, DeckBVol 0, DjVol 100")
+    log("console ready: SomaVol 100, DeckAVol 0, DeckBVol 0, DjVol 100, FxVol 100")
     last = time.monotonic()
     while True:
         time.sleep(TICK_S)

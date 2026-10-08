@@ -4,6 +4,7 @@ import json
 import logging
 import os
 import random
+import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -145,6 +146,14 @@ def main() -> None:
                 with lock:
                     working.add(job["id"])
                 pool.submit(run_job, job)
+            for c in reply["commands"]:
+                pad = re.fullmatch(r"pad([1-5])", c["type"])
+                if pad:   # a sound pad from the admin page: straight to the console's fx channel
+                    log.info("command: pad %s", pad[1])
+                    try:
+                        station.fx(f"breaks/pad-{pad[1]}.mp3")
+                    except Exception as e:
+                        log.warning("pad %s failed: %s", pad[1], e)
             if any(c["type"] == "break" for c in reply["commands"]):
                 log.info("command: play a bumper now")
                 start_break(random.choice(["id", "goof"]))

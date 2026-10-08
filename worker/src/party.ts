@@ -75,7 +75,7 @@ export class Party extends DurableObject<Env> {
       breakEveryMin: Number(this.setting("breakEveryMin", "20")),
     };
   }
-  private command(type: "skip" | "clear" | "break"): void {
+  private command(type: "skip" | "clear" | "break" | `pad${number}`): void {
     this.sql.exec("INSERT INTO commands(type,created_at) VALUES(?,?)", type, Date.now());
   }
   private newId(): string {
@@ -263,7 +263,7 @@ export class Party extends DurableObject<Env> {
   }
 
   async adminAction(a: {
-    action: string; id?: string; dir?: -1 | 1; device?: string; track?: Track; name?: string;
+    action: string; id?: string; dir?: -1 | 1; device?: string; pad?: number; track?: Track; name?: string;
     message?: string; settings?: Partial<Record<"accepting" | "stopAfterCurrent" | "somaOnly", boolean>> & { breakEveryMin?: number };
   }) {
     const status = a.id ? String(this.one("SELECT status FROM items WHERE id=?", a.id)?.status ?? "") : "";
@@ -274,6 +274,12 @@ export class Party extends DurableObject<Env> {
       case "break":
         this.command("break");
         return { ok: true };
+      case "pad": {   // a sound pad, 1 to 5: played on the console's fx channel
+        const n = Number(a.pad);
+        if (!Number.isInteger(n) || n < 1 || n > 5) return { ok: false, error: "no such pad" };
+        this.command(`pad${n}`);
+        return { ok: true };
+      }
       case "delete":
         this.sql.exec("UPDATE items SET status='deleted' WHERE id=?", a.id!);
         if (status === "queued") this.command("clear");

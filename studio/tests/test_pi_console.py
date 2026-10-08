@@ -228,3 +228,19 @@ def test_skip_with_nothing_queued_plays_the_skip_bumper():
     assert ("dj", "http://ws:8040/breaks/skip1.mp3") in players.started
     watch(eng, clock, 5, mixer, "SomaVol", "DeckAVol")
     assert mixer.level["SomaVol"] == 100
+
+
+def test_a_pad_plays_on_its_own_channel_over_everything():
+    eng, clock, players, mixer = make()
+    eng.push(item("r1", voice_s=4.0))
+    eng.tick()
+    run(eng, clock, 0.6)                              # mid-transition, DJ talking
+    before = dict(mixer.level)
+    eng.fx("breaks/pad-1.mp3")
+    assert ("fx", "http://ws:8040/breaks/pad-1.mp3") in players.started
+    assert players.running("dj")                      # the DJ keeps talking
+    assert mixer.level == before                      # nothing ducks or jumps
+    eng.fx("breaks/pad-2.mp3")                        # a second tap replaces the first
+    assert players.started[-1] == ("fx", "http://ws:8040/breaks/pad-2.mp3")
+    run(eng, clock, 5)
+    assert eng.status()["current"] == "r1"            # the transition finished as normal

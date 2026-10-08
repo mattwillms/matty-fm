@@ -49,6 +49,14 @@
   .timer .when { font-weight: 700; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
   .timer .when.wait { font-size: .92rem; font-weight: 500; color: var(--faint); text-align: right; }
 
+  /* ---- sound pads ---- */
+  .pads { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }   /* minmax: columns may shrink below their longest word */
+  .pad { aspect-ratio: 1; padding: 4px; display: grid; place-content: center; justify-items: center; gap: 2px; border-radius: 12px;
+         background: var(--raise); box-shadow: inset 0 -3px 0 #0004; transition: box-shadow .15s, background .15s, transform .08s; }
+  .pad .ico { font-size: 1.7rem; line-height: 1; }
+  .pad .lbl { font-size: .68rem; font-weight: 500; color: var(--muted); line-height: 1.1; text-align: center; overflow-wrap: anywhere; }
+  .pad.hit { background: var(--walnut, #5B3A26); box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px #f0a92b66; }
+
   /* ---- interval slider ---- */
   .slider-row { padding: 12px 0 4px; border-top: 1px solid var(--line); }
   .slider-row .what { font-weight: 700; }
@@ -150,6 +158,11 @@
     <div class="timer"><span class="what">Next bumper</span><span class="when" id="nextBumper">–</span></div>
   </section>
 
+
+  <section aria-label="Sound pads">
+    <h2>Sound pads</h2>
+    <div class="pads" id="pads"></div>
+  </section>
 
   <section aria-label="Up next">
     <h2>Up next<span class="count" id="upCount"></span></h2>
@@ -279,6 +292,21 @@ function renderNow() {
   $("skip").disabled = !playing;
   $("skip").title = playing ? "Skip the request on air" : "Nothing to skip: SomaFM is on air";
 }
+
+// Five pads, each tied to a sound on the studio (media/breaks/pad-N.mp3), played on the PA.
+const PADS = [["📯", "Air horn"], ["🥁", "Rimshot"], ["👏", "Applause"], ["🎺", "Sad trombone"], ["🐔", "Cluck"]];
+$("pads").replaceChildren(...PADS.map(([ico, lbl], i) => {
+  const b = el("button", "pad"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl}`);
+  b.append(el("span", "ico", ico), el("span", "lbl", lbl));
+  b.onclick = async () => {
+    b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 600);   // lit the moment it's tapped
+    try {
+      const r = await call("/api/admin/action", { action: "pad", pad: i + 1 });
+      toast(r && r.ok === false ? r.error || "That didn't work" : `${lbl}: on the PA in a few seconds`, r && r.ok === false);
+    } catch (e) { if (e.message !== "auth") toast("Couldn't reach the server", true); }
+  };
+  return b;
+}));
 
 function renderSwitches() {
   const s = state.settings;

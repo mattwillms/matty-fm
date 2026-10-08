@@ -31,5 +31,9 @@ class PiLink:
         r = self.http.post(f"{self.base}/voice", json={"url": url, "voiceS": voice_s}, headers=self.headers)
         return r.status_code == 200
 
+    def fx(self, url: str) -> None:
+        """A sound pad over whatever is on air (a path on the file server, e.g. breaks/pad-1.mp3)."""
+        self._post("/fx", {"url": url})
+
     def clear(self) -> None:
         self._post("/clear")

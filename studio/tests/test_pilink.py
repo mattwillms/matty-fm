@@ -34,3 +34,15 @@ def test_voice_break_and_skip_bumper():
     pi.skip(bumper={"url": "breaks/skip1.mp3", "voiceS": 1.5})
     assert seen == [("/voice", {"url": "breaks/id1.mp3", "voiceS": 3.2}),
                     ("/skip", {"bumper": {"url": "breaks/skip1.mp3", "voiceS": 1.5}})]
+
+
+def test_pad_asks_the_console_to_play_a_sound():
+    seen = []
+
+    def handler(r):
+        seen.append((r.url.path, json.loads(r.content or b"{}")))
+        return httpx.Response(200, json={"source": "soma", "current": "", "remaining": -1, "queued": 0})
+
+    pi = PiLink("http://pi:8042", "tok", httpx.Client(transport=httpx.MockTransport(handler)))
+    pi.fx("breaks/pad-3.mp3")
+    assert seen == [("/fx", {"url": "breaks/pad-3.mp3"})]
