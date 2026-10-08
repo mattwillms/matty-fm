@@ -320,6 +320,22 @@ function lcd(np) {
   setLine("lcdMsg", msg, true);
 }
 
+// The hen spins like a record while a request plays; when SomaFM returns it finishes
+// the turn it is on and stops upright (the loop is told to end after this revolution).
+const TURN_MS = 10000;
+let spin = null;
+function henSpin(on) {
+  const hen = document.querySelector(".hen");
+  if (!hen || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (on) {
+    if (spin && spin.playState === "running" && spin.effect.getTiming().iterations === Infinity) return;
+    if (spin && spin.playState === "running") { spin.effect.updateTiming({ iterations: Infinity }); return; }  // back on before it stopped
+    spin = hen.animate([{ transform: "rotate(0deg)" }, { transform: "rotate(360deg)" }], { duration: TURN_MS, iterations: Infinity, easing: "linear" });
+  } else if (spin && spin.playState === "running" && spin.effect.getTiming().iterations === Infinity) {
+    spin.effect.updateTiming({ iterations: Math.ceil((spin.currentTime || 0) / TURN_MS) || 1 });
+  }
+}
+
 // The dial: each song gets its own spot on the scale, and the needle swings there when it changes.
 function tune(key) {
   let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
@@ -328,8 +344,9 @@ function tune(key) {
 }
 function showNow(np) {
   const d = $("display");
-  if (!np) { $("lamp").classList.remove("on"); lcd(null); const v = el("div", "vfd"); v.append(el("div", "idle", "Between songs")); d.replaceChildren(v); return; }
+  if (!np) { $("lamp").classList.remove("on"); henSpin(false); lcd(null); const v = el("div", "vfd"); v.append(el("div", "idle", "Between songs")); d.replaceChildren(v); return; }
   $("lamp").classList.toggle("on", !np.soma);
+  henSpin(!np.soma);
   const v = el("div", "vfd");
   v.append(el("div", "t", cleanTitle(np.title)), el("div", "a", np.artist), ...(np.soma ? [el("div", "s", "SomaFM, 70s")] : []));
   lcd(np);
