@@ -102,6 +102,10 @@
   .chip { flex: none; font-size: .78rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #2f1f15; color: var(--cream-dim); }
   .chip.playing { background: var(--orange); color: #2A1A12; } .chip.up { background: var(--avocado); color: #1c1a08; }
   .chip.bad { background: #5a2420; color: #ffc2b4; }
+  .chip.prep { background: #3a2a1c; color: var(--gold); animation: pulse 1.6s ease-in-out infinite; }
+  .chip.flash { animation: flash .9s ease-out 1; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  @keyframes flash { 0% { box-shadow: 0 0 0 0 #f0a92bcc; transform: scale(1.12); } 100% { box-shadow: 0 0 0 10px #f0a92b00; transform: scale(1); } }
   .pick { display: block; width: 100%; text-align: left; padding: 0 6px; margin: 0 -6px; background: none; color: inherit;
           border-radius: 10px; font-weight: 400; width: calc(100% + 12px); }
   .pick:hover { background: #ffffff0d; filter: none; } .pick:active { background: #ffffff1a; transform: none; }
@@ -113,7 +117,7 @@
            box-shadow: 0 8px 24px #0009; transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: var(--bad); color: #fff; }
 
-  @media (prefers-reduced-motion: reduce) { .needle { transition: none; } button { transition: none; } }
+  @media (prefers-reduced-motion: reduce) { .needle { transition: none; } button { transition: none; } .chip.prep, .chip.flash { animation: none; } }
 </style>
 </head>
 <body>
@@ -243,8 +247,22 @@ async function api(path, opts) {
   if (r.status === 403) { $("gate").hidden = false; throw new Error("gate"); }
   return r.json();
 }
-const STATUS = { pending: ["Getting ready", ""], preparing: ["Getting ready", ""], ready: ["In line", "up"], queued: ["Up next", "up"],
-  playing: ["On air", "playing"], played: ["Played", ""], failed: ["Not found", "bad"], deleted: ["Removed", "bad"] };
+function badge(m) {
+  const pos = m.position ? `#${m.position}` : "";
+  switch (m.status) {
+    case "pending": return [pos ? `${pos} in line` : "In line", ""];
+    case "preparing": return ["Preparing…", "prep"];
+    case "ready": return [pos ? `Ready · ${pos}` : "Ready", "up"];
+    case "queued": return ["Up next", "up"];
+    case "playing": return ["On air", "playing"];
+    case "played": return ["Played", ""];
+    case "failed": return ["Couldn't find it", "bad"];
+    case "deleted": return ["Removed", "bad"];
+    default: return [m.status, ""];
+  }
+}
+const lastBadge = new Map();   // request id -> badge text, to flash changes
+let pollTimer = null;
 
 async function refresh() {
   if (!k) { $("gate").hidden = false; return; }
@@ -256,10 +274,16 @@ async function refresh() {
     $("nextBox").hidden = !s.upNext.length; $("next").replaceChildren(...s.upNext.map((x) => songRow(x)));
     $("mineBox").hidden = !s.mine.length;
     $("mine").replaceChildren(...s.mine.map((m) => {
-      const [label, cls] = STATUS[m.status] || [m.status, ""];
-      const waiting = ["ready", "pending", "preparing"].includes(m.status) && m.position;
-      return songRow(m, waiting ? `#${m.position} in line` : label, cls);
+      const [label, cls] = badge(m);
+      const changed = lastBadge.has(m.id) && lastBadge.get(m.id) !== label;
+      lastBadge.set(m.id, label);
+      const row = songRow(m.status === "failed" ? { ...m, names: "" } : m, label, cls + (changed ? " flash" : ""));
+      if (m.status === "failed") row.querySelector(".a").textContent = "Try a different version, or another song";
+      return row;
     }));
+    // refresh faster while one of this phone's requests is still on its way
+    const active = s.mine.some((m) => ["pending", "preparing", "ready", "queued"].includes(m.status));
+    schedule(active ? 5000 : 15000);
   } catch {}
 }
 
@@ -302,8 +326,14 @@ $("send").onclick = () => busy($("send"), "Sending…", async () => {
     $("form").hidden = true; $("find").hidden = false; refresh();
   } catch (e) { if (e.message !== "gate") toast("Didn't send. Check your connection and try again.", true); }
 });
+let pollMs = 0;
+function schedule(ms) {
+  if (pollMs === ms) return;
+  clearInterval(pollTimer); pollMs = ms;
+  pollTimer = setInterval(() => { if (document.visibilityState === "visible") refresh(); }, ms);
+}
+schedule(15000);
 refresh();
-setInterval(() => { if (document.visibilityState === "visible") refresh(); }, 15000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
 </script>
 </body>
