@@ -100,7 +100,7 @@
   .vfd .idle { color: #6fe3c8aa; }
   /* the request module: a dark gunmetal plate (lamp, label, name screen), the script screen under it */
   /* a sliver of molded plastic: lamp, label and name screen in one thin strip */
-  .plate { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 4px 28px; border-radius: 8px;   /* 14px clear of each screw */
+  .plate { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 4px 28px; border-radius: var(--glass-r);   /* 14px clear of each screw; corners match the screens */
            background: linear-gradient(#ffffff17, #ffffff00 45%, #00000022),   /* soft sheen on the moulding's top edge */
                        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.2' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 120px,   /* fine matte stipple */
                        linear-gradient(#2e2724, #1d1816);
@@ -292,7 +292,7 @@
         <i class="screw ml"><b class="slit" style="--r: 64deg"></b></i><i class="screw mr"><b class="slit" style="--r: 118deg"></b></i>
         <div class="lcd name-screen"><div class="lcd-line name"><span class="track" id="lcdName"><span>SomaFM 70s</span></span></div></div>
         <span class="lamp" id="lamp" aria-hidden="true"></span>
-        <span class="plate-label" id="reqLabel">SPECIAL<br>REQUEST</span>
+        <span class="plate-label" id="reqLabel">SPECIAL REQUEST</span>
       </div>
       <div class="lcd msg-screen" aria-live="polite">
         <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
