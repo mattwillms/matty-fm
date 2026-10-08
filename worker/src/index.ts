@@ -86,7 +86,9 @@ export default {
       return await route(req, env, ctx, url, path, party);
     } catch (e) {
       if (e instanceof BadRequest) return json({ ok: false, error: e.message }, 400);
-      throw e;
+      // e.g. the minutes after a deploy, when the queue still runs the previous code: say so plainly
+      console.log("route failed:", String(e));
+      return json({ ok: false, error: "The DJ is busy for a minute. Try again shortly." }, 503);
     }
   },
 } satisfies ExportedHandler<Env>;

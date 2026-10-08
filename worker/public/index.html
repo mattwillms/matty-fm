@@ -971,7 +971,7 @@ async function api(path, opts) {
   if (!r.ok) {
     const body = await r.json().catch(() => null);
     if (r.status === 403 && !/reload/i.test(body?.error ?? "")) { $("gate").hidden = false; throw new Error("gate"); }
-    if (r.status < 500 && body && typeof body.error === "string") return { ok: false, ...body };   // "slow down", "reload", ...
+    if ((r.status < 500 || r.status === 503) && body && typeof body.error === "string") return { ok: false, ...body };   // "slow down", "reload", "busy for a minute"
     throw new Error(`HTTP ${r.status}`);
   }
   $("gate").hidden = true;
