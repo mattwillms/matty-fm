@@ -92,11 +92,15 @@ Python on the workstation, under systemd (user unit). Two loops:
    passed as quoted data inside tags, never as instructions. Light-touch
    moderation: keep teasing, inside jokes and mild language; paraphrase in DJ
    voice; refuse slurs, sexual content and real cruelty. Output
-   `{ok, script}`. Refusal, timeout (10 s), or a bad reply → template line
+   `{ok, tone, script}`. **Tone picks the voice:** `funny` → Johnny Dynamite
+   (jokes, teasing, party energy, and requests with no message); `sweet` →
+   Countdown Casey (anniversaries, love, thanks, memorials — anything where a
+   joke would land wrong). Refusal, timeout (10 s), or a bad reply → template line
    ("Here's one from {name} — {title} by {artist}!"). Output is checked by
    a short deny-list before it is voiced.
-2. **Voice:** the chosen TTS (ElevenLabs or OpenAI — decided by listening to
-   both, see Open decisions). A name-respelling map (`studio/names.toml`) is
+2. **Voice:** ElevenLabs `eleven_v4`, Starter plan (library voices need a
+   paid plan). Johnny Dynamite `CeNX9CMwmxDxUF5Q2Inm` or Countdown Casey
+   `mKoqwDP2laxTdq1gEgU6`, by tone. A name-respelling map (`studio/names.toml`) is
    applied first. Failure → a pre-rendered generic clip.
 3. **Song:** local cache first (`media/cache/`, keyed by normalized
    artist+title). Otherwise yt-dlp (Deno runtime, pinned version):
@@ -169,7 +173,7 @@ the PA.
 | Home internet down | SomaFM drops → backup playlist. Requests already prepared still play. Guests on cellular can still submit; they wait. |
 | yt-dlp broken / blocked | Cache hits still work. Misses fail fast; guest told; admin flagged. |
 | Claude down | Template DJ line. |
-| TTS down or out of credits | Generic pre-rendered clip. |
+| TTS down or out of credits | Cloudflare Aura-2 (`orion`); if that fails too, a generic pre-rendered clip. |
 | Studio crash | systemd restarts it; leases return items to pending. |
 | Liquidsoap crash | Docker restarts it; studio re-pushes. |
 | Pi stream drops | mpg123 exits, systemd restarts it within 2 s; 6 s buffer covers blips. |
@@ -200,8 +204,8 @@ the PA.
 
 ## Open decisions
 
-1. **DJ voice:** ElevenLabs vs OpenAI `gpt-4o-mini-tts`. Decide by listening
-   to the same script voiced by both.
+1. ~~DJ voice~~ — decided 2026-10-07 by ear: ElevenLabs, Johnny Dynamite
+   (funny) and Countdown Casey (sweet). Aura-2 kept as the fallback voice.
 2. **Sample rate:** 44.1 vs 48 kHz — read from the Logitech adapter.
 
 ## Risks
