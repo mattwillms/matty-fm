@@ -130,6 +130,7 @@ def main() -> None:
 
     unsent: dict[str, dict] = {}   # finished results the Worker hasn't taken yet: re-sent every beat
     joke_working: set[str] = set()   # guests' jokes being written up and recorded
+    writer_tries: dict[str, int] = {}   # messages the writer couldn't reach, per id (3 tries, then failed)
     jokes_played: list[str] = []     # told on air, not yet confirmed by the Worker
     next_joke: dict | None = None    # the oldest recorded joke, from the last beat
     joke_on: dict[str, tuple[str, int]] = {}   # request id -> (joke id, beat it was pushed): told when that song starts
@@ -167,8 +168,13 @@ def main() -> None:
             api.joke_result({"id": jid, "status": "ready", "file": out.name, "seconds": round(seconds, 2),
                              "script": djline.display(line.script)})
             log.info("joke %s ready via %s (%.1fs): %s", jid, engine, seconds, djline.display(line.script))
-        except djline.WriterDown:   # say nothing: its lease lapses and it's written up once the writer is back
-            log.warning("joke %s waits: the writer is down", jid)
+        except djline.WriterDown:   # say nothing: its lease lapses and it's written up once the writer is back...
+            writer_tries[jid] = writer_tries.get(jid, 0) + 1
+            if writer_tries[jid] >= 3:   # ...but not forever: a message that fails every time is let go
+                log.warning("joke %s: writer failed %d times; giving up", jid, writer_tries[jid])
+                api.joke_result({"id": jid, "status": "failed"})
+            else:
+                log.warning("joke %s waits: the writer is down (try %d)", jid, writer_tries[jid])
         except Exception:
             log.exception("joke %s failed", jid)
             try:
