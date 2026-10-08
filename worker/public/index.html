@@ -27,7 +27,15 @@
   main { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; padding: 18px 16px 40px; }
   /* eggs fall on a layer under the page: seen in the gaps, gone behind the radio and panels */
   #eggs { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
-  .egg { position: absolute; top: -70px; line-height: 1; will-change: transform; }
+  /* a drawn brown egg, not the emoji: Apple's egg emoji is white, everyone else's is brown */
+  .egg { position: absolute; top: -70px; width: .74em; height: .96em; will-change: transform;
+         border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+         background: radial-gradient(circle at 34% 28%, #f6dcb8 0 8%, transparent 26%),
+                     radial-gradient(circle at 62% 58%, #8a5a33 0 1.5%, transparent 2.5%),
+                     radial-gradient(circle at 40% 70%, #8a5a33 0 1.2%, transparent 2.2%),
+                     radial-gradient(circle at 70% 34%, #8a5a33 0 1%, transparent 2%),
+                     radial-gradient(ellipse at 40% 35%, #d9a674 0%, #b87a47 55%, #8c5630 100%);
+         box-shadow: inset -.06em -.08em .12em #0000004d, 0 .04em .1em #0006; }
   [hidden] { display: none !important; }
 
   /* ---- wordmark: chunky soft serif in the 70s offset stack ---- */
@@ -639,7 +647,7 @@ function eggRain() {
 }
 function dropEgg(layer, h) {
   {
-    const near = Math.random(), egg = el("span", "egg", "🥚");   // near 0..1: far eggs are small, dim and slow
+    const near = Math.random(), egg = el("span", "egg");   // near 0..1: far eggs are small, dim and slow
     egg.style.left = `${Math.random() * 100}vw`;
     egg.style.fontSize = `${16 + near * 30}px`;
     egg.style.opacity = String(.45 + near * .55);

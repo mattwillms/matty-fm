@@ -199,6 +199,10 @@ def get_song(item: dict, cache_dir: Path,
     duration_s = item["durationMs"] / 1000 if item.get("durationMs") else None
     try:
         cands = search(f'{item["artist"]} {base_title(item["title"])}')
+        if not cands and base_title(item["title"]).strip():
+            # YouTube's API finds nothing for some names ("69 Boyz Tootsee Roll"); the title
+            # alone does, and ranking still scores each match against the artist
+            cands = search(base_title(item["title"]))
     except subprocess.SubprocessError as e:
         raise SongNotFound(f"YouTube search failed: {e}") from e
     options = ranked(cands, item["title"], item["artist"], duration_s)

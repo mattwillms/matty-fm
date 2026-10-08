@@ -263,3 +263,15 @@ def test_the_artist_s_own_channel_beats_a_fan_lyrics_upload():
     cands = [c("Billy Joel - She's Always a Woman (Lyrics)", "Golden Network", 201, "fan"),
              c("Billy Joel - She's Always a Woman", "billyjoelVEVO", 202, "own")]
     assert songs.ranked(cands, "She's Always a Woman", "Billy Joel", 200)[0][0].id == "own"
+
+
+def test_a_search_with_no_results_tries_the_title_alone(tmp_path):
+    # live 2026-10-08: YouTube's API returns nothing for "69 Boyz Tootsee Roll", but finds "Tootsee Roll"
+    asked = []
+
+    def search(q):
+        asked.append(q)
+        return [] if "69" in q else [c("Tootsee Roll", channel="69 Boyz - Topic", duration=240, id="t")]
+    item = {"songKey": "69 boyz|tootsee roll", "title": "Tootsee Roll", "artist": "69 Boyz", "durationMs": 240000}
+    got = songs.get_song(item, tmp_path, search=search, download=[lambda v, d: d.write_bytes(b"ID3")])
+    assert got.video_id == "t" and asked == ["69 Boyz Tootsee Roll", "Tootsee Roll"]
