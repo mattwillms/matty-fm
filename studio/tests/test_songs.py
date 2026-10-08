@@ -193,3 +193,9 @@ def test_a_download_that_is_not_audio_is_never_cached(tmp_path):
     assert got.video_id == "b"
     import json
     assert json.loads((tmp_path / "abba|dancing queen.json").read_text())["video_id"] == "b"
+
+
+def test_song_keys_keep_letters_of_every_script_like_the_worker():
+    assert songs.song_key("Кино", "Группа крови") == "кино|группа крови"
+    assert songs.song_key("坂本九", "上を向いて歩こう") != songs.song_key("Кино", "Группа крови")
+    assert len(songs.song_key("Q" * 300, "B" * 300)) == 161

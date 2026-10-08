@@ -49,12 +49,14 @@ def norm(text: str) -> str:
 
 
 def _key_part(text: str) -> str:
-    # Mirror of norm() in worker/src/queue.ts. Change both together.
-    text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode().lower()
+    # Mirror of norm() in worker/src/queue.ts (and normKey() in the guest page). Change all together.
+    text = unicodedata.normalize("NFKD", text)
+    text = "".join(c for c in text if not "\u0300" <= c <= "\u036f").lower()   # accents off: é -> e
     text = re.sub(r"\((?:[^)]*(?:remaster|version|edit|mono|stereo)[^)]*)\)", " ", text)
     text = re.sub(r"\s-\s.*(?:remaster|version|edit|mono|stereo).*$", " ", text)
-    text = re.sub(r"[^a-z0-9 ]+", " ", text)
-    return re.sub(r"\s+", " ", text).strip()
+    # letters and digits of any script stay (an all-Japanese title is not ""); everything else is a space
+    text = "".join(c if c == " " or unicodedata.category(c)[0] in "LN" else " " for c in text)
+    return re.sub(r"\s+", " ", text).strip()[:80]
 
 
 def song_key(artist: str, title: str) -> str:
