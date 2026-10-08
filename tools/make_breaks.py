@@ -42,7 +42,7 @@ CLIPS = [
     ("goof", "funny", "hot oil sizzling in a fryer, short", "[smug] The fish just hit the grease. [long pause] If you can smell that and you're still sitting down, I can't help you."),
     ("goof", "funny", "kitchen timer ding", "Matt's on the fryer. [long pause] [deadpan] If the fish is perfect, tell him. If it isn't, tell him louder."),
     ("goof", "funny", "paper bag rustling, peanuts shaking", "[deadpan] Public service announcement. Boiled peanuts go in your mouth. [long pause] The shells go wherever you want. We're in the country. There is no HOA."),
-    ("goof", "funny", "dinner bell triangle ringing", "[excited] Hush puppies are up. [long pause] Fair warning: there is no line. Just fast people and hungry people."),
+    ("goof", "funny", "dinner bell triangle ringing", "RETIRED [excited] Hush puppies are up. [long pause] Fair warning: there is no line. Just fast people and hungry people."),
     ("goof", "funny", "beer can cracking open with a fizz", "That sound means the cooler's open. [long pause] [playful] OrrFM reminds you: one beer, one water. We're not your mom. Mostly."),
     ("skip", "funny", "vinyl record scratch, fast", "Whoa! Let's try something else."),
     ("skip", "funny", "vinyl record scratch and rewind", "Okay, okay. Moving on!"),
@@ -70,6 +70,8 @@ def main() -> None:
     for kind, tone, sound, line in CLIPS:
         counts[kind] = counts.get(kind, 0) + 1
         name = f"{kind}-{counts[kind]}"
+        if line.startswith("RETIRED"):   # removed from the air; kept here so later clips keep their numbers
+            continue
         if only is not None and name not in only:
             index.append(old[f"{name}.mp3"])
             continue

@@ -101,8 +101,7 @@ def test_clips_rotate_evenly_and_new_ones_catch_up(tmp_path):
     clips.append({"file": "goof-5.mp3"})
     assert rot.pick(clips)["file"] == "goof-5.mp3"               # the new one catches up first
     rot.played("goof-5.mp3")
-    second = {rot.pick(clips)["file"] for _ in range(20)}
-    assert "goof-5.mp3" not in second or len(second) == 5       # level again: anyone may play
+    assert set(rot.counts.values()) == {1} and len(rot.counts) == 5   # level again: anyone may play next
 
 
 def test_rotation_survives_a_missing_or_corrupt_counts_file(tmp_path):

@@ -256,12 +256,12 @@ def test_a_declined_joke_and_an_unreachable_writer():
         djline.joke_line("Ann", "Knock knock. Who's there? Lettuce. Lettuce who? Lettuce in!", Down())
     with pytest.raises(djline.WriterDown):
         djline.announce_line("Ann", "Cake at three", False, False, Down())
-    assert djline.announce_line("", "Fish is ready", True, True, Down()).script == "A word from your host: Fish is ready"
+    assert djline.announce_line("", "Fish is ready", True, True, Down()).script == "Fish is ready"
 
 
 def test_announcements_keep_every_fact_and_say_who_they_are_from():
     s = djline.ANNOUNCE_SYSTEM
-    assert "exactly" in s and "times" in s and "Quick announcement" in s and "A word from your host" in s
+    assert "exactly" in s and "times" in s and "No set opener" in s and "flourishes" in s
     reply = json.dumps({"ok": True, "script": "Quick announcement from Ann: whoever owns the red truck, your lights are on."})
     line = djline.message_line({"kind": "announcement", "urgent": True, "source": "guest", "name": "Ann",
                                 "text": "whoever owns the red truck your lights are on"}, FakeClient(reply))
