@@ -20,7 +20,7 @@ export type Beat = {
 };
 export type Result = {
   id: string; status: "ready" | "failed"; file?: string; durationS?: number; confidence?: number;
-  djLine?: string; tone?: string; voice?: string; error?: string;
+  djLine?: string; tone?: string; voice?: string; error?: string; matchNote?: string;
 };
 
 export class Party extends DurableObject<Env> {
@@ -36,7 +36,7 @@ export class Party extends DurableObject<Env> {
         free_text INTEGER DEFAULT 0, status TEXT NOT NULL, rank REAL NOT NULL,
         created_at INTEGER NOT NULL, lease_until INTEGER DEFAULT 0, redo INTEGER DEFAULT 0,
         file TEXT, duration_s REAL, confidence REAL, dj_line TEXT, tone TEXT, voice TEXT,
-        error TEXT, played_at INTEGER, queued_at INTEGER DEFAULT 0);
+        error TEXT, played_at INTEGER, queued_at INTEGER DEFAULT 0, match_note TEXT);
       CREATE TABLE IF NOT EXISTS requesters(
         id INTEGER PRIMARY KEY AUTOINCREMENT, item_id TEXT NOT NULL, device TEXT NOT NULL,
         name TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL);
@@ -45,10 +45,12 @@ export class Party extends DurableObject<Env> {
       CREATE TABLE IF NOT EXISTS commands(
         id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, done INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL);`);
-    try {
-      this.sql.exec("ALTER TABLE items ADD COLUMN queued_at INTEGER DEFAULT 0");
-    } catch {
-      // column already exists
+    for (const col of ["queued_at INTEGER DEFAULT 0", "match_note TEXT"]) {
+      try {
+        this.sql.exec(`ALTER TABLE items ADD COLUMN ${col}`);
+      } catch {
+        // column already exists
+      }
     }
   }
 
@@ -226,8 +228,9 @@ export class Party extends DurableObject<Env> {
       return { ok: true, redo: true };
     }
     this.sql.exec(`UPDATE items SET status=?, file=?, duration_s=?, confidence=?, dj_line=?, tone=?,
-      voice=?, error=?, lease_until=0 WHERE id=?`, r.status, r.file ?? null, r.durationS ?? null,
-      r.confidence ?? null, r.djLine ?? null, r.tone ?? null, r.voice ?? null, r.error ?? null, r.id);
+      voice=?, error=?, match_note=?, lease_until=0 WHERE id=?`, r.status, r.file ?? null, r.durationS ?? null,
+      r.confidence ?? null, r.djLine ?? null, r.tone ?? null, r.voice ?? null, r.error ?? null,
+      r.matchNote ?? null, r.id);
     return { ok: true };
   }
 
@@ -252,7 +255,7 @@ export class Party extends DurableObject<Env> {
       items: items.map((i) => ({
         id: String(i.id), title: String(i.title), artist: String(i.artist), status: String(i.status),
         confidence: i.confidence == null ? null : Number(i.confidence), djLine: i.dj_line, tone: i.tone,
-        voice: i.voice, error: i.error, freeText: Boolean(i.free_text), explicit: Boolean(i.explicit),
+        voice: i.voice, error: i.error, matchNote: i.match_note ?? null, freeText: Boolean(i.free_text), explicit: Boolean(i.explicit),
         requesters: this.requesters(String(i.id)),
       })),
     };

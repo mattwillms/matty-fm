@@ -170,4 +170,13 @@ describe("party", () => {
     expect((await p.adminState()).muted).toEqual([]);
     expect((await p.submit("phone1", { track: T("Eagle"), name: "Cousin Ray" })).ok).toBe(true);
   });
+
+  it("stores the studio's match note for the admin", async () => {
+    const p = stub("note");
+    const { id } = await p.submit("d1", { track: T("Africa"), name: "x" });
+    await p.beat({ ...beat, want: 1 });
+    await p.result({ id: id!, status: "ready", file: `${id}.mp3`, durationS: 296, confidence: 75,
+                     matchNote: "Toto - Africa (Official Audio) — uploaded by Nielson Lucas; length matches (4:56)" });
+    expect((await p.adminState()).items.find((i) => i.id === id)?.matchNote).toContain("length matches");
+  });
 });

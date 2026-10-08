@@ -20,8 +20,10 @@ def test_ready_result(tmp_path, monkeypatch):
     monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: "eleven")
     monkeypatch.setattr(prepare.mix, "prepare_files", lambda *a, **k: (201.5, 4.2))
     r = prepare.prepare(ITEM, deps(tmp_path))
+    note = r.pop("matchNote")
     assert r == {"id": "r7", "status": "ready", "file": "r7.mp3", "durationS": 201.5, "confidence": 77.0,
                  "djLine": "Hello Ann.", "tone": "sweet", "voice": "eleven", "voiceS": 4.2}
+    assert "unreadable" in note
 
 
 def test_song_not_found_fails_fast_without_tts(tmp_path, monkeypatch):
@@ -44,3 +46,29 @@ def test_unexpected_error_becomes_failed(tmp_path, monkeypatch):
 
     monkeypatch.setattr(prepare.mix, "prepare_files", broken)
     assert prepare.prepare(ITEM, deps(tmp_path))["status"] == "failed"
+
+
+def _ready(tmp_path, monkeypatch, actual_s, duration_ms, channel="Nielson Lucas", conf=35.0):
+    song = SongFile(tmp_path / "s.mp3", conf, "v", title="Toto - Africa (Official Audio)", channel=channel)
+    monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache, **k: song)
+    monkeypatch.setattr(prepare.djline, "write_line", lambda item, c: DJLine(True, "funny", "x", False))
+    monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: "eleven")
+    monkeypatch.setattr(prepare.mix, "prepare_files", lambda *a, **k: (actual_s, 3.0))
+    monkeypatch.setattr(prepare.mix, "duration", lambda p: actual_s)
+    return prepare.prepare({**ITEM, "durationMs": duration_ms}, deps(tmp_path))
+
+
+def test_matching_length_confirms_a_fan_upload(tmp_path, monkeypatch):
+    r = _ready(tmp_path, monkeypatch, 296.0, 295000)
+    assert r["confidence"] >= 75
+    assert "Nielson Lucas" in r["matchNote"] and "length matches" in r["matchNote"]
+
+
+def test_wrong_length_lowers_confidence_and_says_why(tmp_path, monkeypatch):
+    r = _ready(tmp_path, monkeypatch, 420.0, 295000, conf=80.0)
+    assert r["confidence"] <= 30 and "7:00" in r["matchNote"] and "4:55" in r["matchNote"]
+
+
+def test_unknown_length_is_said_plainly(tmp_path, monkeypatch):
+    r = _ready(tmp_path, monkeypatch, 296.0, None, channel="Toto - Topic")
+    assert "official" in r["matchNote"] and "not checked" in r["matchNote"]

@@ -281,6 +281,7 @@ function itemBlock(it, lead, tools, detailButtons, showTags) {
   const det = el("div", "details"); det.hidden = !openIds.has(it.id);
   for (const r of it.requesters) det.append(quote(r.name, r.message || "(no message)"));
   if (it.djLine) det.append(quote(`DJ (${it.tone || "funny"} voice)`, it.djLine));
+  if (it.matchNote) det.append(quote(it.confidence != null && it.confidence < 50 ? "Why low match" : "Source", it.matchNote));
   if (it.error) det.append(quote("Problem", it.error));
   const extra = detailButtons(it);
   if (extra.length) { const b = el("div", "buttons"); b.append(...extra); det.append(b); }

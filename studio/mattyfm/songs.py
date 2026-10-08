@@ -37,6 +37,8 @@ class SongFile:
     path: Path
     confidence: float
     video_id: str
+    title: str = ""      # the YouTube video's title and channel, for the admin's match note
+    channel: str = ""
 
 
 def norm(text: str) -> str:
@@ -157,7 +159,7 @@ def get_song(item: dict, cache_dir: Path,
             m = json.loads(hit_meta.read_text())
             if k != key:
                 log.info("cache: %s plays the cached %s", key, k)
-            return SongFile(hit_path, float(m["confidence"]), m["video_id"])
+            return SongFile(hit_path, float(m["confidence"]), m["video_id"], m.get("title", ""), m.get("channel", ""))
     if search is None or download is None:
         raise SongNotFound("Not cached, and no song source is configured (APIFY_TOKEN / YOUTUBE_API_KEY)")
     duration_s = item["durationMs"] / 1000 if item.get("durationMs") else None
@@ -181,5 +183,5 @@ def get_song(item: dict, cache_dir: Path,
             continue
         meta.write_text(json.dumps({"confidence": confidence, "video_id": best.id,
                                     "title": best.title, "channel": best.channel}))
-        return SongFile(path, confidence, best.id)
+        return SongFile(path, confidence, best.id, best.title, best.channel)
     raise SongNotFound("Download failed: " + " | ".join(reasons))

@@ -22,6 +22,44 @@ class Deps:
     download: Callable | None = None   # sources.ApifyDownload
 
 
+CONFIRM_WITHIN_S = 6.0     # downloaded length this close to the catalog's: the right recording
+WRONG_BEYOND_S = 20.0      # this far off: probably a different version (live, extended, edit)
+
+
+def _mmss(seconds: float) -> str:
+    seconds = round(seconds)
+    return f"{seconds // 60}:{seconds % 60:02d}"
+
+
+def check_match(song, item: dict) -> tuple[float, str]:
+    """Confidence after comparing the downloaded file's real length with the catalog's,
+    and a short note saying where the audio came from and how well it matches."""
+    confidence = song.confidence
+    try:
+        actual = mix.duration(song.path)
+    except Exception:   # advisory only: an unreadable length must not stop the song
+        return confidence, f"{song.title or 'video'}: length unreadable"
+    if song.channel.endswith(" - Topic"):
+        source = "official label upload"
+    elif song.channel:
+        source = f"uploaded by {song.channel}"
+    else:
+        source = "source unknown"
+    expected = item["durationMs"] / 1000 if item.get("durationMs") else None
+    if expected is None:
+        length = f"length not checked (no catalog length; file is {_mmss(actual)})"
+    elif abs(actual - expected) <= CONFIRM_WITHIN_S:
+        confidence = max(confidence, 75.0)
+        length = f"length matches ({_mmss(actual)})"
+    elif abs(actual - expected) > WRONG_BEYOND_S:
+        confidence = min(confidence, 30.0)
+        length = f"length {_mmss(actual)} vs expected {_mmss(expected)}: maybe a different version"
+    else:
+        length = f"length close ({_mmss(actual)} vs {_mmss(expected)})"
+    title = f"{song.title} — " if song.title else ""
+    return confidence, f"{title}{source}; {length}"
+
+
 def prepare(item: dict, deps: Deps) -> dict:
     media: Path = deps.cfg.media_dir
     rid = item["id"]
@@ -31,8 +69,9 @@ def prepare(item: dict, deps: Deps) -> dict:
     except songs.SongNotFound as e:
         log.warning("%s song not found (%.1fs): %s", rid, time.monotonic() - t0, e)
         return {"id": rid, "status": "failed", "error": str(e)}
-    log.info("%s song ready in %.1fs: %s (video %s, confidence %.0f)", rid, time.monotonic() - t0,
-             song.path.name, song.video_id, song.confidence)
+    confidence, note = check_match(song, item)
+    log.info("%s song ready in %.1fs: %s (video %s, confidence %.0f -> %.0f): %s", rid, time.monotonic() - t0,
+             song.path.name, song.video_id, song.confidence, confidence, note)
     try:
         t1 = time.monotonic()
         line = djline.write_line(item, deps.claude)
@@ -54,5 +93,5 @@ def prepare(item: dict, deps: Deps) -> dict:
     log.info("%s files ready in %.1fs (song %.0fs, voice %.1fs); total %.1fs", rid, time.monotonic() - t1,
              seconds, voice_s, time.monotonic() - t0)
     return {"id": item["id"], "status": "ready", "file": f"{item['id']}.mp3", "durationS": seconds,
-            "confidence": song.confidence, "djLine": line.script, "tone": line.tone, "voice": engine,
+            "confidence": confidence, "matchNote": note, "djLine": line.script, "tone": line.tone, "voice": engine,
             "voiceS": voice_s}
