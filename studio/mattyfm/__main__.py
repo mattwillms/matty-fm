@@ -57,6 +57,7 @@ def main() -> None:
     break_pool = ThreadPoolExecutor(1)   # breaks never take a song-preparation worker
 
     def run_break(kind: str, soma_only: bool) -> None:
+        label = kind
         try:
             if kind == "joke":   # a guest's joke, written up and recorded when it came in
                 joke = dict(next_joke or {})
@@ -69,6 +70,7 @@ def main() -> None:
                         jokes_played.append(joke["id"])
                     return
                 url, seconds, text = f"breaks/{path.name}", float(joke["seconds"]), joke.get("script", "")
+                label = joke.get("kind") or "joke"   # "announcement" or "joke": shown as such on the admin page
             elif kind == "backannounce" and soma_np.last:
                 line = djline.backannounce(soma_np.prev, soma_np.last, deps.claude)
                 stamp = int(time.time())
@@ -105,7 +107,7 @@ def main() -> None:
                         jokes_played.append(joke["id"])   # sent with every beat until the Worker has it
                 elif not url.startswith("breaks/live-"):   # a fresh back-announce isn't a clip in the rotation
                     rotation.played(url.rsplit("/", 1)[-1])
-                last_dj.update({"kind": kind, "text": text, "at": int(time.time() * 1000)})
+                last_dj.update({"kind": label, "text": text, "at": int(time.time() * 1000)})
                 sched.done(time.monotonic(), kind)
             else:
                 log.info("break %s declined by the console (busy)", kind)

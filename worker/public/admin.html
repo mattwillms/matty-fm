@@ -314,7 +314,7 @@ function renderNow() {
     } else if (state.health.lastDj) {
       const serverNow = state.serverNow ? state.serverNow + (Date.now() - state.loadedAt) : Date.now();   // not the phone's clock
       const d = state.health.lastDj, mins = Math.max(0, Math.round((serverNow - d.at) / 60000));
-      const kind = { backannounce: "back-announce", id: "station ID", goof: "goof" }[d.kind] || d.kind;
+      const kind = { backannounce: "back-announce", id: "station ID", goof: "goof", joke: "a guest's joke", announcement: "announcement" }[d.kind] || d.kind;
       extra.push(quote(`Last on the mic, ${mins ? mins + " min ago" : "just now"} (${kind})`, d.text));
     }
     $("now").replaceChildren(box, ...extra);
