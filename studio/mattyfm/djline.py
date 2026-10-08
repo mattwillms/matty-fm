@@ -1,6 +1,7 @@
 """Write the DJ's spoken intro with Claude; never fail — fall back to a template."""
 
 import json
+import logging
 import os
 import re
 import unicodedata
@@ -8,6 +9,7 @@ from dataclasses import dataclass
 
 MODEL = "claude-haiku-5-5"
 # The on-air name. One setting: change it here (or MATTYFM_STATION_NAME) for next year.
+log = logging.getLogger("mattyfm.djline")
 STATION = os.environ.get("MATTYFM_STATION_NAME", "OrrFM")
 # Word stems that are never spoken on air. Checked per word after undoing common
 # disguises (look-alike characters, punctuation, spaced-out letters).
@@ -360,9 +362,11 @@ def joke_line(name: str, text: str, client) -> DJLine:
     except Exception as e:   # the writer is down: the joke waits (a guest's raw text is never read on air)
         raise WriterDown(str(e)) from e
     if not isinstance(data, dict) or not data.get("ok"):
+        log.info("joke declined by the writer: %s", str(data)[:200])
         return DJLine(False, "funny", "", False)
     script = pause_cues(speech_text(str(data.get("script") or "")))
-    if not script or is_offensive(display(script)) or len(script) > 500:
+    if not script or is_offensive(display(script)) or len(script) > 1000:   # a 400-character joke plus intro and comment fits
+        log.info("joke declined: %s", "empty" if not script else "rude word" if is_offensive(display(script)) else f"too long ({len(script)})")
         return DJLine(False, "funny", "", False)
     return DJLine(True, "funny", script, False)
 
