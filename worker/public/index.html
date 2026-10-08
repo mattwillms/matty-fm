@@ -28,6 +28,9 @@
 
   /* ---- wordmark: chunky soft serif over the era's three stripes ---- */
   .mark { margin: 6px 0 18px; }
+  .mark-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .hen { flex: none; width: clamp(84px, 26vw, 120px); aspect-ratio: 1; border-radius: 50%; overflow: hidden; }
+  .hen img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .mark h1 { font-family: Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
              font-weight: 900; font-size: clamp(3.4rem, 17vw, 4.6rem); line-height: .86; letter-spacing: -.02em; margin: 0; color: var(--cream); }
   .stripes { display: grid; gap: 4px; margin-top: 10px; }
@@ -95,7 +98,7 @@
   .knob i { position: absolute; z-index: 1; left: 50%; top: 5px; width: 3px; height: 10px; margin-left: -1.5px; border-radius: 2px; background: var(--orange); }
 
   /* ---- coming up: a mixtape J-card, handwritten in ballpoint ---- */
-  .jcard { position: relative; margin: -6px 10px 24px; padding: 14px 16px 12px 40px; transform: rotate(-.8deg);
+  .jcard { position: relative; margin: -6px 0 24px; padding: 14px 16px 12px 40px; transform: rotate(-.6deg);
            background:
              linear-gradient(90deg, transparent 30px, #e2765c55 30px 31px, transparent 31px),
              repeating-linear-gradient(transparent 0 27px, #7aa3c455 27px 28px),
@@ -172,7 +175,10 @@
 <body>
 <main>
   <header class="mark">
-    <h1>OrrFM</h1>
+    <div class="mark-top">
+      <h1>OrrFM</h1>
+      <picture class="hen"><source srcset="/hen.webp" type="image/webp"><img src="/hen.png" alt="" width="180" height="180"></picture>
+    </div>
     <div class="stripes" aria-hidden="true"><i></i><i></i><i></i></div>
     <p class="tag">Pick a song, add a shout-out, and the DJ reads it on air.</p>
   </header>
