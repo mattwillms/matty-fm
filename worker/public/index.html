@@ -1097,7 +1097,7 @@ async function refresh() {
       $("next").replaceChildren(...s.upNext.slice(0, 4).map((x) => {
         if (x.joke) {   // a guest's joke, told at the song change before the song after it
           const li = el("li", "joke-up");
-          li.append(document.createTextNode("A joke "), el("span", "by", `from ${x.names}`));
+          li.append(document.createTextNode(`${x.title || "A joke"} `), el("span", "by", `from ${x.names}`));   // joke or announcement
           return li;
         }
         const li = el("li");
