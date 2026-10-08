@@ -39,3 +39,11 @@ def test_clear_command():
 def test_soma_only_skips_requests():
     playing = {"source": "requests", "current": "r0", "remaining": 90.0, "queued": 0}
     assert decide(playing, reply(ITEM, soma_only=True)) == [("skip",)]
+
+
+def test_wants_next_only_when_it_would_push():
+    from mattyfm.feed import wants_next
+    assert wants_next(IDLE) is True
+    assert wants_next({**IDLE, "queued": 1}) is False
+    assert wants_next({"source": "requests", "current": "r0", "remaining": 90.0, "queued": 0}) is False
+    assert wants_next({"source": "requests", "current": "r0", "remaining": 20.0, "queued": 0}) is True

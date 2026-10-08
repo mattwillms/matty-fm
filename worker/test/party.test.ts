@@ -46,9 +46,9 @@ describe("party", () => {
     const { id } = await p.submit("d1", { track: T("SOS"), name: "x" });
     await p.beat({ ...beat, want: 1 });
     await p.result({ id: id!, status: "ready", file: `${id}.mp3`, durationS: 200 });
-    const r1 = await p.beat(beat);
+    const r1 = await p.beat({ ...beat, wantNext: true });
     expect(r1.next?.id).toBe(id);
-    await p.beat({ ...beat, pushed: [id!] });
+    await p.beat({ ...beat, pushed: [id!], queued: 1 });
     await p.adminAction({ action: "delete", id });
     const r2 = await p.beat(beat);
     expect(r2.commands.map((c) => c.type)).toContain("clear");
@@ -71,5 +71,55 @@ describe("party", () => {
     const p = stub("art");
     await p.submit("d1", { track: T("Chiquitita", "https://evil.example/pixel.png"), name: "x" });
     expect((await p.guestState("d1")).upNext[0].artwork).toBe("");
+  });
+
+  it("next is only handed out when the studio asks, and is marked queued at once", async () => {
+    const p = stub("offer");
+    const { id } = await p.submit("d1", { track: T("Voulez-Vous"), name: "x" });
+    await p.beat({ ...beat, want: 1 });
+    await p.result({ id: id!, status: "ready", file: `${id}.mp3`, durationS: 200 });
+    expect((await p.beat({ ...beat, wantNext: false })).next).toBeNull();
+    const r = await p.beat({ ...beat, wantNext: true });
+    expect(r.next?.id).toBe(id);
+    // Deleting it before the studio acks the push must still stop it.
+    await p.adminAction({ action: "delete", id });
+    expect((await p.beat(beat)).commands.map((c) => c.type)).toContain("clear");
+  });
+
+  it("a duplicate request for a handed-out song does not make it play twice", async () => {
+    const p = stub("dup2");
+    const { id } = await p.submit("d1", { track: T("Gimme Gimme"), name: "x" });
+    await p.beat({ ...beat, want: 1 });
+    await p.result({ id: id!, status: "ready", file: `${id}.mp3`, durationS: 200 });
+    await p.beat({ ...beat, wantNext: true });
+    await p.submit("d2", { track: T("Gimme Gimme"), name: "y" });
+    const st = await p.adminState();
+    expect(st.items.find((i) => i.id === id)?.status).toBe("queued");
+  });
+
+  it("a queued item the station lost goes back to ready", async () => {
+    const p = stub("lost");
+    const { id } = await p.submit("d1", { track: T("Money Money Money"), name: "x" });
+    await p.beat({ ...beat, want: 1 });
+    await p.result({ id: id!, status: "ready", file: `${id}.mp3`, durationS: 200 });
+    await p.beat({ ...beat, wantNext: true });
+    await runInDurableObject(p, async (_i: Party, state) => {
+      state.storage.sql.exec("UPDATE items SET queued_at=1");
+    });
+    // Station restarted: nothing queued, nothing playing, item not just pushed.
+    const r = await p.beat({ ...beat, queued: 0, wantNext: true });
+    expect(r.next?.id).toBe(id);
+  });
+
+  it("panic and stop-after-current clear what the station holds", async () => {
+    const p = stub("panic");
+    const { id } = await p.submit("d1", { track: T("Take a Chance"), name: "x" });
+    await p.beat({ ...beat, want: 1 });
+    await p.result({ id: id!, status: "ready", file: `${id}.mp3`, durationS: 200 });
+    await p.beat({ ...beat, wantNext: true });
+    await p.adminAction({ action: "settings", settings: { stopAfterCurrent: true } });
+    const r = await p.beat(beat);
+    expect(r.commands.map((c) => c.type)).toContain("clear");
+    expect((await p.adminState()).items.find((i) => i.id === id)?.status).toBe("ready");
   });
 });

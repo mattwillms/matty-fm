@@ -8,12 +8,14 @@ const LEASE_MS = 120_000;
 const OFFLINE_MS = 60_000;
 const PURGE_AFTER_MS = 3 * 24 * 3600_000;
 const MAX_WAITING_PER_DEVICE = 2;
+const QUEUED_GRACE_MS = 15_000;
 
 type Row = Record<string, SqlStorageValue>;
 export type SubmitIn = { track: Track; name: string; message?: string; freeText?: boolean };
 export type Beat = {
   source: string; current: string; remaining: number; queued: number;
   pushed: string[]; working: string[]; want: number; ack: number[]; error: string;
+  wantNext?: boolean;   // the studio is ready to push a song right now
 };
 export type Result = {
   id: string; status: "ready" | "failed"; file?: string; durationS?: number; confidence?: number;
@@ -33,7 +35,7 @@ export class Party extends DurableObject<Env> {
         free_text INTEGER DEFAULT 0, status TEXT NOT NULL, rank REAL NOT NULL,
         created_at INTEGER NOT NULL, lease_until INTEGER DEFAULT 0, redo INTEGER DEFAULT 0,
         file TEXT, duration_s REAL, confidence REAL, dj_line TEXT, tone TEXT, voice TEXT,
-        error TEXT, played_at INTEGER);
+        error TEXT, played_at INTEGER, queued_at INTEGER DEFAULT 0);
       CREATE TABLE IF NOT EXISTS requesters(
         id INTEGER PRIMARY KEY AUTOINCREMENT, item_id TEXT NOT NULL, device TEXT NOT NULL,
         name TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL);
@@ -42,6 +44,11 @@ export class Party extends DurableObject<Env> {
       CREATE TABLE IF NOT EXISTS commands(
         id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, done INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL);`);
+    try {
+      this.sql.exec("ALTER TABLE items ADD COLUMN queued_at INTEGER DEFAULT 0");
+    } catch {
+      // column already exists
+    }
   }
 
   // ---------- helpers ----------
@@ -158,7 +165,8 @@ export class Party extends DurableObject<Env> {
     const now = Date.now();
     this.set("health", JSON.stringify({ ...b, at: now }));
     for (const c of b.ack ?? []) this.sql.exec("UPDATE commands SET done=1 WHERE id=?", c);
-    for (const id of b.pushed ?? []) this.sql.exec("UPDATE items SET status='queued' WHERE id=? AND status='ready'", id);
+    for (const id of b.pushed ?? [])
+      this.sql.exec("UPDATE items SET status='queued', queued_at=? WHERE id=? AND status IN ('ready','queued')", now, id);
     for (const id of b.working ?? []) this.sql.exec("UPDATE items SET lease_until=? WHERE id=? AND status='preparing'", now + LEASE_MS, id);
 
     if (b.source === "requests" && b.current) {
@@ -169,15 +177,27 @@ export class Party extends DurableObject<Env> {
     }
     this.sql.exec("UPDATE items SET status='pending', lease_until=0 WHERE status='preparing' AND lease_until<?", now);
 
+    // The station holds nothing, yet an item is marked queued and was not just pushed:
+    // the station restarted, a push failed, or a clear dropped it. Put it back in line.
+    if ((b.queued ?? 0) === 0) {
+      for (const q of this.all("SELECT id FROM items WHERE status='queued' AND queued_at<?", now - QUEUED_GRACE_MS)) {
+        if (q.id !== b.current && !(b.pushed ?? []).includes(String(q.id)))
+          this.sql.exec("UPDATE items SET status='ready' WHERE id=?", q.id);
+      }
+    }
+
     const jobs = [];
     for (const i of this.all(`SELECT * FROM items WHERE status='pending' ORDER BY rank LIMIT ?`, Math.max(0, b.want ?? 0))) {
       this.sql.exec("UPDATE items SET status='preparing', lease_until=?, redo=0 WHERE id=?", now + LEASE_MS, i.id);
       jobs.push(this.studioItem(i));
     }
     const f = this.flags();
-    const next = f.somaOnly || f.stopAfterCurrent
+    // Hand out the next song only when the studio will push it now, and mark it queued
+    // immediately so a delete, move or duplicate in the next few seconds sees it as "in the station".
+    const next = !b.wantNext || f.somaOnly || f.stopAfterCurrent
       ? undefined
       : this.one("SELECT * FROM items WHERE status='ready' ORDER BY rank LIMIT 1");
+    if (next) this.sql.exec("UPDATE items SET status='queued', queued_at=? WHERE id=?", now, next.id);
     return {
       commands: this.all("SELECT id,type FROM commands WHERE done=0 ORDER BY id")
         .map((c) => ({ id: Number(c.id), type: String(c.type) })),
@@ -259,7 +279,10 @@ export class Party extends DurableObject<Env> {
         for (const [k, v] of Object.entries(a.settings ?? {})) {
           if (["accepting", "stopAfterCurrent", "somaOnly"].includes(k)) this.set(k, v ? "1" : "0");
         }
-        if (a.settings?.somaOnly) this.command("clear");
+        if (a.settings?.somaOnly || a.settings?.stopAfterCurrent) {
+          this.command("clear");
+          this.sql.exec("UPDATE items SET status='ready' WHERE status='queued'");
+        }
         return { ok: true };
     }
     return { ok: false, error: "unknown action" };

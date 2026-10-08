@@ -54,7 +54,8 @@ def main() -> None:
                 last_error = f"station unreachable: {e}"
             with lock:
                 body = {**status, "pushed": pushed, "working": sorted(working),
-                        "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error}
+                        "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error,
+                        "wantNext": feed.wants_next(status)}
             reply = api.beat(body)
             pushed = []
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]
