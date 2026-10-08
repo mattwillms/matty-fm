@@ -825,10 +825,11 @@ async function loadCached() {
   try { cachedKeys = new Set((await api("/api/cached")).keys || []); } catch {}
 }
 // Cover and tribute acts (Garth Brooks, for one, isn't on Apple Music: only tributes are).
-const COVER_ARTIST = /\b(tribute|karaoke|covers?|in the style of|made famous by|sound-?alikes?|lullaby|piano versions?|the sounds of|hit crew|party hits? (?:masters|all-stars))\b/i;
+const COVER_ARTIST = /\b(tribute|karaoke|covers?|in the style of|made famous by|sound-?alikes?|lullaby|piano versions?|the sounds of)\b/i;   // "Hit Crew"-style acts dropped: no way to know whose song it is
 function originalArtist(a) {
   return String(a || "")
     .replace(/^(?:the\s+)?(?:ultimate\s+|a\s+)?tribute\s+to\s+/i, "")
+    .replace(/^the\s+sounds\s+of\s+/i, "")   // "The Sounds Of Garth Brooks" -> Garth Brooks
     .replace(/\s*[-–(\[]?\s*(?:tribute(?:\s+band)?|karaoke(?:\s+version)?|covers?|in the style of.*|made famous by.*|sound-?alikes?)\s*[)\]]?\s*$/i, "")
     .trim();
 }

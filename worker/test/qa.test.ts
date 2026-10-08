@@ -322,4 +322,26 @@ describe("QA round", () => {
     await p.beat({ ...beat, soma: { artist: "A", title: "B", since: 1, apple: "https://music.apple.com:444/x" } });
     expect((await p.guestState("d1")).nowPlaying!.apple).toBe("");
   });
+
+  // ---- admin round 2 ----
+  it("tapping Resend twice doesn't add the same people again", async () => {
+    const p = stub("resend-twice");
+    const id = await readyItem(p, "Hasta Mañana");
+    await p.beat({ ...beat, source: "requests", current: id, remaining: 100 });
+    await p.beat({ ...beat, source: "soma" });
+    await p.submit("d2", { track: T("Hasta Mañana"), name: "Two" });
+    for (let i = 0; i < 3; i++) await p.adminAction({ action: "resend", id });
+    const waiting = (await p.adminState()).items.find((i) => i.title === "Hasta Mañana" && i.status === "pending")!;
+    expect(waiting.requesters.map((r) => r.name).sort()).toEqual(["Two", "x"]);
+  });
+
+  it("two admin phones skipping the same song send one skip", async () => {
+    const p = stub("two-admins");
+    const id = await readyItem(p, "Mamma Mia");
+    await p.beat({ ...beat, source: "requests", current: id, remaining: 100 });
+    await p.adminAction({ action: "skip" });
+    await p.adminAction({ action: "skip" });
+    const r = await p.beat({ ...beat, source: "requests", current: id, remaining: 100 });
+    expect(r.commands.filter((c) => c.type === "skip")).toHaveLength(1);
+  });
 });

@@ -101,7 +101,10 @@ export class Party extends DurableObject<Env> {
   /** A skip names the song it was meant for: by the time the studio sees it, that song may be gone. */
   private skip(): void {
     const playing = this.one("SELECT id FROM items WHERE status='playing' LIMIT 1");
-    this.command("skip", playing ? String(playing.id) : null);
+    const target = playing ? String(playing.id) : null;
+    // two admin phones skipping the same song: one skip
+    if (target && this.one("SELECT 1 AS s FROM commands WHERE type='skip' AND done=0 AND target=?", target)) return;
+    this.command("skip", target);
   }
   /** Ranks 1, 2, 3… in the current order: run when a gap between neighbours gets too small to halve. */
   private renumber(): void {
@@ -404,7 +407,8 @@ export class Party extends DurableObject<Env> {
         const waitingCopy = this.one(`SELECT id FROM items WHERE song_key=? AND status IN ${WAITING} AND id<>?`, old.song_key, a.id!);
         if (waitingCopy) {
           this.sql.exec(`INSERT INTO requesters(item_id,device,name,message,created_at,ip)
-            SELECT ?,device,name,message,created_at,ip FROM requesters WHERE item_id=?`, waitingCopy.id, a.id!);
+            SELECT ?,device,name,message,created_at,ip FROM requesters WHERE item_id=?
+              AND device NOT IN (SELECT device FROM requesters WHERE item_id=?)`, waitingCopy.id, a.id!, waitingCopy.id);
           return { ok: true, merged: String(waitingCopy.id) };
         }
         const last = Number(this.one(`SELECT MAX(rank) AS r FROM items WHERE status IN ${WAITING}`)?.r ?? 0);
