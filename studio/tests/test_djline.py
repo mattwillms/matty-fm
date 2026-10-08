@@ -170,3 +170,10 @@ def test_the_line_always_ends_by_naming_the_song():
     assert "September" in line.script and line.script.rstrip(".!").endswith("September")
     reply = json.dumps({"ok": True, "tone": "sweet", "script": "For Bob, here's Earth, Wind and Fire with September."})
     assert djline.write_line(item(), FakeClient(reply)).script.count("September") == 1
+
+
+def test_compounds_that_start_or_carry_a_rude_stem_are_caught_like_the_worker():
+    for bad in ("fuckyou", "bullshitter", "shitfaced", "fuckwit", "cuntface"):
+        assert djline.is_offensive(bad), bad
+    for ok in ("Pussycat", "Shitake Sam", "Fagan", "niggle"):
+        assert not djline.is_offensive(ok), ok

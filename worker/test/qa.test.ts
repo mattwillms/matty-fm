@@ -251,4 +251,17 @@ describe("QA round", () => {
     expect(r.ok).toBe(false);
     expect(r.error).toMatch(/playing right now/i);
   });
+
+  // ---- from the security review of the round-1 fixes ----
+  it("compounds that start or carry a rude stem are still caught", () => {
+    for (const bad of ["fuckyou", "bullshitter", "shitfaced", "fuckwit", "cuntface"]) expect(isOffensive(bad), bad).toBe(true);
+    for (const ok of ["Pussycat", "What's New Pussycat", "Shitake Sam", "Fagan", "Scunthorpe", "Matsushita", "snigger", "niggle"]) expect(isOffensive(ok), ok).toBe(false);
+  });
+
+  it("a guest's album name goes through the same filter as titles before every phone sees it", async () => {
+    const p = stub("album-filter");
+    const { id } = await p.submit("d1", { track: { ...T("Waterloo"), album: "Shithead Hits" }, name: "Ann" });
+    const st = await p.guestState("d9");
+    expect(st.upNext.find((i) => i.id === id)!.album).toBe("");
+  });
 });

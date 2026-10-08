@@ -134,7 +134,9 @@ export class Party extends DurableObject<Env> {
     const hidden = displayText(`${i.title} ${i.artist}`, "") === "";
     return { id: String(i.id), title: hidden ? "A request" : String(i.title),
              artist: hidden ? "" : String(i.artist), artwork: hidden ? "" : String(i.artwork ?? ""), names: namesPhrase(names),
-             year: hidden ? "" : year(i.year), album: hidden ? "" : String(i.album ?? ""), apple: hidden ? "" : appleLink(i.apple_url) };
+             // the album can be guest-typed: filtered like titles before every phone sees it
+             year: hidden ? "" : year(i.year), album: hidden ? "" : displayText(String(i.album ?? ""), ""),
+             apple: hidden ? "" : appleLink(i.apple_url) };
   }
   private studioItem(i: Row) {
     return {

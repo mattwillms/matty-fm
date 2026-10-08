@@ -75,17 +75,22 @@ const CONFUSABLE: Record<string, string> = {
   "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "у": "y", "х": "x", "і": "i", "ј": "j", "ѕ": "s", "к": "k", "м": "m", "т": "t", "н": "h",
   "α": "a", "ε": "e", "ι": "i", "κ": "k", "ν": "v", "ο": "o", "ρ": "p", "τ": "t", "υ": "u", "χ": "x",
 };
-// A rude stem counts with one of these after it (or nothing), and nothing or a real word (3+ letters)
-// before it: "bullshit", "fucking", "shithead" are caught; "Fagan", "snigger", "Scunthorpe",
+// A rude stem counts with one of these after it, or nothing, or another word (3+ letters); and nothing
+// or a real word (3+ letters) before it: "bullshit", "fucking", "shithead" are caught; "Fagan", "snigger", "Scunthorpe",
 // "Matsushita" and "Pussycat" are names and words. Mirrors ENDINGS in djline.py.
 const ENDINGS = new Set(["", "s", "es", "ed", "er", "ers", "ing", "in", "ins", "y", "ty", "head", "heads", "face", "faces",
   "hole", "holes", "bag", "bags", "wad", "wads", "ass", "stain", "show", "storm", "tard", "tards", "o", "z"]);
 
+// Ordinary words that a stem-plus-word rule would catch. Mirrors SAFE_WORDS in djline.py.
+const SAFE_WORDS = new Set(["pussycat", "pussycats", "pussywillow", "pussywillows", "shitake", "shitakes"]);
+
 function rude(word: string): boolean {
+  if (SAFE_WORDS.has(word)) return false;
   for (const stem of DENY_STEMS) {
     for (let i = word.indexOf(stem); i !== -1; i = word.indexOf(stem, i + 1)) {
       const before = word.slice(0, i), after = word.slice(i + stem.length);
-      if (ENDINGS.has(after) && (before === "" || before.length >= 3)) return true;
+      // stem + an ending (fucking) or + another word (fuckyou, shitfaced), with nothing or a word before it
+      if ((ENDINGS.has(after) || after.length >= 3) && (before === "" || before.length >= 3)) return true;
     }
   }
   return false;

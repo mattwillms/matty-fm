@@ -68,12 +68,19 @@ ENDINGS = {"", "s", "es", "ed", "er", "ers", "ing", "in", "ins", "y", "ty", "hea
            "hole", "holes", "bag", "bags", "wad", "wads", "ass", "stain", "show", "storm", "tard", "tards", "o", "z"}
 
 
+# Ordinary words that a stem-plus-word rule would catch. Mirrors SAFE_WORDS in worker/src/queue.ts.
+SAFE_WORDS = {"pussycat", "pussycats", "pussywillow", "pussywillows", "shitake", "shitakes"}
+
+
 def _rude(word: str) -> bool:
+    if word in SAFE_WORDS:
+        return False
     for stem in DENY_STEMS:
         i = word.find(stem)
         while i != -1:
             before, after = word[:i], word[i + len(stem):]
-            if after in ENDINGS and (before == "" or len(before) >= 3):
+            # stem + an ending (fucking) or + another word (fuckyou, shitfaced), with nothing or a word before it
+            if (after in ENDINGS or len(after) >= 3) and (before == "" or len(before) >= 3):
                 return True
             i = word.find(stem, i + 1)
     return False

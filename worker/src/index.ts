@@ -7,7 +7,7 @@ export { Party };
 // Bump whenever party.ts changes. A deployed Durable Object kept running its first
 // version all evening (deploys did not restart it), so each queue-code change gets a
 // fresh instance. Queue state resets on a bump: never bump on party day.
-const QUEUE_VERSION = 12;
+const QUEUE_VERSION = 13;
 
 const enc = new TextEncoder();
 
@@ -21,11 +21,20 @@ function json(body: unknown, status = 200, headers: HeadersInit = {}): Response 
   return Response.json(body, { status, headers: { "cache-control": "no-store", ...headers } });
 }
 
-function device(req: Request): { id: string; cookie?: string } {
-  const m = /(?:^|;\s*)mfm_dev=([A-Za-z0-9-]{36})/.exec(req.headers.get("cookie") ?? "");
-  if (m) return { id: m[1] };
+// A phone's id is signed by the Worker (HMAC of the id), so a request can prove the id was issued
+// here: an invented cookie, or one with a changed signature, counts as a new phone without one.
+async function sign(id: string, env: Env): Promise<string> {
+  const key = await crypto.subtle.importKey("raw", enc.encode(`device:${env.STUDIO_SECRET}`), { name: "HMAC", hash: "SHA-256" },
+                                            false, ["sign"]);
+  const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(id))).slice(0, 16);
+  return btoa(String.fromCharCode(...mac)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+async function device(req: Request, env: Env): Promise<{ id: string; cookie?: string }> {
+  const m = /(?:^|;\s*)mfm_dev=([0-9a-f-]{36})\.([A-Za-z0-9_-]{22})/.exec(req.headers.get("cookie") ?? "");
+  if (m && same(m[2], await sign(m[1], env))) return { id: m[1] };
   const id = crypto.randomUUID();
-  return { id, cookie: `mfm_dev=${id}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` };
+  return { id, cookie: `mfm_dev=${id}.${await sign(id, env)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` };
 }
 
 async function cachedSearch(q: string, ctx: ExecutionContext): Promise<unknown> {
@@ -112,7 +121,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
     }
 
     if (!same(url.searchParams.get("k"), env.PARTY_CODE)) return json({ error: "Ask the host for the party QR code." }, 403);
-    const dev = device(req);
+    const dev = await device(req, env);
     const extra: HeadersInit = dev.cookie ? { "set-cookie": dev.cookie } : {};
     if (path === "/api/search") {
       const q = (url.searchParams.get("q") ?? "").trim();
