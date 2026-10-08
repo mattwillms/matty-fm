@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
-<title>MattyFM Booth</title>
+<title>OrrFM Booth</title>
 <style>
   :root { --bg:#16110c; --card:#2a1f15; --ink:#f6ead6; --muted:#c7a77c; --ok:#6cc070; --warn:#f5b829; --bad:#e85d4a; --hot:#f2711c; }
   * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 system-ui, sans-serif; }
@@ -34,7 +34,7 @@
 </head>
 <body>
 <main>
-  <h1>MattyFM Booth</h1>
+  <h1>OrrFM Booth</h1>
   <p id="auth" class="bad" hidden>Open this page from your admin link.</p>
   <section><h2>Health</h2><div class="health" id="health"></div></section>
   <section><h2>Switches</h2><div class="switches">
@@ -94,7 +94,7 @@ function render() {
   const sw = (id, on, onText, offText) => { $(id).textContent = on ? onText : offText; $(id).className = on ? "on" : ""; $(id).onclick = (e) => act({ action: "settings", settings: { [id]: !on } }, e); };
   sw("accepting", !s.accepting, "Requests CLOSED (tap to open)", "Last call (close requests)");
   sw("stopAfterCurrent", s.stopAfterCurrent, "Stopping after current (tap to resume)", "Stop after current");
-  sw("somaOnly", s.somaOnly, "SomaFM ONLY (tap to resume)", "Panic: SomaFM only");
+  sw("somaOnly", s.somaOnly, "SomaFM only — requests paused (tap to resume)", "SomaFM only — pause requests");
   $("items").replaceChildren(...state.items.map((it) => {
     const d = el("div", "item");
     const flags = [it.status.toUpperCase(), it.tone, it.voice, it.explicit ? "explicit" : "", it.freeText ? "typed-in" : "",

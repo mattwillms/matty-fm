@@ -8,11 +8,12 @@ import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "studio"))
 from mattyfm import config, tts  # noqa: E402
+from mattyfm.djline import STATION  # noqa: E402
 
 LINES = {
-    "sting-voice": ("funny", "You're grooving to MattyFM!"),
-    "generic-funny": ("funny", "Ooh, here's a request from somebody with great taste. Turn it up, family, this is MattyFM!"),
-    "generic-sweet": ("sweet", "This one's going out with love from the family. You're listening to MattyFM."),
+    "sting-voice": ("funny", f"You're grooving to {STATION}!"),
+    "generic-funny": ("funny", f"Ooh, here's a request from somebody with great taste. Turn it up, family, this is {STATION}!"),
+    "generic-sweet": ("sweet", f"This one's going out with love from the family. You're listening to {STATION}."),
 }
 
 

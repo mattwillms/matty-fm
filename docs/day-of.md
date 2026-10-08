@@ -13,5 +13,5 @@
 - Silence at the PA but the admin page says playing → `ssh mattyfm sudo systemctl restart mattyfm-pi`.
 - Admin: Studio silent → `systemctl --user restart mattyfm-studio`; check `journalctl --user -u mattyfm-studio -n 50`.
 - BACKUP playlist showing → home internet is down; requests already prepared still play.
-- Anything weird → "Panic: SomaFM only" on the admin page.
+- Anything weird → "SomaFM only — pause requests" on the admin page.
 - Total failure → the backup phone on the aux cable.

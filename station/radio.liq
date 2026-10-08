@@ -52,4 +52,4 @@ server.register("clear", fun (_) -> begin reqs.set_queue([]); "ok" end)
 output.icecast(id="out", %mp3(bitrate=192, stereo=true),
                host="127.0.0.1", port=8040, mount="radio",
                password=environment.get("ICECAST_SOURCE_PASSWORD"),
-               name="MattyFM", radio)
+               name=environment.get(default="OrrFM", "MATTYFM_STATION_NAME"), radio)
