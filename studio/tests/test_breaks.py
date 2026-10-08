@@ -85,3 +85,31 @@ def test_without_back_announces_ids_and_goofs_alternate():
             kinds.append(k)
             s.done(now=minute * 60, kind=k)
     assert all(a != b for a, b in zip(kinds, kinds[1:])), kinds
+
+
+def test_clips_rotate_evenly_and_new_ones_catch_up(tmp_path):
+    from mattyfm.breaks import Rotation
+    clips = [{"file": f"goof-{i}.mp3"} for i in range(1, 5)]
+    rot = Rotation(tmp_path / "plays.json")
+    first_round = []
+    for _ in range(4):
+        c = rot.pick(clips)
+        rot.played(c["file"])
+        first_round.append(c["file"])
+    assert sorted(first_round) == sorted(c["file"] for c in clips)   # each once before any repeats
+    rot = Rotation(tmp_path / "plays.json")                       # a studio restart keeps the counts
+    clips.append({"file": "goof-5.mp3"})
+    assert rot.pick(clips)["file"] == "goof-5.mp3"               # the new one catches up first
+    rot.played("goof-5.mp3")
+    second = {rot.pick(clips)["file"] for _ in range(20)}
+    assert "goof-5.mp3" not in second or len(second) == 5       # level again: anyone may play
+
+
+def test_rotation_survives_a_missing_or_corrupt_counts_file(tmp_path):
+    from mattyfm.breaks import Rotation
+    f = tmp_path / "plays.json"
+    f.write_text("{oops")
+    rot = Rotation(f)
+    assert rot.pick([{"file": "a.mp3"}])["file"] == "a.mp3"
+    rot.played("a.mp3")
+    assert Rotation(f).counts == {"a.mp3": 1}

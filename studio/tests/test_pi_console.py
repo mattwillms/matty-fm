@@ -361,28 +361,42 @@ def test_a_late_repeat_push_of_the_song_on_air_is_ignored():
     assert eng.status()["queued"] == 1
 
 
-def test_the_music_swells_back_up_in_the_dj_s_pauses():
-    # like a real DJ: dip under the talk, music back up in a pause, dip again when he carries on
+def test_the_music_ducks_exactly_with_the_speech_like_an_auto_ducker():
+    # the user: "no duck and pause and speech and pause and bring vol back up": the music drops as he
+    # starts talking, comes back as soon as he stops (his pauses and the end), not around the clip
     eng, clock, players, mixer = make()
     run(eng, clock, 1)
-    v0 = clock.t + console.DUCK_S                       # the voice starts after the dip
-    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 6.0, gaps=[[2.0, 3.6], [4.5, 4.8]]) is True
+    t0 = clock.t
+    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 7.0, speech=[[0.4, 2.0], [3.5, 5.8]]) is True
     levels = {}
-    while clock.t < v0 + 6.0 + console.RESTORE_S + 0.3:
-        clock.t += 0.05
+    while clock.t < t0 + 7.5:
+        clock.t += 0.02
         eng.tick()
-        levels[round(clock.t - v0, 2)] = mixer.level["SomaVol"]
+        levels[round(clock.t - t0, 2)] = mixer.level["SomaVol"]
     at = lambda t: levels[min(levels, key=lambda k: abs(k - t))]
-    assert at(1.5) == console.DUCK_PCT                  # talking
-    assert at(2.9) == 100                               # the pause: music up
-    assert at(3.55) == console.DUCK_PCT                 # back down before he speaks again
-    assert at(4.65) == console.DUCK_PCT                 # a short breath: no swell
-    assert at(6.0 + console.RESTORE_S + 0.2) == 100
+    assert ("dj", "http://ws:8040/breaks/id1.mp3") in players.started
+    assert at(0.2) == 100                                # silence before he speaks: no early dip
+    assert at(0.42) == console.DUCK_PCT                  # down as the first word lands
+    assert at(1.9) == console.DUCK_PCT
+    assert at(2.9) == 100                                # his pause: back up
+    assert at(3.52) == console.DUCK_PCT                  # down again as he carries on
+    assert at(6.6) == 100                                # back up right after his last word, not the clip's tail
+
+
+def test_a_short_breath_between_words_keeps_the_music_down():
+    eng, clock, players, mixer = make()
+    run(eng, clock, 1)
+    t0 = clock.t
+    eng.voice_break("http://ws:8040/breaks/id1.mp3", 4.0, speech=[[0.3, 1.5], [2.0, 3.5]])   # 0.5 s breath
+    while clock.t < t0 + 1.9:
+        clock.t += 0.02
+        eng.tick()
+        assert clock.t - t0 < 0.45 or mixer.level["SomaVol"] == console.DUCK_PCT
 
 
 def test_odd_gaps_are_ignored_not_fatal():
     eng, clock, players, mixer = make()
     run(eng, clock, 1)
-    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 4.0, gaps=[["x", 2], [3.0, 99], None, [2.5, 1.0]]) is True
-    run(eng, clock, 2.0)
+    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 4.0, speech=[["x", 2], [3.0, 99], None, [2.5, 1.0]]) is True
+    run(eng, clock, 2.0)   # nothing usable: the plain dip over the whole clip
     assert mixer.level["SomaVol"] == console.DUCK_PCT

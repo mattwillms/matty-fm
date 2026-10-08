@@ -81,6 +81,7 @@ export default {
     }
     if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
     const party = env.PARTY.getByName(`orrfm-v${QUEUE_VERSION}`);
+    await takeOver(env, party);
     try {
       return await route(req, env, ctx, url, path, party);
     } catch (e) {
@@ -89,6 +90,22 @@ export default {
     }
   },
 } satisfies ExportedHandler<Env>;
+
+// A bumped queue starts by copying the previous one (songs, order, names, history, settings), so a
+// bump never empties the party. Once per isolate; harmless if the old one is empty, gone, or too old
+// to know exportState (then the new queue starts empty, as before).
+let tookOver = false;
+async function takeOver(env: Env, party: DurableObjectStub<Party>): Promise<void> {
+  if (tookOver) return;
+  tookOver = true;
+  try {
+    if (!(await party.isFresh())) return;   // in use (even if empty right now): never import into it
+    const state = await env.PARTY.getByName(`orrfm-v${QUEUE_VERSION - 1}`).exportState();
+    if (state.items?.length || state.settings?.length) await party.importState(state);
+  } catch (e) {
+    console.log("queue take-over skipped:", String(e));
+  }
+}
 
 class BadRequest extends Error {}
 

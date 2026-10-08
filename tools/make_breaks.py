@@ -33,6 +33,11 @@ CLIPS = [
     ("goof", "funny", "small crowd cheering briefly", f"Breaking news on {S}: the dance floor is open, and nobody is judging. Much."),
     ("goof", "funny", "game show ding ding ding correct answer", f"If you can hear this, congratulations. You're already having fun on {S}."),
     ("goof", "funny", "retro telephone ringing twice", f"The {S} request line is open. Don't be shy, the DJ needs material."),
+    # the family is Mississippi State and Ole Miss (rivals); everyone dislikes LSU (and Bama)
+    ("goof", "funny", "single cowbell clang, stadium echo", f"[smug] {S} house rules. Cowbells, allowed. Hotty Toddy, allowed. [long pause] Purple and gold can wait in the truck."),
+    ("goof", "funny", "news helicopter rotor whir, short", f"{S} traffic. Dawgs merging left, Rebels merging right. [long pause] [playful] Anybody headed to Baton Rouge, that's your exit. Keep going."),
+    ("goof", "funny", "boxing ring bell, two dings", "Hail State and Hotty Toddy in the same backyard, and nobody's bleeding. [long pause] [deadpan] Turns out you'll forgive anybody once Lane Kiffin moves to Baton Rouge."),
+    ("goof", "funny", "marching band snare drum roll, short", "The Egg Bowl's a month out. Today, it's a truce. [long pause] [smug] We're all family here. Except Bama. Bama's still waiting by the phone for Saban."),
     ("skip", "funny", "vinyl record scratch, fast", "Whoa! Let's try something else."),
     ("skip", "funny", "vinyl record scratch and rewind", "Okay, okay. Moving on!"),
     ("skip", "funny", "quick comedic record scratch", "The DJ has spoken. Next!"),

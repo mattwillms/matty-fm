@@ -204,6 +204,42 @@ export class Party extends DurableObject<Env> {
     return { ok: true, id, position: this.display().findIndex((i) => i.id === id) + 1, ...(late ? { late } : {}) };
   }
 
+  /** Never used: no songs, no names, not even a setting (the studio's first check-in writes one). */
+  async isFresh() {
+    return !this.one("SELECT 1 AS x FROM settings LIMIT 1") && !this.one("SELECT 1 AS x FROM items LIMIT 1")
+      && !this.one("SELECT 1 AS x FROM requesters LIMIT 1");
+  }
+
+  /** Everything a successor queue needs (a QUEUE_VERSION bump): songs, their order and files,
+   *  requesters and messages, play history, muted phones, settings. Commands are left behind (stale). */
+  async exportState() {
+    const table = (t: string) => this.all(`SELECT * FROM ${t}`);
+    return { items: table("items"), requesters: table("requesters"), settings: table("settings"), muted: table("muted") };
+  }
+
+  /** Takes over an old queue's state, once, and only into an empty queue (ids are kept, so the
+   *  console's song on air and every phone's "Your requests" still match). */
+  async importState(data: { items?: Row[]; requesters?: Row[]; settings?: Row[]; muted?: Row[] }) {
+    if (this.one("SELECT 1 AS x FROM items LIMIT 1") || this.one("SELECT 1 AS x FROM requesters LIMIT 1"))
+      return { ok: false, error: "this queue isn't empty" };
+    let n = 0;
+    for (const t of ["items", "requesters", "settings", "muted"] as const) {
+      const cols = new Set(this.all(`PRAGMA table_info(${t})`).map((c) => String(c.name)));
+      for (const row of Array.isArray(data?.[t]) ? data[t]! : []) {
+        const keys = Object.keys(row).filter((k) => cols.has(k));   // only columns this schema has
+        if (!keys.length) continue;
+        this.sql.exec(`INSERT OR REPLACE INTO ${t}(${keys.join(",")}) VALUES(${keys.map(() => "?").join(",")})`,
+          ...keys.map((k) => row[k] as SqlStorageValue));
+        n++;
+      }
+    }
+    if (n && (await this.ctx.storage.getAlarm()) === null) {
+      const now = Date.now();
+      await this.ctx.storage.setAlarm(now < PURGE_AT ? PURGE_AT : now + PURGE_AFTER_MS);
+    }
+    return { ok: true, rows: n };
+  }
+
   /** A guest takes back their own request before it plays. A song others asked for too keeps going
    *  without their name; one only they asked for is removed (and pulled from the console if handed out). */
   async cancel(device: string, id: string) {
@@ -386,6 +422,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
+      code: "takeover-1",       // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       items: items.map((i) => ({
         id: String(i.id), title: String(i.title), artist: String(i.artist), status: String(i.status),

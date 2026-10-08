@@ -47,9 +47,13 @@ SOMA_UP_S = 2.0
 DUCK_PCT = 55           # voice breaks: the on-air channel dips to this (softvol %, ~-27 dB)
 DUCK_S = 0.5            # dip over this, then the DJ starts
 RESTORE_S = 1.0         # back to full over this after the DJ ends
-SWELL_MIN_S = 1.0       # a pause in the DJ's talk this long brings the music back up, like a real DJ
-SWELL_UP_S = 0.35       # up over this, starting just into the pause
-SWELL_DOWN_S = 0.3      # and back down under him, finished just before he speaks again
+# Auto-duck, following the speech (segments measured by the studio): down as each word lands,
+# back up as soon as he stops. Both paths go through the same dmix buffer, so they stay in step.
+DUCK_LEAD_S = 0.1       # look-ahead: start down this far before the word...
+DUCK_ATTACK_S = 0.1     # ...and be fully down this fast
+DUCK_HOLD_S = 0.2       # after the last word of a phrase, hold this long...
+DUCK_RELEASE_S = 0.5    # ...then back up over this
+DUCK_MERGE_S = 0.9      # a breath shorter than this keeps the music down (no pumping)
 DEAD_AFTER_S = 1.0      # a deck that stopped this long after starting is treated as ended
 TICK_S = 0.1
 SOMA_STALL_S = 4.0
@@ -185,7 +189,7 @@ class Engine:
             else:
                 self._to_soma(PLAIN_FADE_S)
 
-    def voice_break(self, url: str, voice_s: float, soma_only: bool = False, gaps=()) -> bool:
+    def voice_break(self, url: str, voice_s: float, soma_only: bool = False, speech=()) -> bool:
         """DJ over whatever is on air (SomaFM, a request, a backup song): dip, talk, restore.
         During a transition it waits until the transition is done. soma_only (scheduled breaks,
         which may name the SomaFM song): declined unless SomaFM is on air, settled, nothing queued.
@@ -203,37 +207,45 @@ class Engine:
                     self.log(f"voice break declined: {left:.0f}s of the song left")
                     return False
             if now < self.transition_until:
-                self.pending_break = (url, voice_s, gaps)
+                self.pending_break = (url, voice_s, speech)
                 self.log(f"voice break waits for the transition ({self.transition_until - now:.1f}s)")
                 return True
             control = CONTROLS[ch]
             level = self.mixer.level[control]
-            back_at = now + DUCK_S + voice_s
             self.ramps = [r for r in self.ramps if r[0] != control]
-            self.ramps.append((control, level, DUCK_PCT, now, DUCK_S))
-            for start, end in self._pauses(gaps, voice_s):   # music up in his pauses, down when he talks
-                self.ramps.append((control, DUCK_PCT, 100, now + DUCK_S + start + 0.1, SWELL_UP_S))
-                self.ramps.append((control, 100, DUCK_PCT, now + DUCK_S + end - SWELL_DOWN_S - 0.05, SWELL_DOWN_S))
-            self.ramps.append((control, DUCK_PCT, 100, back_at, RESTORE_S))
-            self.pending_dj = (url, now + DUCK_S)
-            self.transition_until = back_at + RESTORE_S
+            phrases = self._phrases(speech, voice_s)
+            if phrases:   # duck with the speech itself: the voice starts now, the music follows his words
+                lvl = level
+                for start, end in phrases:
+                    self.ramps.append((control, lvl, DUCK_PCT, now + max(0.0, start - DUCK_LEAD_S), DUCK_ATTACK_S))
+                    self.ramps.append((control, DUCK_PCT, 100, now + end + DUCK_HOLD_S, DUCK_RELEASE_S))
+                    lvl = 100
+                self.pending_dj = (url, now)
+                self.transition_until = now + phrases[-1][1] + DUCK_HOLD_S + DUCK_RELEASE_S
+            else:   # no speech map: dip over the whole clip, as before
+                back_at = now + DUCK_S + voice_s
+                self.ramps.append((control, level, DUCK_PCT, now, DUCK_S))
+                self.ramps.append((control, DUCK_PCT, 100, back_at, RESTORE_S))
+                self.pending_dj = (url, now + DUCK_S)
+                self.transition_until = back_at + RESTORE_S
             self.log(f"voice break on {ch}: {voice_s:.1f}s")
             return True
 
     @staticmethod
-    def _pauses(gaps, voice_s: float) -> list[tuple[float, float]]:
-        """The silences in the voice (seconds from its start) long enough to swell into; junk is skipped."""
-        out = []
-        for g in gaps if isinstance(gaps, (list, tuple)) else ():
+    def _phrases(speech, voice_s: float) -> list[tuple[float, float]]:
+        """Where he's talking (seconds from the clip's start), breaths merged; junk is skipped."""
+        out: list[tuple[float, float]] = []
+        for seg in speech if isinstance(speech, (list, tuple)) else ():
             try:
-                start, end = float(g[0]), float(g[1])
+                start, end = float(seg[0]), float(seg[1])
             except (TypeError, ValueError, IndexError):
                 continue
-            if not (0 < start < end < voice_s - 0.2) or end - start < SWELL_MIN_S:   # a trailing silence: the restore covers it
+            if not (0 <= start < end <= voice_s + 0.5) or (out and start < out[-1][0]):
                 continue
-            if out and start < out[-1][1]:
-                continue
-            out.append((start, end))
+            if out and start - out[-1][1] < DUCK_MERGE_S:
+                out[-1] = (out[-1][0], max(out[-1][1], end))
+            else:
+                out.append((start, end))
         return out
 
     def fx(self, url: str) -> None:
@@ -347,9 +359,9 @@ class Engine:
             if now < self.transition_until:
                 return
             if self.pending_break:
-                url, secs, gaps = self.pending_break
+                url, secs, speech = self.pending_break
                 self.pending_break = None
-                self.voice_break(url, secs, gaps=gaps)
+                self.voice_break(url, secs, speech=speech)
                 return
             ch, it = self.on_air
             if ch == "soma":
@@ -520,7 +532,7 @@ def serve(engine: Engine, token: str, port: int) -> None:
                     engine.skip((engine.resolve(str(b["url"])), seconds(b["voiceS"])) if b else None)
                 elif self.path == "/voice":
                     if not engine.voice_break(engine.resolve(str(body["url"])), body["voiceS"],
-                                              soma_only=body.get("somaOnly") is True, gaps=body.get("gaps") or ()):
+                                              soma_only=body.get("somaOnly") is True, speech=body.get("speech") or ()):
                         return self._reply(409, {"error": "busy"})
                 elif self.path == "/clear":
                     engine.clear()

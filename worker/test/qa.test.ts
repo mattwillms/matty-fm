@@ -452,4 +452,30 @@ describe("QA round", () => {
     expect(np.endsInS).toBeGreaterThan(148);
     expect(np.endsInS).toBeLessThanOrEqual(150);
   });
+  it("a new queue takes over everything from the old one: songs, order, names, history, settings", async () => {
+    const old = stub("migrate-old"), fresh = stub("migrate-new");
+    const id = await readyItem(old, "Waterloo", "me");
+    await old.submit("me", { track: T("SOS"), name: "Me", message: "for Bob" });
+    await old.submit("you", { track: T("Fernando"), name: "You" });
+    await old.beat({ ...beat, source: "requests", current: id, remaining: 100 });
+    await old.adminAction({ action: "mute", device: "troll" });
+    await old.adminAction({ action: "settings", settings: { breakEveryMin: 20 } });
+    const before = await old.adminState();
+    expect((await fresh.importState(await old.exportState())).ok).toBe(true);
+    const after = await fresh.adminState();
+    expect(after.items.map((i) => [i.id, i.status, i.requesters.map((r) => r.name + ":" + r.message)]))
+      .toEqual(before.items.map((i) => [i.id, i.status, i.requesters.map((r) => r.name + ":" + r.message)]));
+    expect(after.settings.breakEveryMin).toBe(20);
+    expect(after.muted.map((m) => m.device)).toEqual(["troll"]);
+    expect((await fresh.guestState("me")).mine.length).toBe(2);
+    const { id: next } = await fresh.submit("d9", { track: T("Ring Ring"), name: "x" });
+    expect(Number(next!.slice(1))).toBeGreaterThan(Math.max(...before.items.map((i) => Number(i.id.slice(1)))));
+    expect((await fresh.importState(await old.exportState())).ok).toBe(false);   // only ever into an empty queue
+  });
+  it("only a never-used queue counts as fresh (an empty one in use never takes over old songs)", async () => {
+    const p = stub("fresh-check");
+    expect(await p.isFresh()).toBe(true);
+    await p.beat(beat);                      // the studio checked in: in use, though empty
+    expect(await p.isFresh()).toBe(false);
+  });
 });

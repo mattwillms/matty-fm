@@ -50,6 +50,7 @@ def main() -> None:
     soma_np = somafm.NowPlaying(httpx.Client())
     sched = breaks.Scheduler(now=time.monotonic())
     clips = breaks.library(cfg.media_dir)
+    rotation = breaks.Rotation(cfg.media_dir / "breaks" / "plays.json")   # every clip of a kind before any repeats
     log.info("break clips: %s", {k: len(v) for k, v in clips.items()} or "none (run tools/make_breaks.py)")
     on_break = threading.Event()   # one break at a time
     last_dj: dict = {}             # the last thing the DJ said over SomaFM, for the admin page
@@ -73,16 +74,18 @@ def main() -> None:
                 if not pool_kind:
                     log.warning("break %s skipped: no clips (run tools/make_breaks.py)", kind)
                     return
-                clip = random.choice(clips[pool_kind])
+                clip = rotation.pick(clips[pool_kind])
                 url, seconds, text = f"breaks/{clip['file']}", clip["seconds"], clip["text"]
                 path = cfg.media_dir / "breaks" / clip["file"]
             try:
-                gaps = mix.speech_gaps(path)   # his pauses: the console brings the music up in them
+                speech = mix.speech_segments(path)   # the console ducks the music exactly while he talks
             except Exception:
-                gaps = []
+                speech = []   # it dips over the whole clip instead
             text = djline.display(text)
-            if station.voice(url, seconds, soma_only=soma_only, gaps=gaps):
+            if station.voice(url, seconds, soma_only=soma_only, speech=speech):
                 log.info("break on air (%s): %s", kind, text)
+                if not url.startswith("breaks/live-"):   # a fresh back-announce isn't a clip in the rotation
+                    rotation.played(url.rsplit("/", 1)[-1])
                 last_dj.update({"kind": kind, "text": text, "at": int(time.time() * 1000)})
                 sched.done(time.monotonic(), kind)
             else:
@@ -189,7 +192,7 @@ def main() -> None:
             for c in reply["commands"]:
                 if c["type"] == "replay":   # the admin's Replay on the DJ read
                     try:
-                        played = feed.replay_dj(station, cfg.media_dir, c.get("target"), mix.duration, mix.speech_gaps)
+                        played = feed.replay_dj(station, cfg.media_dir, c.get("target"), mix.duration, mix.speech_segments)
                         log.info("command: replay DJ read of %s: %s", c.get("target"), "on air" if played else "declined")
                     except Exception as e:
                         log.warning("replay of %s failed: %s", c.get("target"), e)
@@ -205,7 +208,9 @@ def main() -> None:
                 if action[0] == "skip":
                     log.info("command: skip")
                     skip_clips = clips.get("skip") or []
-                    clip = random.choice(skip_clips) if skip_clips else None
+                    clip = rotation.pick(skip_clips) if skip_clips else None
+                    if clip:
+                        rotation.played(clip["file"])
                     station.skip(bumper={"url": f"breaks/{clip['file']}", "voiceS": clip["seconds"]} if clip else None)
                 elif action[0] == "clear":
                     log.info("command: clear station queue")

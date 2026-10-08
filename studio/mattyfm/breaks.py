@@ -6,6 +6,8 @@ pushes the next break out to a full gap after it.
 """
 
 import json
+import random
+import threading
 from pathlib import Path
 
 DEFAULT_GAP_S = 10 * 60
@@ -65,3 +67,34 @@ def library(media: Path) -> dict[str, list[dict]]:
     for e in json.loads(index.read_text()):
         out.setdefault(e["kind"], []).append(e)
     return out
+
+
+class Rotation:
+    """A shuffle bag for clips: only those played the fewest times can play next (at random
+    among them), so nothing repeats until every clip has had its turn. Counts are kept on
+    disk, so a studio restart doesn't start the rotation over; a new clip starts at 0 and
+    so plays first until it has caught up."""
+
+    def __init__(self, path: Path):
+        self.path = path
+        self.lock = threading.Lock()
+        try:
+            data = json.loads(path.read_text())
+            self.counts = {str(k): int(v) for k, v in data.items()} if isinstance(data, dict) else {}
+        except (OSError, ValueError, TypeError):
+            self.counts = {}
+
+    def pick(self, clips: list[dict]) -> dict:
+        with self.lock:
+            low = min(self.counts.get(c["file"], 0) for c in clips)
+            return random.choice([c for c in clips if self.counts.get(c["file"], 0) == low])
+
+    def played(self, file: str) -> None:
+        with self.lock:
+            self.counts[file] = self.counts.get(file, 0) + 1
+            try:
+                tmp = self.path.with_name(self.path.name + ".tmp")
+                tmp.write_text(json.dumps(self.counts))
+                tmp.replace(self.path)
+            except OSError:
+                pass   # the rotation still works in memory

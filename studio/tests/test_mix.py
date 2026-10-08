@@ -42,10 +42,14 @@ def test_rejects_short_song(parts):
         mix.prepare_files(parts / "tiny.mp3", parts / "voice.mp3", parts / "o.mp3", parts / "v.mp3", 44100)
 
 
-def test_speech_gaps_finds_the_pauses_in_a_voice(tmp_path):
+def test_speech_segments_follow_the_voice(tmp_path):
     import subprocess
     v = tmp_path / "v.mp3"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", "sine=f=300:d=1.5", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono:d=1.4",
-                    "-f", "lavfi", "-i", "sine=f=300:d=1.0", "-filter_complex", "[0][1][2]concat=n=3:v=0:a=1", str(v)], check=True)
-    gaps = mix.speech_gaps(v)
-    assert len(gaps) == 1 and abs(gaps[0][0] - 1.5) < 0.15 and abs(gaps[0][1] - 2.9) < 0.15
+    lead = ["-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono:d=0.5"]   # silence, talk 1.5 s, pause 1.4 s, talk 1 s, tail 0.8 s
+    subprocess.run(["ffmpeg", "-v", "error", "-y", *lead, "-f", "lavfi", "-i", "sine=f=300:d=1.5", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono:d=1.4",
+                    "-f", "lavfi", "-i", "sine=f=300:d=1.0", "-f", "lavfi", "-i", "anullsrc=r=44100:cl=mono:d=0.8",
+                    "-filter_complex", "[0][1][2][3][4]concat=n=5:v=0:a=1", str(v)], check=True)
+    seg = mix.speech_segments(v)
+    assert len(seg) == 2
+    assert abs(seg[0][0] - 0.5) < 0.1 and abs(seg[0][1] - 2.0) < 0.1
+    assert abs(seg[1][0] - 3.4) < 0.1 and abs(seg[1][1] - 4.4) < 0.1

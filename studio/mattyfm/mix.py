@@ -38,20 +38,25 @@ def duration(path: Path) -> float:
     return float(out.stdout.strip())
 
 
-def speech_gaps(path: Path, min_s: float = 0.6) -> list[tuple[float, float]]:
-    """The pauses in a voice, as (start, end) seconds: where the console swells the music back up.
-    Measured on the audio, so it doesn't matter how long the voice model made each pause."""
-    err = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af",
-                          f"silencedetect=noise=-35dB:d={min_s}", "-f", "null", "-"], stdin=subprocess.DEVNULL,
+def speech_segments(path: Path) -> list[tuple[float, float]]:
+    """Where the voice is talking, as (start, end) seconds: the console ducks the music to exactly
+    these (it merges short breaths itself). Measured on the audio, so a pause's length doesn't matter."""
+    out = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af",
+                          "silencedetect=noise=-35dB:d=0.25", "-f", "null", "-"], stdin=subprocess.DEVNULL,
                          capture_output=True, text=True, check=True, timeout=30).stderr
-    gaps, start = [], None
-    for m in re.finditer(r"silence_(start|end): (-?[\d.]+)", err):
+    total = decoded_duration(path)
+    talk, at = [], 0.0
+    for m in re.finditer(r"silence_(start|end): (-?[\d.]+)", out):
+        t = max(0.0, float(m[2]))
         if m[1] == "start":
-            start = max(0.0, float(m[2]))
-        elif start is not None:
-            gaps.append((round(start, 2), round(float(m[2]), 2)))
-            start = None
-    return gaps   # a silence still open at the end is the tail, not a pause
+            if t - at > 0.05:
+                talk.append((round(at, 2), round(t, 2)))
+            at = None
+        else:
+            at = t
+    if at is not None and total - at > 0.05:   # talking right to the end
+        talk.append((round(at, 2), round(total, 2)))
+    return talk
 
 
 def decoded_duration(path: Path) -> float:
