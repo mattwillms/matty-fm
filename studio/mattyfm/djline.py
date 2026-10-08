@@ -24,20 +24,69 @@ CONFUSABLE = str.maketrans({
 })
 
 
-def speech_text(text: str) -> str:
-    """The exact text that is checked AND voiced: plain ASCII, single spaces.
+PUNCT = str.maketrans({"—": "-", "–": "-", "’": "'", "‘": "'", "“": "", "”": ""})
 
-    Full-width and accented letters fold to ASCII; look-alike foreign letters
-    map to the Latin letter they imitate; anything else is dropped.
-    """
-    text = unicodedata.normalize("NFKC", str(text)).translate(CONFUSABLE)
+
+# Cyrillic and Greek spelled out in Latin letters, so a name like Ольга is said "Olga" rather
+# than dropped to "Oa". (Applied after accents are split off: ί is ι plus a mark.)
+TRANSLIT = str.maketrans({
+    **dict(zip("абвгдезийклмнопрстуфхцчшыэ", ["a", "b", "v", "g", "d", "e", "z", "i", "y", "k", "l", "m", "n", "o",
+                                               "p", "r", "s", "t", "u", "f", "kh", "ts", "ch", "sh", "y", "e"])),
+    "ё": "yo", "ж": "zh", "щ": "shch", "ъ": "", "ь": "", "ю": "yu", "я": "ya", "і": "i", "ї": "yi", "є": "ye", "ґ": "g",
+    **dict(zip("АБВГДЕЗИЙКЛМНОПРСТУФХЦЧШЫЭ", ["A", "B", "V", "G", "D", "E", "Z", "I", "Y", "K", "L", "M", "N", "O",
+                                               "P", "R", "S", "T", "U", "F", "Kh", "Ts", "Ch", "Sh", "Y", "E"])),
+    "Ё": "Yo", "Ж": "Zh", "Щ": "Shch", "Ъ": "", "Ь": "", "Ю": "Yu", "Я": "Ya", "І": "I", "Ї": "Yi", "Є": "Ye", "Ґ": "G",
+    **dict(zip("αβγδεζηικλμνξοπρστυφω", ["a", "v", "g", "d", "e", "z", "i", "i", "k", "l", "m", "n", "x", "o", "p",
+                                          "r", "s", "t", "y", "f", "o"])),
+    "θ": "th", "χ": "ch", "ψ": "ps", "ς": "s",
+    **dict(zip("ΑΒΓΔΕΖΗΙΚΛΜΝΞΟΠΡΣΤΥΦΩ", ["A", "V", "G", "D", "E", "Z", "I", "I", "K", "L", "M", "N", "X", "O", "P",
+                                          "R", "S", "T", "Y", "F", "O"])),
+    "Θ": "Th", "Χ": "Ch", "Ψ": "Ps",
+})
+
+
+def _fold(text: str, letters) -> str:
+    text = unicodedata.normalize("NFKC", str(text))
+    text = unicodedata.normalize("NFD", text).translate(PUNCT).translate(letters)
     text = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode()
     return " ".join(text.split())
 
 
+def speech_text(text: str) -> str:
+    """The exact text that is voiced (and checked): plain ASCII, single spaces.
+
+    Full-width and accented letters fold to ASCII; Cyrillic and Greek are spelled out
+    in Latin letters; anything else (emoji, CJK, symbols) is dropped.
+    """
+    return _fold(text, TRANSLIT)
+
+
+# A rude stem counts with one of these after it (or nothing), and either nothing or a real word
+# (3+ letters) before it: "bullshit", "fucking", "shithead" are caught; "Fagan", "snigger",
+# "Scunthorpe", "Matsushita" and "Pussycat" are names and words, not insults.
+ENDINGS = {"", "s", "es", "ed", "er", "ers", "ing", "in", "ins", "y", "ty", "head", "heads", "face", "faces",
+           "hole", "holes", "bag", "bags", "wad", "wads", "ass", "stain", "show", "storm", "tard", "tards", "o", "z"}
+
+
+def _rude(word: str) -> bool:
+    for stem in DENY_STEMS:
+        i = word.find(stem)
+        while i != -1:
+            before, after = word[:i], word[i + len(stem):]
+            if after in ENDINGS and (before == "" or len(before) >= 3):
+                return True
+            i = word.find(stem, i + 1)
+    return False
+
+
 def is_offensive(text: str) -> bool:
+    # checked as spoken (Cyrillic spelled out) and as it looks (Cyrillic с read as Latin c)
+    return _offensive(speech_text(text)) or _offensive(_fold(text, CONFUSABLE))
+
+
+def _offensive(folded: str) -> bool:
     words, run = [], ""
-    for raw in speech_text(text).lower().translate(LOOKALIKE).split():
+    for raw in folded.lower().translate(LOOKALIKE).split():
         token = re.sub(r"[^a-z.]", "", raw)
         if len(token.replace(".", "")) == 1:      # f u c k  -> one word
             run += token.replace(".", "")
@@ -48,7 +97,7 @@ def is_offensive(text: str) -> bool:
         words.append(token.replace(".", ""))      # f.u.c.k -> fuck
     if run:
         words.append(run)
-    return any(stem in w for w in words for stem in DENY_STEMS)
+    return any(_rude(w) for w in words)
 
 
 def _safe(text: str) -> str:
@@ -103,13 +152,23 @@ def _names(item: dict) -> list[str]:
     return seen
 
 
-def template(item: dict, ok: bool = True) -> DJLine:
-    who = names_phrase(_names(item)) or "a mystery guest"
+def song_phrase(item: dict) -> str:
+    """ "Earth, Wind and Fire with September", or what's left of it once emoji and the like are gone."""
     title, artist = _safe(item["title"]), _safe(item["artist"])
     if is_offensive(f"{title} {artist}"):
-        script = f"This one goes out from {who}, right here on {STATION}."
+        return ""
+    if title and artist:
+        return f"{artist} with {title}"
+    return title or artist
+
+
+def template(item: dict, ok: bool = True) -> DJLine:
+    who = names_phrase(_names(item)) or "a mystery guest"
+    song = song_phrase(item)
+    if song:
+        script = f"From {who}, on {STATION}: here's {song}."
     else:
-        script = f"From {who}, on {STATION}: here's {artist} with {title}."
+        script = f"This one goes out from {who}, right here on {STATION}."
     return DJLine(ok, "funny", script, True)
 
 
@@ -139,7 +198,14 @@ def write_line(item: dict, client) -> DJLine:
         return template(item)
     if not isinstance(data, dict) or not data.get("ok"):
         return template(item, ok=False)
-    script = speech_text(data.get("script", ""))
+    raw = data.get("script")
+    if not isinstance(raw, str):   # null or missing: never voice "None"
+        return template(item)
+    script = speech_text(raw)
+    title = _safe(item["title"])
+    song = song_phrase(item)
+    if script and song and title.lower() not in script.lower():   # the rule: always end by naming the song
+        script = f"{script.rstrip()}{'' if script.rstrip()[-1:] in '.!?' else '.'} Here's {song}."
     if not script or is_offensive(script) or len(script) > 400:
         return template(item)
     tone = "sweet" if data.get("tone") == "sweet" else "funny"

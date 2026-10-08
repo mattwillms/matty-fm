@@ -60,18 +60,31 @@ def check_match(song, item: dict) -> tuple[float, str]:
     return confidence, f"{title}{source}; {length}"
 
 
+def is_audio(path: Path) -> bool:
+    """A download is only cached if ffprobe reads it as audio of a plausible length."""
+    try:
+        return mix.duration(path) > 20
+    except Exception:
+        return False
+
+
 def prepare(item: dict, deps: Deps) -> dict:
     media: Path = deps.cfg.media_dir
     rid = item["id"]
     t0 = time.monotonic()
     try:
-        song = songs.get_song(item, media / "cache", search=deps.search, download=deps.download, tries=2)
+        song = songs.get_song(item, media / "cache", search=deps.search, download=deps.download, tries=2,
+                              verify=is_audio)
     except songs.SongNotFound as e:
         log.warning("%s song not found (%.1fs): %s", rid, time.monotonic() - t0, e)
         return {"id": rid, "status": "failed", "error": str(e)}
+    except Exception as e:   # timeouts, bad replies, disk errors: fail it, never leave it to loop on lease expiry
+        log.exception("%s song lookup failed", rid)
+        return {"id": rid, "status": "failed", "error": f"Song lookup failed: {type(e).__name__}: {e}"[:300]}
     confidence, note = check_match(song, item)
     log.info("%s song ready in %.1fs: %s (video %s, confidence %.0f -> %.0f): %s", rid, time.monotonic() - t0,
              song.path.name, song.video_id, song.confidence, confidence, note)
+    mixing = False   # only a failure while mixing the song file blames the cached song
     try:
         t1 = time.monotonic()
         line = djline.write_line(item, deps.claude)
@@ -85,10 +98,15 @@ def prepare(item: dict, deps: Deps) -> dict:
                            assets=media / "assets", names=deps.names)
         log.info("%s voice in %.1fs via %s", rid, time.monotonic() - t1, engine)
         t1 = time.monotonic()
+        mixing = True
         seconds, voice_s = mix.prepare_files(song.path, raw_voice, media / "ready" / f"{rid}.mp3",
                                              media / "voice" / f"{rid}.mp3", deps.cfg.sample_rate)
     except Exception as e:  # any failure here must not kill the studio
         log.exception("prepare %s failed", item["id"])
+        if mixing:
+            # a cached song ffmpeg can't read would fail every retry: drop it so the next try downloads afresh
+            song.path.unlink(missing_ok=True)
+            song.path.with_suffix(".json").unlink(missing_ok=True)
         return {"id": item["id"], "status": "failed", "error": f"{type(e).__name__}: {e}"[:300]}
     log.info("%s files ready in %.1fs (song %.0fs, voice %.1fs); total %.1fs", rid, time.monotonic() - t1,
              seconds, voice_s, time.monotonic() - t0)

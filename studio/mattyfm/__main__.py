@@ -56,7 +56,7 @@ def main() -> None:
     last_dj: dict = {}             # the last thing the DJ said over SomaFM, for the admin page
     break_pool = ThreadPoolExecutor(1)   # breaks never take a song-preparation worker
 
-    def run_break(kind: str) -> None:
+    def run_break(kind: str, soma_only: bool) -> None:
         try:
             if kind == "backannounce" and soma_np.last:
                 line = djline.backannounce(soma_np.prev, soma_np.last, deps.claude)
@@ -76,10 +76,10 @@ def main() -> None:
                     return
                 clip = random.choice(clips[pool_kind])
                 url, seconds, text = f"breaks/{clip['file']}", clip["seconds"], clip["text"]
-            if station.voice(url, seconds):
+            if station.voice(url, seconds, soma_only=soma_only):
                 log.info("break on air (%s): %s", kind, text)
                 last_dj.update({"kind": kind, "text": text, "at": int(time.time() * 1000)})
-                sched.done(time.monotonic())
+                sched.done(time.monotonic(), kind)
             else:
                 log.info("break %s declined by the console (busy)", kind)
         except Exception:
@@ -87,10 +87,12 @@ def main() -> None:
         finally:
             on_break.clear()
 
-    def start_break(kind: str) -> None:
+    def start_break(kind: str, soma_only: bool = True) -> None:
+        """Scheduled breaks are soma_only (a back-announce names the SomaFM song); the admin's
+        "Play a bumper" plays over whatever is on air."""
         if not on_break.is_set():
             on_break.set()
-            break_pool.submit(run_break, kind)
+            break_pool.submit(run_break, kind, soma_only)
     pool = ThreadPoolExecutor(WORKERS)
     working: set[str] = set()
     lock = threading.Lock()
@@ -115,11 +117,9 @@ def main() -> None:
     while True:
         started = time.monotonic()
         try:
-            try:
-                status = station.status()
-            except OSError as e:
-                status = {"source": "silence", "current": "", "remaining": -1.0, "queued": 0}
-                last_error = f"station unreachable: {e}"
+            status, unreachable = feed.station_status(station)
+            if unreachable:
+                last_error = unreachable
             seen = (status["source"], status["current"] if status["source"] == "requests" else "", status["queued"])
             if seen != last_seen:
                 log.info("station: source=%s current=%s queued=%s remaining=%.0fs",
@@ -156,7 +156,7 @@ def main() -> None:
                         log.warning("pad %s failed: %s", pad[1], e)
             if any(c["type"] == "break" for c in reply["commands"]):
                 log.info("command: play a bumper now")
-                start_break(random.choice(["id", "goof"]))
+                start_break(random.choice(["id", "goof"]), soma_only=False)
             soma = soma_np.last
             soma_age = time.time() - soma["since"] if soma else None
             kind = sched.due(status, time.monotonic(), soma_age)
@@ -175,9 +175,15 @@ def main() -> None:
                     item = action[1]
                     song = cfg.media_dir / "ready" / f"{item['id']}.mp3"
                     voice = cfg.media_dir / "voice" / f"{item['id']}.mp3"
+                    try:
+                        song_s = mix.duration(song)
+                        voice_s = mix.duration(voice) if voice.exists() else 0.0
+                    except Exception as e:   # a missing or broken file: fail this one, never block the line behind it
+                        log.warning("push %s failed, marking it failed: %s", item["id"], e)
+                        api.result({"id": item["id"], "status": "failed", "error": f"Song file unreadable: {e}"[:300]})
+                        continue
                     station.push({"id": item["id"], "title": item["title"], "artist": item["artist"],
-                                  "songS": mix.duration(song),
-                                  "voiceS": mix.duration(voice) if voice.exists() else 0.0})
+                                  "songS": song_s, "voiceS": voice_s})
                     pushed.append(item["id"])
                     log.info("pushed %s: %s - %s (station was source=%s remaining=%.0fs)", item["id"],
                              item["artist"], item["title"], status["source"], status["remaining"])

@@ -42,3 +42,23 @@ def test_wants_next_only_when_it_would_push():
     assert wants_next(IDLE) is True
     assert wants_next({**IDLE, "queued": 1}) is False
     assert wants_next({"source": "requests", "current": "r0", "remaining": 90.0, "queued": 0}) is True
+
+
+def test_a_double_skip_skips_once_and_clear_goes_first():
+    # Skip tapped twice, or Skip plus deleting the next song, must not skip into a song being cleared
+    playing = {"source": "requests", "current": "r1", "remaining": 50.0, "queued": 1}
+    cmds = [{"id": 1, "type": "skip"}, {"id": 2, "type": "skip"}, {"id": 3, "type": "clear"}]
+    assert decide(playing, reply(None, cmds)) == [("clear",), ("skip",)]
+
+
+def test_an_unreachable_station_reads_as_silence_with_the_reason():
+    import httpx
+    from mattyfm.feed import station_status
+
+    class DeadPi:
+        def status(self):
+            raise httpx.ConnectError("no route to host")
+
+    status, error = station_status(DeadPi())
+    assert status == {"source": "silence", "current": "", "remaining": -1.0, "queued": 0}
+    assert "no route to host" in error

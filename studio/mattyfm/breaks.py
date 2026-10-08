@@ -49,8 +49,10 @@ class Scheduler:
                 return kind
         return None
 
-    def done(self, now: float) -> None:
-        self.turn += 1
+    def done(self, now: float, kind: str | None = None) -> None:
+        # the next turn follows the kind that actually played, so a skipped back-announce
+        # doesn't make the station ID come round twice in a row
+        self.turn = (ROTATION.index(kind) if kind in ROTATION else self.turn) + 1
         self.last = now
 
 

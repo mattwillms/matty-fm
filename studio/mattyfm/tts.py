@@ -35,6 +35,13 @@ def _eleven(text: str, tone: str, http: httpx.Client) -> bytes:
     return resp.content
 
 
+def looks_like_audio(data: bytes | None) -> bool:
+    """MP3 (ID3 tag or frame sync), WAV or Ogg; a JSON error or an HTML page is not."""
+    if not data or len(data) < 4:
+        return False
+    return data[:3] == b"ID3" or (data[0] == 0xFF and data[1] & 0xE0 == 0xE0) or data[:4] in (b"RIFF", b"OggS")
+
+
 def speak(text: str, tone: str, dest: Path, *, http: httpx.Client,
           aura: Callable[[str], bytes], assets: Path, names: dict[str, str]) -> str:
     spoken = respell(text, names)
@@ -42,10 +49,10 @@ def speak(text: str, tone: str, dest: Path, *, http: httpx.Client,
                          ("aura", lambda: aura(spoken))):
         try:
             audio = make()
-            if audio:
+            if looks_like_audio(audio):
                 dest.write_bytes(audio)
                 return engine
-        except (httpx.HTTPError, KeyError):
+        except Exception:   # an outage or an odd reply: the next voice, then the generic clip
             continue
     shutil.copyfile(assets / f"generic-{tone}.mp3", dest)
     return "generic"

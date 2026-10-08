@@ -26,9 +26,11 @@ class PiLink:
         """bumper {url, voiceS}: played over the fade to SomaFM when nothing is queued."""
         self._post("/skip", {"bumper": bumper} if bumper else None)
 
-    def voice(self, url: str, voice_s: float) -> bool:
-        """A DJ break over whatever is on air (SomaFM). False if the console is busy."""
-        r = self.http.post(f"{self.base}/voice", json={"url": url, "voiceS": voice_s}, headers=self.headers)
+    def voice(self, url: str, voice_s: float, soma_only: bool = False) -> bool:
+        """A DJ break over whatever is on air. soma_only (scheduled breaks): only over settled
+        SomaFM with nothing queued. False if the console declined."""
+        r = self.http.post(f"{self.base}/voice", json={"url": url, "voiceS": voice_s, "somaOnly": soma_only},
+                           headers=self.headers)
         return r.status_code == 200
 
     def fx(self, url: str) -> None:

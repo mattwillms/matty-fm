@@ -1,5 +1,6 @@
 """Find a requested song on YouTube, download it once, cache it by song key."""
 
+import hashlib
 import json
 import logging
 import re
@@ -146,18 +147,30 @@ def yt_download(video_id: str, dest: Path) -> None:
     Path(f"{tmp}.mp3").rename(dest)
 
 
+def cache_name(key: str) -> str:
+    """A safe file name for a song key: the key itself when it is a usable name, otherwise a hash
+    (a key with no letters, like "|" for an all-Japanese request, or one too long for the disk)."""
+    if key.strip("| ") and len(key.encode()) <= 150 and "/" not in key:
+        return key
+    return "k-" + hashlib.sha1(key.encode()).hexdigest()
+
+
 def get_song(item: dict, cache_dir: Path,
              search: Callable[[str], list[Candidate]] | None = yt_search,
              download: Callable[[str, Path], None] | list | None = yt_download,
-             tries: int = MAX_TRIES) -> SongFile:
+             tries: int = MAX_TRIES, verify: Callable[[Path], bool] | None = None) -> SongFile:
     cache_dir.mkdir(parents=True, exist_ok=True)
     key = item["songKey"]
-    path, meta = cache_dir / f"{key}.mp3", cache_dir / f"{key}.json"
+    path, meta = cache_dir / f"{cache_name(key)}.mp3", cache_dir / f"{cache_name(key)}.json"
     # A tagged version ("Live From …", "Remastered") plays the cached original if there is one.
     for k in dict.fromkeys((key, base_key(item["artist"], item["title"]))):
-        hit_path, hit_meta = cache_dir / f"{k}.mp3", cache_dir / f"{k}.json"
+        hit_path, hit_meta = cache_dir / f"{cache_name(k)}.mp3", cache_dir / f"{cache_name(k)}.json"
         if hit_path.exists() and hit_meta.exists():
-            m = json.loads(hit_meta.read_text())
+            try:
+                m = json.loads(hit_meta.read_text())
+            except ValueError:   # a half-written or corrupt entry is a miss, not a crash
+                log.warning("cache: %s has unreadable metadata; fetching again", k)
+                continue
             if k != key:
                 log.info("cache: %s plays the cached %s", key, k)
             return SongFile(hit_path, float(m["confidence"]), m["video_id"], m.get("title", ""), m.get("channel", ""))
@@ -178,9 +191,14 @@ def get_song(item: dict, cache_dir: Path,
     for dl, best, confidence in attempts:
         try:
             dl(best.id, path)
-        except (subprocess.SubprocessError, SongNotFound) as e:   # blocked, unavailable: try the next
+        except Exception as e:   # blocked, unavailable, a bad reply: try the next
             reasons.append(f"{best.id}: {_reason(e) if isinstance(e, subprocess.SubprocessError) else e}")
             log.warning("download %s failed: %s", best.id, reasons[-1])
+            continue
+        if verify is not None and not verify(path):   # bytes that aren't audio never reach the cache
+            path.unlink(missing_ok=True)
+            reasons.append(f"{best.id}: download was not playable audio")
+            log.warning("download %s failed: not playable audio", best.id)
             continue
         meta.write_text(json.dumps({"confidence": confidence, "video_id": best.id,
                                     "title": best.title, "channel": best.channel}))

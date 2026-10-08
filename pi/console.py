@@ -26,6 +26,7 @@ Logs: journalctl -u mattyfm-pi (every push, transition, level ramp, stall, exit)
 
 import fcntl
 import json
+import math
 import random
 import re
 import subprocess
@@ -49,12 +50,21 @@ RESTORE_S = 1.0         # back to full over this after the DJ ends
 DEAD_AFTER_S = 1.0      # a deck that stopped this long after starting is treated as ended
 TICK_S = 0.1
 SOMA_STALL_S = 4.0
+SOMA_DOWN_S = 6.0       # SomaFM must be gone this long before the backup takes over (a reconnect is ~2 s)
+SOMA_BACK_S = 10.0      # and back this long before the backup hands over to it again
 CHUNK = 4096
 PIPE_BYTES = 4096
 F_SETPIPE_SZ = 1031
 USER_AGENT = "OrrFM-Pi/1.0 (personal listener; mpg123)"
 CONTROLS = {"soma": "SomaVol", "deckA": "DeckAVol", "deckB": "DeckBVol", "dj": "DjVol"}
 DECKS = ("deckA", "deckB")
+
+
+def seconds(v) -> float:
+    """A duration from the studio: a real, finite, non-negative number of seconds, or ValueError."""
+    if isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v < 0:
+        raise ValueError(f"not a duration: {v!r}")
+    return float(v)
 
 
 def log(msg: str) -> None:
@@ -110,12 +120,29 @@ class Engine:
         self.transition_until = 0.0
         self.backup: list = []
         self.backup_i = 0
+        self.soma_down_since: float | None = None
+        self.soma_up_since: float | None = None
 
     def soma_up(self) -> bool:   # replaced at runtime by the SomaFM reader's health
         return True
 
+    # SomaFM health with hysteresis: a short blip must not cause two transitions
+    def _soma_watch(self, now: float) -> None:
+        if self.soma_up():
+            self.soma_down_since, self.soma_up_since = None, self.soma_up_since or now
+        else:
+            self.soma_up_since, self.soma_down_since = None, self.soma_down_since or now
+
+    def _soma_out(self) -> bool:
+        return self.soma_down_since is not None and self.clock() - self.soma_down_since >= SOMA_DOWN_S
+
+    def _soma_back(self) -> bool:
+        return self.soma_up_since is not None and self.clock() - self.soma_up_since >= SOMA_BACK_S
+
     # ----- commands from the studio -----
     def push(self, item: dict) -> None:
+        for k in ("songS", "voiceS"):   # a NaN or a string here would make every tick raise
+            seconds(item.get(k, 0.0))
         with self.lock:
             self.queued = item
             self.log(f"push {item['id']}: {item.get('artist')} - {item.get('title')} "
@@ -143,16 +170,27 @@ class Engine:
             else:
                 self._to_soma(PLAIN_FADE_S)
 
-    def voice_break(self, url: str, voice_s: float) -> bool:
+    def voice_break(self, url: str, voice_s: float, soma_only: bool = False) -> bool:
         """DJ over whatever is on air (SomaFM, a request, a backup song): dip, talk, restore.
-        During a transition it waits until the transition is done."""
+        During a transition it waits until the transition is done. soma_only (scheduled breaks,
+        which may name the SomaFM song): declined unless SomaFM is on air, settled, nothing queued.
+        Declined too when a song is too close to its end for the break to finish first."""
+        voice_s = seconds(voice_s)
         with self.lock:
             now = self.clock()
+            ch, it = self.on_air
+            if soma_only and (ch != "soma" or self.queued or now < self.transition_until or self.pending_break):
+                self.log("voice break declined: not on settled SomaFM")
+                return False
+            if ch in DECKS and it and not self.pending_play:
+                left = it.get("songS", 0) - (now - self.started_at.get(ch, now))
+                if left < DUCK_S + voice_s + RESTORE_S + DOWN_S:
+                    self.log(f"voice break declined: {left:.0f}s of the song left")
+                    return False
             if now < self.transition_until:
                 self.pending_break = (url, voice_s)
                 self.log(f"voice break waits for the transition ({self.transition_until - now:.1f}s)")
                 return True
-            ch, it = self.on_air
             control = CONTROLS[ch]
             level = self.mixer.level[control]
             back_at = now + DUCK_S + voice_s
@@ -208,6 +246,8 @@ class Engine:
         self.mixer.set(CONTROLS[to_ch], 0)
         if to_ch in DECKS:
             self.pending_play = (to_ch, self._url("ready", to_item), in_start)
+        elif self.pending_play:   # skipped before it started: never start it at volume 0
+            self.pending_play = None
         self.pending_dj = (voice_url, now + LEAD_PAD_S) if voice_url else None
         if from_ch in DECKS:
             self.pending_stop.append((from_ch, now + down_s + 0.2))
@@ -224,7 +264,7 @@ class Engine:
         self._transition(self._free_deck(), item, voice, item.get("voiceS", 0.0))
 
     def _to_soma(self, fade_s: float) -> None:
-        if not self.soma_up() and self.backup:
+        if self._soma_out() and self.backup:
             self._to_backup()
             return
         self._transition("soma", None, None, 0.0, down_s=fade_s, up_s=SOMA_UP_S)
@@ -242,6 +282,7 @@ class Engine:
     def tick(self) -> None:
         with self.lock:
             now = self.clock()
+            self._soma_watch(now)
             current: dict[str, int] = {}
             for control, start, end, t0, dur in self.ramps:
                 if now >= t0 or control not in current:   # a later-starting ramp waits its turn
@@ -274,7 +315,7 @@ class Engine:
             if ch == "soma":
                 if self.queued:
                     self._to_request()
-                elif not self.soma_up() and self.backup:
+                elif self._soma_out() and self.backup:
                     self.log("SomaFM down: backup playlist")
                     self._to_backup()
                 return
@@ -288,7 +329,7 @@ class Engine:
             if it.get("backup"):
                 if self.queued:
                     self._to_request()
-                elif self.soma_up():
+                elif self._soma_back():
                     self._transition("soma", None, None, 0.0, up_s=SOMA_UP_S)
                 elif dead or remaining <= PLAIN_FADE_S:
                     self._to_backup()
@@ -425,21 +466,30 @@ def serve(engine: Engine, token: str, port: int) -> None:
         def do_POST(self):
             if not self._authorized():
                 return
-            body = json.loads(self.rfile.read(int(self.headers.get("content-length", 0)) or 0) or b"{}")
-            if self.path == "/push":
-                engine.push(body)
-            elif self.path == "/skip":
-                b = body.get("bumper")
-                engine.skip((engine.resolve(b["url"]), float(b["voiceS"])) if b else None)
-            elif self.path == "/voice":
-                if not engine.voice_break(engine.resolve(body["url"]), float(body["voiceS"])):
-                    return self._reply(409, {"error": "busy"})
-            elif self.path == "/clear":
-                engine.clear()
-            elif self.path == "/fx":
-                engine.fx(body["url"])
-            else:
-                return self._reply(404, {})
+            try:
+                length = min(int(self.headers.get("content-length", 0) or 0), 65536)
+                body = json.loads(self.rfile.read(length) or b"{}")
+                if not isinstance(body, dict):
+                    raise ValueError("body must be a JSON object")
+                if self.path == "/push":
+                    if not isinstance(body.get("id"), str):
+                        raise ValueError("push needs an id")
+                    engine.push(body)
+                elif self.path == "/skip":
+                    b = body.get("bumper")
+                    engine.skip((engine.resolve(str(b["url"])), seconds(b["voiceS"])) if b else None)
+                elif self.path == "/voice":
+                    if not engine.voice_break(engine.resolve(str(body["url"])), body["voiceS"],
+                                              soma_only=body.get("somaOnly") is True):
+                        return self._reply(409, {"error": "busy"})
+                elif self.path == "/clear":
+                    engine.clear()
+                elif self.path == "/fx":
+                    engine.fx(str(body["url"]))
+                else:
+                    return self._reply(404, {})
+            except (ValueError, KeyError, TypeError) as e:   # a bad request is answered, never left hanging
+                return self._reply(400, {"error": f"bad request: {e}"[:200]})
             self._reply(200, engine.status())
 
         def log_message(self, *args):   # status polls every 3 s: keep the journal readable
@@ -470,8 +520,14 @@ def main(conf_path: str) -> None:
         mixer.set(control, pct)
     log("console ready: SomaVol 100, DeckAVol 0, DeckBVol 0, DjVol 100, FxVol 100")
     last = time.monotonic()
+    backup_retry = time.monotonic() + 60
     while True:
         time.sleep(TICK_S)
+        if not engine.backup and time.monotonic() >= backup_retry:   # the file server was down at boot
+            backup_retry = time.monotonic() + 60
+            entries = load_backup(conf["FILES_URL"])
+            with engine.lock:
+                engine.backup = entries
         if not threads_healthy(threads):
             log(f"thread(s) died: {[t.name for t in threads if not t.is_alive()]}; exiting for restart")
             sys.exit(1)

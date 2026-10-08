@@ -32,7 +32,7 @@ def test_voice_break_and_skip_bumper():
     pi = PiLink("http://pi:8042", "tok", httpx.Client(transport=httpx.MockTransport(handler)))
     assert pi.voice("breaks/id1.mp3", 3.2) is True
     pi.skip(bumper={"url": "breaks/skip1.mp3", "voiceS": 1.5})
-    assert seen == [("/voice", {"url": "breaks/id1.mp3", "voiceS": 3.2}),
+    assert seen == [("/voice", {"url": "breaks/id1.mp3", "voiceS": 3.2, "somaOnly": False}),
                     ("/skip", {"bumper": {"url": "breaks/skip1.mp3", "voiceS": 1.5}})]
 
 
@@ -46,3 +46,12 @@ def test_pad_asks_the_console_to_play_a_sound():
     pi = PiLink("http://pi:8042", "tok", httpx.Client(transport=httpx.MockTransport(handler)))
     pi.fx("breaks/pad-3.mp3")
     assert seen == [("/fx", {"url": "breaks/pad-3.mp3"})]
+
+
+def test_scheduled_breaks_ask_for_soma_only_and_learn_when_declined():
+    def handler(r):
+        return httpx.Response(409 if json.loads(r.content)["somaOnly"] else 200, json={})
+
+    pi = PiLink("http://pi:8042", "tok", httpx.Client(transport=httpx.MockTransport(handler)))
+    assert pi.voice("breaks/live-1.mp3", 5.0, soma_only=True) is False
+    assert pi.voice("breaks/id1.mp3", 3.0) is True

@@ -24,12 +24,12 @@ class FakeClient:
 def test_parses_json_reply():
     reply = json.dumps({"ok": True, "tone": "sweet", "script": "For Linda and Bob, forty years strong."})
     line = djline.write_line(item(), FakeClient(reply))
-    assert line == djline.DJLine(True, "sweet", "For Linda and Bob, forty years strong.", False)
+    assert line == djline.DJLine(True, "sweet", "For Linda and Bob, forty years strong. Here's Earth, Wind & Fire with September.", False)
 
 
 def test_reply_wrapped_in_prose_still_parses():
     reply = 'Sure!\n{"ok": true, "tone": "funny", "script": "Plaid pants alert."}\n'
-    assert djline.write_line(item(), FakeClient(reply)).script == "Plaid pants alert."
+    assert djline.write_line(item(), FakeClient(reply)).script == "Plaid pants alert. Here's Earth, Wind & Fire with September."
 
 
 def test_refusal_and_errors_fall_back_to_template():
@@ -94,7 +94,7 @@ def test_filter_and_voice_see_the_same_text():
         assert djline.write_line(item(), FakeClient(reply)).fallback, script
     reply = json.dumps({"ok": True, "tone": "sweet", "script": "For Tía Rosa — ¡Azúcar!"})
     line = djline.write_line(item(), FakeClient(reply))
-    assert line.script == "For Tia Rosa - Azucar!" and line.script.isascii()
+    assert line.script == "For Tia Rosa - Azucar! Here's Earth, Wind & Fire with September." and line.script.isascii()
 
 
 def test_fullwidth_brackets_cannot_close_the_tag():
@@ -134,3 +134,39 @@ def test_backannounce_line_ends_with_the_new_song():
 def test_backannounce_falls_back_to_a_plain_id():
     line = djline.backannounce(None, {"artist": "America", "title": "Ventura Highway"}, FakeClient(exc=TimeoutError()))
     assert line.fallback and line.script.endswith("America with Ventura Highway.")
+
+
+def test_ordinary_words_that_contain_a_rude_stem_are_fine():
+    for ok in ("Fagan", "Scunthorpe", "Matsushita", "snigger", "What's New Pussycat", "Dickens", "Shitake Sam"):
+        assert not djline.is_offensive(ok), ok
+
+
+def test_rude_words_and_compounds_are_still_caught():
+    for bad in ("Shithead Steve", "bullshit", "f u c k", "F.U.C.K", "fucking", "bitches", "motherfucker", "dumbass shit"):
+        assert djline.is_offensive(bad), bad
+
+
+def test_cyrillic_and_greek_names_are_spelled_out_not_dropped():
+    assert djline.speech_text("Ольга") == "Olga"
+    assert djline.speech_text("Νίκος") == "Nikos"
+
+
+def test_template_never_says_here_s_with_nothing():
+    it = item()
+    it["title"], it["artist"] = "🎉🎉", "💃"
+    script = djline.template(it).script
+    assert " with ." not in script and "here's  " not in script and djline.STATION in script
+
+
+def test_a_missing_script_is_never_read_out_as_none():
+    for data in ({"ok": True, "tone": "funny", "script": None}, {"ok": True, "tone": "funny"}):
+        line = djline.write_line(item(), FakeClient(json.dumps(data)))
+        assert line.fallback and "None" not in line.script
+
+
+def test_the_line_always_ends_by_naming_the_song():
+    reply = json.dumps({"ok": True, "tone": "sweet", "script": "Aunt Linda says happy anniversary, Bob!"})
+    line = djline.write_line(item(), FakeClient(reply))
+    assert "September" in line.script and line.script.rstrip(".!").endswith("September")
+    reply = json.dumps({"ok": True, "tone": "sweet", "script": "For Bob, here's Earth, Wind and Fire with September."})
+    assert djline.write_line(item(), FakeClient(reply)).script.count("September") == 1

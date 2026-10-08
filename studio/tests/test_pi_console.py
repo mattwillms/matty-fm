@@ -153,12 +153,12 @@ def test_soma_down_plays_backup_and_returns_when_it_is_back():
     eng.backup = ["http://ws:8040/backup/a.mp3"]
     up = {"v": False}
     eng.soma_up = lambda: up["v"]
-    run(eng, clock, 2.5)
+    run(eng, clock, console.SOMA_DOWN_S + console.DOWN_S + console.GAP_S + 0.5)   # an outage, not a reconnect; then the fade
     assert any(u.endswith("/backup/a.mp3") for _, u in players.started)
     run(eng, clock, 4)
     assert eng.status()["source"] == "backup"
     up["v"] = True
-    run(eng, clock, 6)
+    run(eng, clock, console.SOMA_BACK_S + 6)
     assert mixer.level["SomaVol"] == 100 and eng.status()["source"] == "soma"
 
 
@@ -176,7 +176,7 @@ def test_backup_paths_resolve_against_the_file_server():
     eng, clock, players, mixer = make()
     eng.backup = [{"url": "backup/a.mp3", "songS": 100.0}]
     eng.soma_up = lambda: False
-    run(eng, clock, 2.5)
+    run(eng, clock, console.SOMA_DOWN_S + console.DOWN_S + console.GAP_S + 0.5)
     assert ("deckA", "http://ws:8040/backup/a.mp3") in players.started
 
 
@@ -244,3 +244,83 @@ def test_a_pad_plays_on_its_own_channel_over_everything():
     assert players.started[-1] == ("fx", "http://ws:8040/breaks/pad-2.mp3")
     run(eng, clock, 5)
     assert eng.status()["current"] == "r1"            # the transition finished as normal
+
+
+def test_a_short_soma_blip_does_not_flip_to_the_backup():
+    eng, clock, players, mixer = make()
+    eng.backup = ["http://ws:8040/backup/a.mp3"]
+    up = {"v": True}
+    eng.soma_up = lambda: up["v"]
+    run(eng, clock, 2)
+    up["v"] = False
+    run(eng, clock, 2)                        # a reconnect: the stream is back within 2 s
+    up["v"] = True
+    run(eng, clock, 10)
+    assert not any("backup" in u for _, u in players.started)
+    assert eng.status()["source"] == "soma"
+
+
+def test_backup_waits_for_soma_to_be_steady_before_going_back():
+    eng, clock, players, mixer = make()
+    eng.backup = [{"url": "backup/a.mp3", "songS": 300.0}]
+    up = {"v": False}
+    eng.soma_up = lambda: up["v"]
+    run(eng, clock, console.SOMA_DOWN_S + 1)
+    assert eng.status()["source"] == "backup"
+    up["v"] = True
+    run(eng, clock, 3)
+    assert eng.status()["source"] == "backup"           # a few seconds of SomaFM is not enough
+    run(eng, clock, console.SOMA_BACK_S + console.SOMA_UP_S + 1)
+    assert eng.status()["source"] == "soma"
+
+
+def test_skip_as_a_song_starts_leaves_no_deck_playing_silently():
+    eng, clock, players, mixer = make()
+    eng.push(item("r1", voice_s=3.0))
+    eng.tick()
+    run(eng, clock, 0.1)                      # the song has not started playing yet
+    eng.skip()
+    run(eng, clock, 6)
+    assert not players.running("deckA")
+
+
+def test_a_soma_only_break_is_declined_over_a_request():
+    eng, clock, players, mixer = make()
+    eng.push(item("r1", voice_s=2.0))
+    eng.tick()
+    run(eng, clock, 10)
+    assert eng.voice_break("http://ws:8040/breaks/live-1.mp3", 4.0, soma_only=True) is False
+    run(eng, clock, 1)
+    assert ("dj", "http://ws:8040/breaks/live-1.mp3") not in players.started
+
+
+def test_a_soma_only_break_is_declined_during_a_transition_or_with_a_song_queued():
+    eng, clock, players, mixer = make()
+    eng.push(item("r1", voice_s=4.0))
+    eng.tick()
+    run(eng, clock, 0.6)
+    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 3.0, soma_only=True) is False
+    eng2, clock2, players2, mixer2 = make()
+    eng2.queued = item("r2")
+    assert eng2.voice_break("http://ws:8040/breaks/id1.mp3", 3.0, soma_only=True) is False
+
+
+def test_a_break_too_close_to_the_song_end_is_declined():
+    eng, clock, players, mixer = make()
+    eng.push(item("r1", song_s=30.0, voice_s=2.0))
+    eng.tick()
+    run(eng, clock, 30 - 4)                    # 4 s of song left, minus the 1.9 s it took to start
+    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 3.0) is False
+
+
+def test_nonsense_numbers_are_refused_not_left_to_jam_the_console():
+    import math
+    import pytest
+    eng, clock, players, mixer = make()
+    for bad in (float("nan"), -5.0, float("inf"), "200"):
+        with pytest.raises(ValueError):
+            eng.push(item("r1", song_s=bad))
+        with pytest.raises(ValueError):
+            eng.voice_break("http://ws:8040/breaks/id1.mp3", bad)
+    run(eng, clock, 3)                         # still ticking
+    assert eng.status()["source"] == "soma" and not math.isnan(mixer.level["SomaVol"])

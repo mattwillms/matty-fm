@@ -157,3 +157,39 @@ def test_tribute_and_sound_alike_uploads_are_penalised():
     styled = c("Garth Brooks - Friends in Low Places (In the Style of) (Official Audio)", channel="Some Uploader", duration=258)
     for bad in (tribute, styled):
         assert songs.score(bad, "Friends in Low Places", "Garth Brooks", 258) < songs.score(original, "Friends in Low Places", "Garth Brooks", 258) - 20
+
+
+ITEM_DQ = {"songKey": "abba|dancing queen", "title": "Dancing Queen", "artist": "ABBA", "durationMs": 231000}
+
+
+def test_corrupt_cache_metadata_is_a_miss_not_a_crash(tmp_path):
+    (tmp_path / "abba|dancing queen.mp3").write_bytes(b"ID3")
+    (tmp_path / "abba|dancing queen.json").write_text("{not json")
+    cands = [c("Dancing Queen", channel="ABBA - Topic", duration=231, id="topic")]
+    got = songs.get_song(ITEM_DQ, tmp_path, search=lambda q: cands, download=lambda v, d: d.write_bytes(b"ID3"))
+    assert got.video_id == "topic"
+
+
+def test_any_downloader_error_moves_on_to_the_fallback(tmp_path):
+    cands = [c("Dancing Queen", channel="ABBA - Topic", duration=231, id="topic")]
+
+    def broken(video_id, dest):
+        raise ValueError("Apify answered with HTML")
+
+    got = songs.get_song(ITEM_DQ, tmp_path, search=lambda q: cands,
+                         download=[broken, lambda v, d: d.write_bytes(b"ID3")])
+    assert got.video_id == "topic"
+
+
+def test_a_download_that_is_not_audio_is_never_cached(tmp_path):
+    cands = [c("Dancing Queen", channel="ABBA - Topic", duration=231, id="a"),
+             c("Dancing Queen", channel="ABBA - Topic", duration=231, id="b")]
+
+    def dl(video_id, dest):
+        dest.write_bytes(b"<html>blocked</html>" if video_id == "a" else b"ID3 real audio")
+
+    got = songs.get_song(ITEM_DQ, tmp_path, search=lambda q: cands, download=dl,
+                         verify=lambda p: p.read_bytes().startswith(b"ID3"))
+    assert got.video_id == "b"
+    import json
+    assert json.loads((tmp_path / "abba|dancing queen.json").read_text())["video_id"] == "b"

@@ -72,3 +72,40 @@ def test_wrong_length_lowers_confidence_and_says_why(tmp_path, monkeypatch):
 def test_unknown_length_is_said_plainly(tmp_path, monkeypatch):
     r = _ready(tmp_path, monkeypatch, 296.0, None, channel="Toto - Topic")
     assert "official" in r["matchNote"] and "not checked" in r["matchNote"]
+
+
+def test_a_search_timeout_fails_the_request_instead_of_looping(tmp_path, monkeypatch):
+    import httpx
+
+    def timeout(item, cache, **k):
+        raise httpx.ConnectTimeout("youtube timed out")
+
+    monkeypatch.setattr(prepare.songs, "get_song", timeout)
+    r = prepare.prepare(ITEM, deps(tmp_path))
+    assert r["status"] == "failed" and "timed out" in r["error"]
+
+
+def test_a_song_file_ffmpeg_cannot_read_is_dropped_from_the_cache(tmp_path, monkeypatch):
+    cached, meta = tmp_path / "abba|sos.mp3", tmp_path / "abba|sos.json"
+    cached.write_bytes(b"junk"); meta.write_text("{}")
+    monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache, **k: SongFile(cached, 77.0, "v"))
+    monkeypatch.setattr(prepare.djline, "write_line", lambda item, c: DJLine(True, "funny", "x", False))
+    monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: "eleven")
+
+    def broken(*a, **k):
+        raise RuntimeError("ffmpeg: Invalid data found when processing input")
+
+    monkeypatch.setattr(prepare.mix, "prepare_files", broken)
+    r = prepare.prepare(ITEM, deps(tmp_path))
+    assert r["status"] == "failed" and "Invalid data" in r["error"]
+    assert not cached.exists() and not meta.exists()   # a retry downloads it fresh
+
+
+def test_a_voice_failure_keeps_the_cached_song(tmp_path, monkeypatch):
+    cached = tmp_path / "abba|sos.mp3"
+    cached.write_bytes(b"ID3")
+    monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache, **k: SongFile(cached, 77.0, "v"))
+    monkeypatch.setattr(prepare.djline, "write_line", lambda item, c: DJLine(True, "funny", "x", False))
+    monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("tts down")))
+    assert prepare.prepare(ITEM, deps(tmp_path))["status"] == "failed"
+    assert cached.exists()

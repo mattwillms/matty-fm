@@ -41,3 +41,11 @@ def test_falls_back_to_aura_then_generic(tmp_path, monkeypatch):
     assert tts.speak("hi", "funny", tmp_path / "g.mp3", http=down, aura=aura_down,
                      assets=tmp_path, names={}) == "generic"
     assert (tmp_path / "g.mp3").read_bytes() == b"ID3generic"
+
+
+def test_a_voice_that_is_not_audio_falls_through_to_the_generic_clip(tmp_path, monkeypatch):
+    monkeypatch.setenv("ELEVENLABS_API_KEY", "k")
+    html = client(lambda req: httpx.Response(200, content=b"<html>quota page</html>"))
+    (tmp_path / "generic-funny.mp3").write_bytes(b"ID3generic")
+    assert tts.speak("hi", "funny", tmp_path / "x.mp3", http=html, aura=lambda t: b'{"error":"bad"}',
+                     assets=tmp_path, names={}) == "generic"

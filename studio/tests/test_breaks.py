@@ -74,3 +74,14 @@ def test_seconds_left_counts_down_to_the_next_break():
     s.done(now=21 * 60)
     assert s.seconds_left(now=21 * 60) == 10 * 60
     assert s.seconds_left(now=99 * 60) == 0
+
+
+def test_without_back_announces_ids_and_goofs_alternate():
+    s = make()
+    kinds = []
+    for minute in range(10, 200, 10):
+        k = s.due(SOMA, now=minute * 60, soma_age=400)   # never at the start of a SomaFM song
+        if k:
+            kinds.append(k)
+            s.done(now=minute * 60, kind=k)
+    assert all(a != b for a, b in zip(kinds, kinds[1:])), kinds
