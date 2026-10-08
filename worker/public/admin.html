@@ -54,8 +54,8 @@
   .timer .when { font-weight: 700; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
   .timer .when.wait { font-size: .92rem; font-weight: 500; color: var(--faint); text-align: right; }
 
-  /* ---- sound pads ---- */
-  .pads { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }   /* minmax: columns may shrink below their longest word */
+  /* ---- sound pads: the bottom row of the on-air panel ---- */
+  .pads { margin-top: 12px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }   /* minmax: columns may shrink below their longest word */
   .pad { aspect-ratio: 1; padding: 4px; display: grid; place-content: center; justify-items: center; gap: 2px; border-radius: 12px;
          background: var(--raise); box-shadow: inset 0 -3px 0 #0004; transition: box-shadow .15s, background .15s, transform .08s; }
   .pad .ico { font-size: 1.7rem; line-height: 1; }
@@ -65,6 +65,7 @@
   /* ---- interval slider ---- */
   .slider-row { padding: 12px 0 4px; border-top: 1px solid var(--line); }
   .slider-row .what { font-weight: 700; }
+  .slider-row .why { color: var(--faint); font-size: .88rem; line-height: 1.3; }
   .slider-row output { color: var(--gold); }
   /* one thumb width (26px) on every browser, so the tick numbers can sit under its centre */
   input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 30px; margin: 10px 0 0; padding: 0; border: 0; box-shadow: none; background: transparent; cursor: pointer; }
@@ -93,9 +94,30 @@
   button.ghost { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--muted); }
   button.danger { background: transparent; box-shadow: inset 0 0 0 1.5px #7a3a30; color: var(--bad); }
 
+  /* ---- segmented switch, filter chips, groups ---- */
+  .seg { display: flex; gap: 4px; background: var(--bg); padding: 4px; border-radius: 12px; margin-bottom: 12px; }
+  .seg .segb { flex: 1; background: transparent; color: var(--muted); border-radius: 9px; padding: 10px 6px; font-size: .95rem; }
+  .seg .segb[aria-pressed="true"] { background: var(--raise); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
+  .h2row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+  .h2row h2 { margin: 0; }
+  .chips { display: flex; gap: 6px; }
+  .chip { height: 34px; padding: 0 12px; border-radius: 999px; font-size: .85rem; font-weight: 600; background: transparent;
+          color: var(--muted); box-shadow: inset 0 0 0 1.5px var(--line); }
+  .chip[aria-pressed="true"] { background: var(--raise); color: var(--gold); box-shadow: inset 0 0 0 1.5px var(--gold); }
+  .more { width: 100%; margin-top: 8px; background: transparent; color: var(--gold); box-shadow: inset 0 0 0 1.5px var(--line); font-size: .92rem; }
+  .group { margin: 18px 0 2px; color: var(--gold); font-weight: 700; font-size: .95rem; }
+  .group:first-of-type { margin-top: 0; }
+  .what.sub, .h2row.sub { font-weight: 700; padding: 10px 0 0; border-top: 1px solid var(--line); margin-bottom: 2px; }
+  .h2row.sub { align-items: center; }
+  #coolBox .why, #mutedBox .why { color: var(--faint); font-size: .88rem; line-height: 1.3; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  @media (max-width: 420px) { .two { grid-template-columns: 1fr; } }
+  .chipstat { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px; border-radius: 999px; font-weight: 700;
+              font-size: .8rem; background: #8a5a1a33; color: var(--gold); box-shadow: inset 0 0 0 1.5px #8a5a1a; }
+
   /* ---- switches ---- */
   .switch-row { display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--line); }
-  .switch-row:first-of-type { border-top: 0; padding-top: 0; }
+  .group + .switch-row { border-top: 0; }
   .switch-row .what { font-weight: 700; }
   .switch-row .why { color: var(--faint); font-size: .88rem; line-height: 1.3; }
   .toggle { position: relative; width: 52px; height: 30px; padding: 0; border-radius: 999px; background: var(--line); flex: none; }
@@ -164,20 +186,30 @@
       <button class="primary" id="skip">Skip this song</button>
       <button id="bumper">Play a bumper</button>
     </div>
-    <div class="timer"><span class="what">Next bumper</span><span class="when" id="nextBumper">–</span></div>
+    <div class="timer"><span class="what" id="nextWhat">Next bumper</span><span class="when" id="nextBumper">–</span></div>
+    <div class="pads" id="pads" aria-label="Sound pads"></div>
   </section>
 
-
-  <section aria-label="Announcement">
-    <h2>Make an announcement</h2>
-    <textarea id="annText" maxlength="400" rows="3" aria-label="Announcement"></textarea>
-    <div class="ann-row"><span class="empty">The DJ reads yours as soon as it's recorded, over whatever is playing.</span>
-      <button class="primary" id="annSend" type="button">Announce</button></div>
-  </section>
-
-  <section aria-label="Sound pads">
-    <h2>Sound pads</h2>
-    <div class="pads" id="pads"></div>
+  <section aria-label="Put on air">
+    <h2>Put on air</h2>
+    <div class="seg" role="group" aria-label="What are you adding?">
+      <button type="button" class="segb" data-mode="announce" aria-pressed="true">Announcement</button>
+      <button type="button" class="segb" data-mode="song" aria-pressed="false">Song for someone</button>
+    </div>
+    <div id="modeAnnounce">
+      <textarea id="annText" maxlength="400" rows="3" aria-label="Announcement" placeholder="Fish is ready by the barn"></textarea>
+      <div class="ann-row"><span class="empty">Read as soon as it's recorded, over whatever is playing.</span>
+        <button class="primary" id="annSend" type="button">Announce</button></div>
+    </div>
+    <div id="modeSong" hidden>
+      <input id="aq" type="search" placeholder="Search for a song" autocomplete="off" aria-label="Search for a song">
+      <div class="results" id="aresults"></div>
+      <div class="two">
+        <div><label for="aname">Their name</label><input id="aname" maxlength="40" placeholder="the family"></div>
+        <div><label for="amsg">Message (optional)</label><input id="amsg" maxlength="280"></div>
+      </div>
+      <div class="add-row"><button class="primary" id="addBtn" disabled>Pick a song first</button></div>
+    </div>
   </section>
 
   <section aria-label="Up next">
@@ -185,30 +217,41 @@
     <div id="up"></div>
   </section>
 
-  <section id="mutedBox" hidden aria-label="Muted phones">
-    <h2>Muted phones</h2>
-    <div id="muted"></div>
-  </section>
-
   <section class="history" aria-label="Played">
-    <h2>Played<span class="count" id="histCount"></span></h2>
+    <div class="h2row"><h2>Played<span class="count" id="histCount"></span></h2>
+      <div class="chips" role="group" aria-label="Show">
+        <button type="button" class="chip" data-f="all" aria-pressed="true">All</button>
+        <button type="button" class="chip" data-f="song" aria-pressed="false">Songs</button>
+        <button type="button" class="chip" data-f="talk" aria-pressed="false">Talk</button>
+      </div></div>
     <div id="history"></div>
   </section>
 
-  <section aria-label="Add a request">
-    <h2>Add a request for someone</h2>
-    <input id="aq" type="search" placeholder="Search for a song" autocomplete="off" aria-label="Search for a song">
-    <div class="results" id="aresults"></div>
-    <label for="aname">Their name</label><input id="aname" maxlength="40">
-    <label for="amsg">Message for the DJ (optional)</label><input id="amsg" maxlength="280">
-    <div class="add-row"><button class="primary" id="addBtn" disabled>Pick a song first</button></div>
-  </section>
-
-  <section aria-label="Station switches">
+  <section aria-label="Station settings">
     <h2>Station</h2>
+    <p class="group">Guests</p>
     <div class="switch-row">
-      <div><div class="what">Requests open</div><div class="why">Turn off for last call: guests can't add songs; the line still plays out.</div></div>
+      <div><div class="what">Requests open</div><div class="why">Off for last call: guests can't add songs or messages; the line still plays out.</div></div>
       <button class="toggle" role="switch" id="accepting" aria-label="Requests open"></button>
+    </div>
+    <div class="switch-row">
+      <div><div class="what">Free play</div><div class="why">No limits per phone: any number of songs, jokes and urgent announcements. Off: 2 songs (then none until both play), 1 message waiting, 1 urgent an hour.</div></div>
+      <button class="toggle warn" role="switch" id="freePlay" aria-label="Free play"></button>
+    </div>
+    <div id="coolBox" hidden>
+      <div class="h2row sub"><div class="what">Waiting for their songs to play</div>
+        <button class="sm ghost" id="releaseAll" type="button">Release all</button></div>
+      <div class="why">Both picks used: they can choose again once both have played. Release gives a phone two fresh picks now.</div>
+      <div id="cool"></div>
+    </div>
+    <div id="mutedBox" hidden>
+      <div class="what sub">Muted phones</div>
+      <div id="muted"></div>
+    </div>
+    <p class="group">Music</p>
+    <div class="switch-row">
+      <div><div class="what">Family mode</div><div class="why">Clean songs only and a family-friendly DJ. Off: explicit songs allowed and the DJ goes PG-13.</div></div>
+      <button class="toggle" role="switch" id="familyMode" aria-label="Family mode"></button>
     </div>
     <div class="switch-row">
       <div><div class="what">Stop after this song</div><div class="why">Back to SomaFM when the current request ends.</div></div>
@@ -220,7 +263,7 @@
     </div>
     <div class="slider-row">
       <div class="what">Bumper every <output id="breakEveryOut" for="breakEvery">10</output> min</div>
-      <div class="why">How often the DJ cuts in over SomaFM. A request resets the clock.</div>
+      <div class="why">Station IDs, goofs and back-announces over SomaFM, timed to the start of a song. Guests' jokes run on their own 5-minute clock.</div>
       <input type="range" id="breakEvery" min="5" max="30" step="5" value="10" aria-label="Minutes between bumpers">
       <div class="ticks" aria-hidden="true"><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
     </div>
@@ -254,7 +297,7 @@ async function call(path, body) {
   return r.json();
 }
 const DONE = { announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
-  mute: "Phone muted", unmute: "Phone unmuted", settings: "Updated", break: "Bumper coming up" };
+  mute: "Phone muted", unmute: "Phone unmuted", release: "Released: they can pick two more", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
   return busy(btn, async () => {
@@ -288,7 +331,19 @@ function renderStatus() {
   $("status").replaceChildren(
     dotted(ok ? "var(--ok)" : "var(--bad)", ok ? "Studio OK" : age == null ? "Studio offline" : `Studio silent ${age}s`),
     dotted(src[1], src[0]),
-    ...(h.error ? [dotted("var(--gold)", h.error)] : []));
+    ...(h.error ? [dotted("var(--gold)", h.error)] : []),
+    ...modeChips());
+}
+
+// Anything not the party's normal running is flagged at the top, so a switch left on is never forgotten.
+function modeChips() {
+  const s = state.settings, out = [];
+  if (s.freePlay) out.push(el("span", "chipstat", "Free play"));
+  if (s.familyMode === false) out.push(el("span", "chipstat", "PG-13"));
+  if (!s.accepting) out.push(el("span", "chipstat", "Requests closed"));
+  if (s.somaOnly) out.push(el("span", "chipstat", "SomaFM only"));
+  else if (s.stopAfterCurrent) out.push(el("span", "chipstat", "Stopping after this song"));
+  return out;
 }
 
 function renderNow() {
@@ -313,7 +368,7 @@ function renderNow() {
     } else if (state.health.lastDj) {
       const serverNow = state.serverNow ? state.serverNow + (Date.now() - state.loadedAt) : Date.now();   // not the phone's clock
       const d = state.health.lastDj, mins = Math.max(0, Math.round((serverNow - d.at) / 60000));
-      const kind = { backannounce: "back-announce", id: "station ID", goof: "goof", joke: "a guest's joke", announcement: "announcement" }[d.kind] || d.kind;
+      const kind = { backannounce: "back-announce", return: "back to SomaFM", id: "station ID", goof: "goof", joke: "a guest's joke", announcement: "announcement" }[d.kind] || d.kind;
       extra.push(quote(`Last on the mic, ${mins ? mins + " min ago" : "just now"} (${kind})`, d.text));
     }
     $("now").replaceChildren(box, ...extra);
@@ -346,6 +401,8 @@ function renderSwitches() {
   set("accepting", s.accepting, "accepting");
   set("stopAfterCurrent", s.stopAfterCurrent, "stopAfterCurrent");
   set("somaOnly", s.somaOnly, "somaOnly");
+  set("freePlay", s.freePlay, "freePlay");
+  set("familyMode", s.familyMode, "familyMode");
   const r = $("breakEvery");
   if (!sliding) { r.value = String(s.breakEveryMin ?? 10); showEvery(r); }
 }
@@ -364,12 +421,14 @@ for (const ev of ["pointercancel", "pointerup", "touchend", "blur"])   // a tap 
 // The studio reports seconds to the next bumper on each beat; count down locally between beats.
 function renderTimer() {
   const out = $("nextBumper"), h = state && state.health;
+  const jokeWaits = (state?.jokes || []).some((j) => ["ready"].includes(j.status) && !j.urgent);
+  $("nextWhat").textContent = jokeWaits ? "Next joke" : "Next bumper";   // a recorded joke runs on its own 5-minute clock
   const wait = (text) => { out.textContent = text; out.className = "when wait"; };
   if (!h || h.nextBreakS == null || h.ageS == null || h.ageS > 60) return wait("Studio not reporting");
   if (h.source === "requests") return wait(`${state.settings.breakEveryMin ?? 10} min after the requests end`);
   if (h.source !== "soma") return wait("Waits for SomaFM");
   const left = Math.max(0, Math.round(h.nextBreakS - h.ageS - (Date.now() - state.loadedAt) / 1000));   // server age, not this phone's clock
-  if (!left) return wait(h.queued ? "Due: waits for the queue" : "Due now");
+  if (!left) return wait(h.queued ? "Due: waits for the queue" : h.breakHold ? "Due: at the next song's intro" : "Due now");
   out.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
   out.className = "when";
 }
@@ -409,7 +468,7 @@ function itemBlock(it, lead, tools, detailButtons, showTags) {
 
 // One look for every row: an icon for what it is, a title, a line under it, a status tag; tap for details.
 const ICON = { song: "🎵", skipped: "⏭️", failed: "⚠️", removed: "🗑️", joke: "🎤", announcement: "📣",
-               id: "📻", goof: "🎭", backannounce: "🎙️", skip: "💿" };
+               id: "📻", goof: "🎭", backannounce: "🎙️", return: "🔙", skip: "💿" };
 const icon = (k) => { const b = el("span", "ico", ICON[k] || "•"); b.setAttribute("aria-hidden", "true"); return b; };
 const JOKE = { pending: ["Waiting", ""], preparing: ["Being written up", "warn"], ready: ["Recorded, up next", "ok"],
                played: ["Told on air", ""], rejected: ["DJ passed", "bad"], failed: ["Couldn't record", "bad"], deleted: ["Removed", "bad"] };
@@ -435,7 +494,7 @@ function jokeBlock(j) {
   wrap.append(row, det);
   return wrap;
 }
-const BREAK = { id: "Station ID", goof: "Goof", backannounce: "Back-announce", skip: "Skip stinger" };
+const BREAK = { id: "Station ID", goof: "Goof", backannounce: "Back-announce", return: "Back to SomaFM", skip: "Skip stinger" };
 function breakBlock(e) {
   const wrap = el("div", "item"), row = el("div", "item-row"), meta = el("div", "meta");
   meta.append(el("div", "t", BREAK[e.kind] || e.kind), el("div", "a", e.text));
@@ -461,7 +520,20 @@ function render() {
   const lineup = [];
   songRows.forEach((row, i) => { if (jokesWaiting[i]) lineup.push(jokeBlock(jokesWaiting[i])); lineup.push(row); });
   lineup.push(...jokesWaiting.slice(songRows.length).map((j) => jokeBlock(j)));
-  $("up").replaceChildren(...(lineup.length ? lineup : [el("div", "empty", "No requests waiting.")]));
+  // a long line shows its top 10 (what's about to play) until asked for the rest
+  const shown = upAll ? lineup : lineup.slice(0, UP_SHOWN);
+  const moreUp = lineup.length > UP_SHOWN ? [btn("more", upAll ? "Show the top 10" : `Show ${lineup.length - UP_SHOWN} more`, () => { upAll = !upAll; render(); })] : [];
+  $("up").replaceChildren(...(lineup.length ? [...shown, ...moreUp] : [el("div", "empty", "Nothing waiting. Guests' songs and messages show here.")]));
+
+  const cool = state.cooldowns || [];
+  $("coolBox").hidden = !cool.length || state.settings.freePlay;   // Free play has no cooldowns to release
+  $("cool").replaceChildren(...cool.map((c) => {
+    const r = el("div", "item-row"); r.style.gridTemplateColumns = "1fr auto";
+    r.append(el("div", null, `${c.names.join(", ") || "A phone"}, ${c.waiting} still to play`),
+             btn("sm", "Release", (e) => act({ action: "release", device: c.device }, e)));
+    return r;
+  }));
+  $("releaseAll").hidden = cool.length < 2;
 
   const muted = state.muted || [];
   $("mutedBox").hidden = !muted.length;
@@ -472,15 +544,26 @@ function render() {
     return r;
   }));
 
-  // Played: everything in the order it happened, newest first; skipped, failed and passed stay put
-  const hist = state.history || [];
+  // Played: everything in the order it happened, newest first; skipped, failed and passed stay put.
+  // Filtered by kind and shown 20 at a time: by the end of the night it holds a hundred rows.
+  const hist = (state.history || []).filter((e) => histFilter === "all" || (histFilter === "song" ? e.type === "song" : e.type !== "song"));
   $("histCount").textContent = hist.length ? String(hist.length) : "";
-  $("history").replaceChildren(...(hist.length ? hist.map((e) =>
+  for (const c of document.querySelectorAll(".chip")) c.setAttribute("aria-pressed", String(c.dataset.f === histFilter));
+  const moreHist = hist.length > histShown ? [btn("more", `Show ${Math.min(20, hist.length - histShown)} more`, () => { histShown += 20; render(); })] : [];
+  $("history").replaceChildren(...(hist.length ? [...hist.slice(0, histShown).map((e) =>
       e.type === "song" ? itemBlock(e, icon(e.status === "played" ? "song" : e.status === "failed" ? "failed" : e.status),
         [btn("sm", "Resend", (ev) => act({ action: "resend", id: e.id }, ev))], muteButtons, true)
-      : e.type === "joke" ? jokeBlock(e) : breakBlock(e))
-    : [el("div", "empty", "Nothing played yet.")]));
+      : e.type === "joke" ? jokeBlock(e) : breakBlock(e)), ...moreHist]
+    : [el("div", "empty", histFilter === "all" ? "Nothing played yet." : "Nothing of this kind yet.")]));
 }
+const UP_SHOWN = 10;
+let upAll = false, histFilter = "all", histShown = 20;
+for (const c of document.querySelectorAll(".chip")) c.onclick = () => { histFilter = c.dataset.f; histShown = 20; render(); };
+// Put on air: one panel, two forms
+for (const b of document.querySelectorAll(".segb")) b.onclick = () => {
+  for (const x of document.querySelectorAll(".segb")) x.setAttribute("aria-pressed", String(x === b));
+  $("modeAnnounce").hidden = b.dataset.mode !== "announce"; $("modeSong").hidden = b.dataset.mode !== "song";
+};
 let lastGood = 0;
 let lastKey = "";
 async function load() {
@@ -488,7 +571,7 @@ async function load() {
     state = await call("/api/admin/state"); state.loadedAt = lastGood = Date.now();
     // the lists rebuild only when what they show changed: a rebuild under a finger loses the tap
     const h = state.health || {};
-    const key = JSON.stringify([state.items, state.jokes, state.history, state.muted, state.settings, state.nowPlaying,
+    const key = JSON.stringify([state.items, state.jokes, state.history, state.muted, state.cooldowns, state.settings, state.nowPlaying,
                                 h.lastDj, h.source, h.current]);
     if (key !== lastKey) { lastKey = key; render(); } else { renderStatus(); renderTimer(); }
   }
@@ -519,6 +602,7 @@ $("skip").onclick = (e) => {
   }).catch((err) => { skippedId = null; if (err.message !== "auth") toast("Couldn't reach the server", true); })
     .finally(() => load());
 };
+$("releaseAll").onclick = (e) => act({ action: "release" }, e);
 $("bumper").onclick = (e) => studioUp() ? act({ action: "break" }, e) : offline();
 
 /* add a request: search, pick, then name and message, then add */

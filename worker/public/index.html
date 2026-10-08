@@ -158,6 +158,25 @@
   .jokes .js.prep::before { background: var(--gold); }
   .jokes .js.up::before, .jokes .js.playing::before { background: #9DBF5A; box-shadow: 0 0 5px #9DBF5A88; }
   .jokes .js.bad::before { background: var(--bad); }
+  /* your picks and what you may send next: two record slots and one plain sentence */
+  .h2row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
+  .h2row h2 { margin: 0; }
+  .slots { display: flex; gap: 6px; flex: none; }
+  .slots i { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px #6b4a32;
+             background: radial-gradient(circle, #6b4a32 0 2px, transparent 2.5px); transition: background .25s, box-shadow .25s; }
+  .slots i.used { box-shadow: none; background: radial-gradient(circle, var(--cream) 0 2px, var(--orange) 2.5px 5px, #1f140e 5.5px 6.5px, #3a2617 7px 100%); }
+  .slots.locked i.used { background: radial-gradient(circle, var(--cream) 0 2px, var(--gold) 2.5px 5px, #1f140e 5.5px 6.5px, #3a2617 7px 100%); }
+  .allow { margin: -4px 0 12px; color: var(--cream-dim); font-size: .95rem; line-height: 1.35; }
+  .allow b { color: var(--cream); font-weight: 600; }
+  .song .side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+  .again { width: 40px; height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: transparent;
+           color: var(--gold); box-shadow: inset 0 0 0 2px #6b4a32; }
+  .again svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  .again[aria-disabled="true"] { color: #8a6f52; opacity: .7; cursor: default; }
+  .again.spent { color: #8a6f52; box-shadow: inset 0 0 0 2px #4a3324; cursor: default; }
+  .again.spent:active, .again[aria-disabled="true"]:active { transform: none; }
+  .earlier { display: block; margin: 8px 0 0; font-size: .92rem; }
+  .pick:disabled { opacity: .5; cursor: default; }
   .song .cancel { background: none; border: 0; padding: 12px 0 8px; min-height: 44px; margin: 0; font: inherit; font-size: .8rem; color: var(--cream-dim);
                   text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
   .song .cancel.armed { color: var(--bad); font-weight: 700; }
@@ -414,7 +433,9 @@
   </section>
 
   <section class="panel" id="find">
-    <h2>Request a song</h2>
+    <div class="h2row"><h2>Request a song</h2>
+      <span class="slots" id="slots" role="img" aria-label="Song picks"><i></i><i></i></span></div>
+    <p class="allow" id="songAllow" hidden></p>
     <input id="q" type="search" placeholder="Song or artist" autocomplete="off" aria-label="Search for a song or artist">
     <ul id="results"></ul>
     <p class="hint">Can't find it? <button class="link" id="freeBtn" type="button">Type it in</button></p>
@@ -435,18 +456,20 @@
     <p id="formErr" class="hint" style="color:var(--bad)"></p>
   </section>
 
-  <section class="panel" id="mineBox" hidden><h2>Your requests</h2><ul id="mine"></ul></section>
+  <section class="panel" id="mineBox" hidden><h2>Your requests</h2><ul id="mine"></ul>
+    <button class="link earlier" id="earlier" type="button" hidden></button></section>
 
   <section class="panel" id="jokeBox">
     <h2>Jokes and announcements</h2>
     <p class="hint" style="margin-top:6px">The DJ reads them on air between songs.</p>
+    <p class="allow" id="msgAllow" hidden></p>
     <div class="seg" role="group" aria-label="What are you sending?">
       <button type="button" class="segb" data-kind="joke" aria-pressed="true">Joke</button>
       <button type="button" class="segb" data-kind="announcement" aria-pressed="false">Announcement</button>
     </div>
     <label for="joke" id="jokeLabel">Your joke</label><textarea id="joke" maxlength="400"></textarea>
     <label class="check" id="urgentRow" hidden><input type="checkbox" id="urgent">
-      <span>Urgent: read it as soon as it's ready <small>(one an hour)</small></span></label>
+      <span>Urgent: read it as soon as it's ready <small id="urgentNote">(one an hour)</small></span></label>
     <label for="jname">Your name</label><input id="jname" maxlength="40" autocomplete="given-name">
     <div class="row"><button id="jsend" type="button">Send to the DJ</button></div>
     <p id="jokeErr" class="hint" style="color:var(--bad)"></p>
@@ -506,7 +529,7 @@ function shoutout(line, np) {
   return s ? s + "." : "";
 }
 let lcdKey = "";
-const SCROLL_PX_S = 55;   // the title's scroll speed; the request screen runs at half that
+const SCROLL_PX_S = 55;   // the message line's scroll speed; the title, artist and name run at half that
 // Scrolling lines are moved by one frame loop, not a repeating CSS/Web animation: iPhone Safari
 // blanked the text for a frame each time such an animation started its next loop.
 const scrollers = new Map();   // track element -> { dist (px, unscaled), holdMs, moveMs, t0 }
@@ -544,7 +567,7 @@ function lcd(np) {
   if (key === lcdKey) return;   // unchanged: leave the scroll running where it is
   lcdKey = key;
   setLine("lcdName", name, false, SCROLL_PX_S * 0.5);
-  setLine("lcdMsg", msg, true, SCROLL_PX_S * 0.5);
+  setLine("lcdMsg", msg, true, SCROLL_PX_S);
 }
 
 // The hen spins like a record while a request plays; when SomaFM returns it finishes
@@ -879,7 +902,7 @@ function tickClock() {
   const on = endAt > 0, v = document.querySelector("#display .vfd");
   if (v && v.classList.contains("timed") !== on) {
     v.classList.toggle("timed", on);
-    if ($("vfdArtist") && onAir) setLine("vfdArtist", onAir.artist, false, SCROLL_PX_S, 1500);   // its room changed: measure again
+    if ($("vfdArtist") && onAir) setLine("vfdArtist", onAir.artist, false, SCROLL_PX_S * 0.5, 1500);   // its room changed: measure again
   }
   $("meter").classList.toggle("on", on || Boolean(onAir && onAir.soma));
   if (!on) return;
@@ -909,8 +932,8 @@ function showNow(np, force) {
   v.append(tl, al, rem);
   d.replaceChildren(art(np.artwork), v);
   tickClock();   // the artist line's width depends on it: set before measuring
-  setLine("vfdTitle", cleanTitle(np.title), false, SCROLL_PX_S, 1500);   // scrolls only if it doesn't fit, resting 1.5 s each loop
-  setLine("vfdArtist", np.artist, false, SCROLL_PX_S, 1500);
+  setLine("vfdTitle", cleanTitle(np.title), false, SCROLL_PX_S * 0.5, 1500);   // scrolls only if it doesn't fit, resting 1.5 s each loop
+  setLine("vfdArtist", np.artist, false, SCROLL_PX_S * 0.5, 1500);
   const song = `${np.title}|${np.artist}`;
   if (song !== lastNow) { lastNow = song; tune(song); }
 }
@@ -1009,7 +1032,7 @@ function badge(m) {
     case "ready": return [pos ? `Ready · ${pos}` : "Ready", "up"];
     case "queued": return ["Up next", "up"];
     case "playing": return ["On air", "playing"];
-    case "played": return ["Played", ""];
+    case "played": return [m.skipped ? "Skipped" : "Played", ""];
     case "failed": return ["Couldn't find it", "bad"];
     case "deleted": return ["Removed", "bad"];
     default: return [m.status, ""];
@@ -1044,6 +1067,7 @@ document.querySelectorAll(".seg .segb").forEach((b) => b.onclick = () => {
   $("jokeLabel").textContent = sendKind === "joke" ? "Your joke" : "Your announcement";
   $("urgentRow").hidden = sendKind !== "announcement";
   if (sendKind !== "announcement") $("urgent").checked = false;
+  showLimits();
 });
 $("jsend").onclick = () => busy($("jsend"), "Sending…", async () => {
   try {
@@ -1054,7 +1078,7 @@ $("jsend").onclick = () => busy($("jsend"), "Sending…", async () => {
     $("jokeErr").textContent = "";
     try { localStorage.setItem("mfm_name", $("jname").value); } catch {}
     toast(urgent ? "Sent! The DJ will read it as soon as it's ready." : "Sent! The DJ will read it between songs.");
-    $("joke").value = ""; $("urgent").checked = false; refresh();
+    $("joke").value = ""; $("urgent").checked = false; refresh();   // the next poll brings the new limits
   } catch (e) {
     const m = e.message === "gate" ? $("gate").textContent : "Didn't send. Check your connection and try again.";
     $("jokeErr").textContent = m; toast(m, true);
@@ -1081,17 +1105,95 @@ function cancelButton(m) {
   };
   return b;
 }
+// What this phone may do next, from the Worker's limits: song picks, one message waiting, urgent once an hour.
+let limits = null, limitsAt = 0, spent = [];
+const fmtWait = (sec) => sec >= 90 ? `${Math.ceil(sec / 60)} min` : `${Math.max(1, Math.round(sec))} s`;
+function songState() {
+  if (!limits || limits.freePlay) return { can: true };
+  const { active, locked } = limits.songs;
+  return { can: !locked, active, locked };
+}
+function showLimits() {
+  if (!limits) return;
+  const free = limits.freePlay, sg = limits.songs, st = songState();
+  $("slots").hidden = free;
+  $("slots").classList.toggle("locked", !st.can);
+  [...$("slots").children].forEach((i, n) => i.classList.toggle("used", n < Math.min(sg.active, sg.max) || (st.locked && n < sg.max)));
+  $("slots").setAttribute("aria-label", free ? "" : `${Math.min(sg.active, 2)} of 2 song picks used`);
+  const say = (id, html) => { $(id).hidden = !html; $(id).innerHTML = html || ""; };
+  say("songAllow", free ? "<b>Free play:</b> request as many songs as you like."
+    : st.locked ? (sg.active === 1 ? "<b>One to go.</b> Pick two more once your other song plays."
+                                   : "<b>Both picks are in.</b> Pick two more once they've played.")
+    : sg.active === 1 ? "One picked. <b>Room for one more.</b>" : "Pick up to two songs.");
+  if (!$("closed").hidden) say("songAllow", "");
+  $("q").disabled = !$("closed").hidden || !st.can;
+  $("q").placeholder = st.can ? "Song or artist" : "Your picks are in line";
+  $("freeBtn").closest("p").hidden = !$("closed").hidden || !st.can;
+  // messages
+  const left = (n) => Math.max(0, n - (Date.now() - limitsAt) / 1000);
+  const urgentWait = free ? 0 : Math.max(left(limits.urgentInS), left(limits.partyUrgentInS));
+  const urgent = sendKind === "announcement" && $("urgent").checked;
+  $("urgent").disabled = urgentWait > 0;
+  if (urgentWait > 0) $("urgent").checked = false;
+  $("urgentNote").textContent = free ? "(free play)" : urgentWait <= 0 ? "(one an hour)"
+    : left(limits.urgentInS) > 0 ? `(your next one in ${fmtWait(left(limits.urgentInS))})` : `(another just went out: try in ${fmtWait(left(limits.partyUrgentInS))})`;
+  const blocked = !free && limits.waiting && !urgent;
+  say("msgAllow", free ? "<b>Free play:</b> send as many as you like."
+    : limits.waiting ? "<b>Yours is in line.</b> Send another once the DJ has read it." : "");
+  if (!$("jsend").classList.contains("busy")) $("jsend").disabled = !accepting || blocked;
+}
+setInterval(showLimits, 10000);   // the urgent countdown
+$("urgent").addEventListener("change", showLimits);
+let accepting = true, familyMode = true;
+
+// Request again: one tap, once per song. Spent (asked twice): a circle with a slash.
+const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>';
+const ICON_SPENT = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/></svg>';
+function againButton(m) {
+  const b = el("button", "again"); b.type = "button";
+  if (!m.again && !(limits && limits.freePlay)) {
+    b.classList.add("spent"); b.innerHTML = ICON_SPENT; b.setAttribute("aria-label", "Requested twice: that's the limit for this song");
+    b.onclick = (e) => { e.stopPropagation(); toast("You've requested this one twice tonight."); };
+    return b;
+  }
+  b.innerHTML = ICON_AGAIN; b.setAttribute("aria-label", `Request ${cleanTitle(m.title)} again`);
+  if (!songState().can) b.setAttribute("aria-disabled", "true");
+  b.onclick = async (e) => {
+    e.stopPropagation();   // the row itself opens the record sleeve
+    if (!songState().can) { toast($("songAllow").textContent, true); return; }
+    let name = ""; try { name = localStorage.getItem("mfm_name") || ""; } catch {}
+    const track = { title: m.title, artist: m.artist, album: m.album || "", artwork: m.artwork || "", source: "itunes", ...(m.track || {}) };
+    if (!name) { choose(track, false); return; }   // no name yet: the usual form, already filled in
+    b.disabled = true;
+    try {
+      const r = await api("/api/request", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ track, name, message: "" }), signal: AbortSignal.timeout(15000) });
+      toast(r.ok ? (r.position ? `Requested again. You're #${r.position} in line.` : "Requested again.") : r.error, !r.ok);
+    } catch { toast("Didn't send. Check your connection and try again.", true); }
+    lastMineKey = ""; refresh();
+  };
+  return b;
+}
+let showEarlier = false;
+$("earlier").onclick = () => { showEarlier = !showEarlier; lastMineKey = ""; refresh(); };
+function isSpent(t) {
+  const key = normKey(t.artist) + "|" + normKey(baseTitle(t.title));
+  return !(limits && limits.freePlay) && spent.some((x) => normKey(x.artist) + "|" + normKey(baseTitle(x.title)) === key);
+}
+
 async function refresh() {
   if (!k) { $("gate").hidden = false; return; }
   try {
     const s = await api("/api/state", { signal: AbortSignal.timeout(8000) });   // a hung poll never piles up
     if (!s || !Array.isArray(s.upNext)) return;   // an error reply is not "requests closed": keep what's shown
     $("onbreak").hidden = !s.djOnBreak;
+    accepting = s.accepting; spent = s.spent || []; familyMode = s.familyMode !== false;
+    if (s.limits) { limits = s.limits; limitsAt = Date.now(); }
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;
     $("freeBtn").disabled = !s.accepting; $("freeBtn").closest("p").hidden = !s.accepting;
     $("jokeBox").hidden = !s.accepting && !(s.myJokes || []).length;
-    if (!$("jsend").classList.contains("busy")) $("jsend").disabled = !s.accepting;   // never mid-send
     showJokes(s.myJokes);
+    showLimits();   // after "closed" is set: picks, the search box, the Send button (never mid-send)
     showNow(s.nowPlaying);
     $("nextBox").hidden = !s.upNext.length;
     const waiting = s.waitingCount ?? s.upNext.length;
@@ -1111,8 +1213,15 @@ async function refresh() {
       }), ...((more) => more > 0 ? [el("li", "more", `…and ${more} more`)] : [])(waiting - s.upNext.slice(0, 4).filter((x) => !x.joke).length));
     }
     $("mineBox").hidden = !s.mine.length;
-    const mineKey = JSON.stringify(s.mine);
-    if (mineKey !== lastMineKey) { lastMineKey = mineKey; $("mine").replaceChildren(...s.mine.map((m) => {
+    // what's still to play first, then the last few played; the rest of the night folds away
+    const live = s.mine.filter((m) => ["pending", "preparing", "ready", "queued", "playing"].includes(m.status));
+    const done = s.mine.filter((m) => !live.includes(m));
+    const keep = Math.max(0, 3 - live.length) || 1;
+    const shown = showEarlier ? s.mine : [...live, ...done.slice(0, keep)];
+    $("earlier").hidden = done.length <= keep;
+    $("earlier").textContent = showEarlier ? "Show fewer" : `Show ${done.length - keep} earlier`;
+    const mineKey = JSON.stringify([shown, songState().can, limits?.freePlay]);
+    if (mineKey !== lastMineKey) { lastMineKey = mineKey; $("mine").replaceChildren(...shown.map((m) => {
       const [label, cls] = badge(m);
       const changed = lastBadge.has(m.id) && lastBadge.get(m.id) !== label;
       lastBadge.set(m.id, label);
@@ -1120,6 +1229,9 @@ async function refresh() {
       if (["pending", "preparing", "ready", "queued"].includes(m.status)) row.querySelector(".meta").append(cancelButton(m));
       if (m.status === "failed") row.querySelector(".a").textContent = "Try a different version, or another song";
       else if (m.artist) sleeveOnTap(row, m);   // a hidden (offensive) title has no artist: nothing to look up
+      if (m.status === "played" && m.artist) {   // the status and its "Request again" stacked on the right
+        const side = el("div", "side"); side.append(row.querySelector(".chip"), againButton(m)); row.append(side);
+      }
       return row;
     })); }
     // refresh faster while one of this phone's requests is still on its way
@@ -1154,8 +1266,11 @@ $("q").addEventListener("input", () => {
     }
     $("results").replaceChildren(...results.map((t) => {
       const b = el("button", "pick"); b.type = "button";
-      const chip = t.cached ? ["Ready now", "up"] : t.original ? ["Original", "up"] : t.cover ? ["Cover", ""] : t.explicit ? ["Explicit", "bad"] : ["", ""];
-      b.append(songRow(t, chip[0], chip[1]));
+      const used = isSpent(t), adult = familyMode && t.explicit;   // family mode: the clean version only
+      const chip = used ? ["Asked twice", ""] : adult ? ["Explicit: off tonight", "bad"] : t.cached ? ["Ready now", "up"] : t.original ? ["Original", "up"] : t.cover ? ["Cover", ""] : t.explicit ? ["Explicit", "bad"] : ["", ""];
+      const row = songRow(t, chip[0], chip[1]);
+      if (used) { const c = row.querySelector(".chip"); c.innerHTML = ICON_SPENT.replace("<svg", '<svg class="no"') + " Asked twice"; }
+      b.append(row); b.disabled = used || adult;
       b.onclick = () => choose(t, false); const li = el("li"); li.append(b); return li;
     }));
   }, 400);

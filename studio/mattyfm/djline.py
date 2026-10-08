@@ -96,6 +96,26 @@ def _rude(word: str) -> bool:
     return False
 
 
+FAMILY = True   # the admin's Family mode, set from every beat; on unless the host turns it off
+RATING = {
+    True: "- Family mode is on: keep it fine for kids and grandparents. No innuendo, no swearing, nothing "
+          "about getting drunk. A guest's message that can't be read that way is declined.",
+    False: "- Family mode is off: PG-13 is fine. Light innuendo, mild words like damn or hell, and harder "
+           "roasts are OK. Never slurs, sex acts, or anything cruel about a real person.",
+}
+
+
+def set_family(on: bool) -> None:
+    global FAMILY
+    FAMILY = bool(on)
+
+
+def rated(system: str) -> str:
+    """The prompt with tonight's rating rule, placed with the other rules (before the reply format)."""
+    rule = RATING[FAMILY]
+    return system.replace("\nReply with", f"{rule}\n\nReply with", 1) if "\nReply with" in system else f"{system}\n\n{rule}"
+
+
 def is_offensive(text: str) -> bool:
     # checked as spoken (Cyrillic spelled out) and as it looks (Cyrillic с read as Latin c)
     return _offensive(speech_text(text)) or _offensive(_fold(text, CONFUSABLE))
@@ -227,7 +247,7 @@ def write_line(item: dict, client) -> DJLine:
     try:
         msg = client.messages.create(
             model=MODEL, max_tokens=1024, output_config={"effort": "low"},
-            system=SYSTEM,
+            system=rated(SYSTEM),
             messages=[{"role": "user", "content": _request_block(item)}],
             timeout=15,
         )
@@ -295,7 +315,7 @@ def backannounce(prev: dict | None, cur: dict, client, returning: bool = False) 
             lines.append(f"previous song: {_safe(prev['title'])} by {_safe(prev['artist'])}")
     try:
         msg = client.messages.create(
-            model=MODEL, max_tokens=512, output_config={"effort": "low"}, system=BACKANNOUNCE_SYSTEM,
+            model=MODEL, max_tokens=512, output_config={"effort": "low"}, system=rated(BACKANNOUNCE_SYSTEM),
             messages=[{"role": "user", "content": "<songs>\n" + "\n".join(lines) + "\n</songs>"}], timeout=15)
         if msg.stop_reason == "refusal":
             return fallback
@@ -368,7 +388,7 @@ def joke_line(name: str, text: str, client) -> DJLine:
     who = _safe(name) or "A guest"
     try:
         msg = client.messages.create(
-            model=MODEL, max_tokens=1024, output_config={"effort": "low"}, system=JOKE_SYSTEM,
+            model=MODEL, max_tokens=1024, output_config={"effort": "low"}, system=rated(JOKE_SYSTEM),
             messages=[{"role": "user", "content": f"<joke>\nfrom: {who}\njoke: {_safe(text)}\n</joke>"}], timeout=20)
         if msg.stop_reason == "refusal":
             return DJLine(False, "funny", "", False)
@@ -421,7 +441,7 @@ def announce_line(name: str, text: str, urgent: bool, host: bool, client) -> DJL
     fallback = DJLine(True, "funny", _safe(text) if host else f"{who} wants you to know: {_safe(text)}", True)
     try:
         msg = client.messages.create(
-            model=MODEL, max_tokens=1024, output_config={"effort": "low"}, system=ANNOUNCE_SYSTEM,
+            model=MODEL, max_tokens=1024, output_config={"effort": "low"}, system=rated(ANNOUNCE_SYSTEM),
             messages=[{"role": "user", "content": "<announcement>\n" + ("" if host else f"sender: {who}\n")
                        + f"text: {_safe(text)}\n</announcement>"}], timeout=20)   # urgency is timing only: never said
         if msg.stop_reason == "refusal":

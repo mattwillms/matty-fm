@@ -337,6 +337,7 @@ def main() -> None:
             done_cmds = {c["id"] for c in reply["commands"]} | {c["id"] for c in fresh}
             reply = {**reply, "commands": fresh}
             sched.set_gap(60 * reply["settings"].get("breakEveryMin", 10))
+            djline.set_family(reply["settings"].get("familyMode", True))   # the DJ's rating: family or PG-13
             if reply["settings"]["somaOnly"] or reply["settings"]["stopAfterCurrent"]:
                 log.debug("settings: %s", reply["settings"])
             for job in reply["jobs"]:

@@ -128,3 +128,71 @@ describe("cached song list", () => {
     expect((await p.adminState()).health).not.toHaveProperty("cached");
   });
 });
+
+describe("request again", () => {
+  it("a played song can be asked for once more, then it's spent (search too)", async () => {
+    const p = stub("again-1");
+    const a = await p.submit("d1", T("Waterloo"));
+    await played(p, a.id!);
+    let mine = (await p.guestState("d1")).mine;
+    expect(mine[0]).toMatchObject({ status: "played", again: true });
+    const b = await p.submit("d1", T("Waterloo"));
+    expect(b.ok).toBe(true);
+    await played(p, b.id!);
+    const st = await p.guestState("d1");
+    expect(st.mine.every((m) => m.again === false)).toBe(true);
+    expect(st.spent).toEqual([{ title: "Waterloo", artist: "ABBA" }]);
+    const c = await p.submit("d1", T("Waterloo"));
+    expect(c.ok).toBe(false);
+    expect(c.error).toMatch(/twice tonight/);
+    expect((await p.submit("d2", T("Waterloo"))).ok).toBe(true);   // another phone still can
+  });
+
+  it("a cancelled ask doesn't count", async () => {
+    const p = stub("again-2");
+    const a = await p.submit("d1", T("Waterloo"));
+    await p.cancel("d1", a.id!);
+    const b = await p.submit("d1", T("Waterloo"));
+    await played(p, b.id!);
+    expect((await p.guestState("d1")).mine.find((m) => m.id === b.id)?.again).toBe(true);
+  });
+});
+
+describe("release", () => {
+  it("gives a waiting phone a fresh pair of slots, and lists who waits", async () => {
+    const p = stub("release-1");
+    await p.submit("d1", T("Waterloo"));
+    await p.submit("d1", T("Mamma Mia"));
+    const st = await p.adminState();
+    expect(st.cooldowns).toMatchObject([{ device: "d1", waiting: 2, names: ["Ann"] }]);
+    expect((await p.adminAction({ action: "release", device: "d1" })).ok).toBe(true);
+    expect((await p.guestState("d1")).limits.songs).toMatchObject({ active: 0, locked: false });
+    expect((await p.submit("d1", T("SOS"))).ok).toBe(true);
+    expect((await p.submit("d1", T("Fernando"))).ok).toBe(true);
+    expect((await p.submit("d1", T("Chiquitita"))).ok).toBe(false);   // the fresh pair is used: locked again
+    expect((await p.adminState()).cooldowns).toHaveLength(1);
+  });
+
+  it("release all frees every waiting phone", async () => {
+    const p = stub("release-2");
+    for (const d of ["d1", "d2"]) { await p.submit(d, T(`${d}a`)); await p.submit(d, T(`${d}b`)); }
+    expect((await p.adminState()).cooldowns).toHaveLength(2);
+    expect(await p.adminAction({ action: "release" })).toMatchObject({ ok: true, released: 2 });
+    expect((await p.adminState()).cooldowns).toHaveLength(0);
+  });
+});
+
+describe("family mode", () => {
+  it("is on by default and refuses explicit picks; off, they're allowed; the host can always add", async () => {
+    const p = stub("family-1");
+    const explicitTrack = { track: { ...T("WAP").track, explicit: true }, name: "Ann" };
+    expect((await p.guestState("d1")).familyMode).toBe(true);
+    const r = await p.submit("d1", explicitTrack);
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/Family mode/);
+    expect((await p.submit("admin", explicitTrack, true)).ok).toBe(true);
+    await p.adminAction({ action: "settings", settings: { familyMode: false } });
+    expect((await p.adminState()).settings.familyMode).toBe(false);
+    expect((await p.submit("d1", { track: { ...T("Other").track, explicit: true }, name: "Ann" })).ok).toBe(true);
+  });
+});

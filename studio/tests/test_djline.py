@@ -273,3 +273,17 @@ def test_announcements_keep_every_fact_and_say_who_they_are_from():
 def test_message_line_sends_jokes_to_the_joke_writer():
     reply = json.dumps({"ok": True, "script": "Ray sent this one in. Why? [long pause] Worms. Bold."})
     assert djline.PAUSE in djline.message_line({"kind": "joke", "name": "Ray", "text": "why? worms"}, FakeClient(reply)).script
+
+
+def test_family_mode_sets_the_djs_rating_in_every_prompt():
+    from mattyfm import djline
+    try:
+        djline.set_family(True)
+        for base in (djline.SYSTEM, djline.BACKANNOUNCE_SYSTEM, djline.JOKE_SYSTEM, djline.ANNOUNCE_SYSTEM):
+            text = djline.rated(base)
+            assert "Family mode is on" in text
+            assert text.index("Family mode is on") < text.index("Reply with")   # a rule, before the reply format
+        djline.set_family(False)
+        assert "PG-13" in djline.rated(djline.SYSTEM)
+    finally:
+        djline.set_family(True)
