@@ -63,3 +63,19 @@ describe("safeArtwork", () => {
     expect(safeArtwork(undefined)).toBe("");
   });
 });
+
+import { displayText, isOffensive } from "../src/queue";
+
+describe("guest-screen filter", () => {
+  it("catches disguised words like the studio does", () => {
+    expect(isOffensive("f u c k this")).toBe(true);
+    expect(isOffensive("sh!t")).toBe(true);
+    expect(isOffensive("ｆｕｃｋ")).toBe(true);
+    expect(isOffensive("Uncle Dick")).toBe(false);
+    expect(isOffensive("Dancing Queen")).toBe(false);
+  });
+  it("replaces offensive guest text on shared screens", () => {
+    expect(displayText("Shithead Steve", "a guest")).toBe("a guest");
+    expect(displayText("Grandma June", "a guest")).toBe("Grandma June");
+  });
+});

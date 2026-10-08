@@ -1,6 +1,6 @@
 // The one Durable Object ("party"): queue, settings, studio beats, admin actions.
 import { DurableObject } from "cloudflare:workers";
-import { clean, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, type Waiting } from "./queue";
+import { clean, displayText, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, type Waiting } from "./queue";
 import type { Track } from "./search";
 
 const WAITING = "('pending','preparing','ready','queued')";
@@ -96,9 +96,10 @@ export class Party extends DurableObject<Env> {
     return this.all("SELECT device,name,message FROM requesters WHERE item_id=? ORDER BY id", id);
   }
   private pub(i: Row) {
-    const names = [...new Set(this.requesters(String(i.id)).map((r) => String(r.name)))];
-    return { id: String(i.id), title: String(i.title), artist: String(i.artist),
-             artwork: String(i.artwork ?? ""), names: namesPhrase(names) };
+    const names = [...new Set(this.requesters(String(i.id)).map((r) => displayText(String(r.name), "a guest")))];
+    const hidden = displayText(`${i.title} ${i.artist}`, "") === "";
+    return { id: String(i.id), title: hidden ? "A request" : String(i.title),
+             artist: hidden ? "" : String(i.artist), artwork: String(i.artwork ?? ""), names: namesPhrase(names) };
   }
   private studioItem(i: Row) {
     return {

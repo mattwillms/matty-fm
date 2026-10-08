@@ -62,3 +62,32 @@ export function safeArtwork(url: unknown): string {
     return "";
   }
 }
+
+// Mirror of is_offensive() in studio/mattyfm/djline.py. Change both together.
+const DENY_STEMS = ["fuck", "shit", "cunt", "bitch", "whore", "slut", "retard", "nigg", "fag", "pussy"];
+const LOOKALIKE: Record<string, string> = { "!": "i", "1": "i", "|": "i", "3": "e", "0": "o", "@": "a", $: "s", "5": "s", "4": "a", "*": "u" };
+
+export function isOffensive(text: string): boolean {
+  const folded = String(text ?? "").normalize("NFKC").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const words: string[] = [];
+  let run = "";
+  for (const raw of folded.split(/\s+/)) {
+    const token = [...raw].map((c) => LOOKALIKE[c] ?? c).join("").replace(/[^a-z.]/g, "");
+    if (token.replace(/\./g, "").length === 1) {
+      run += token.replace(/\./g, "");
+      continue;
+    }
+    if (run) {
+      words.push(run);
+      run = "";
+    }
+    words.push(token.replace(/\./g, ""));
+  }
+  if (run) words.push(run);
+  return words.some((w) => DENY_STEMS.some((s) => w.includes(s)));
+}
+
+/** Guest-typed text shown on every guest's phone: replaced when offensive (the owner still sees it). */
+export function displayText(text: string, replacement: string): string {
+  return isOffensive(text) ? replacement : text;
+}
