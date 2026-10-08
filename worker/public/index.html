@@ -90,7 +90,9 @@
                background: radial-gradient(circle, #fff 0 15%, #ffd27acc 30%, #ff7a1a00 70%); }
   .glass { position: relative; border-radius: var(--glass-r); cursor: pointer; background: var(--glass); padding: 12px 14px;
            box-shadow: inset 0 3px 10px #000, 0 1px 0 #fff8; }
-  .glass:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+  /* the radio is hardware: no focus ring or tap flash on anything on it (the glass, screws, dial) */
+  .cabinet, .cabinet * { -webkit-tap-highlight-color: transparent; }
+  .cabinet :focus, .cabinet :focus-visible { outline: none; }
   .glass::after { content: ""; position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none;
                   background: linear-gradient(165deg, #ffffff14 0 22%, transparent 22%); }
   /* the art is exactly as tall as the title and artist lines together: (2.2rem + 1.6rem) × line-height 1.15 */
