@@ -1,4 +1,4 @@
-// Song search: iTunes (no explicit tracks since 2025) merged with Deezer (has them).
+// Song search. The Worker queries Deezer; guest pages add Apple results from the phone itself.
 import { songKey } from "./queue";
 
 export type Track = {
@@ -50,10 +50,8 @@ async function getJson(fetcher: typeof fetch, url: string): Promise<unknown> {
 }
 
 export async function searchAll(q: string, fetcher: typeof fetch = fetch): Promise<Track[]> {
-  const term = encodeURIComponent(q);
-  const [it, dz] = await Promise.all([
-    getJson(fetcher, `https://itunes.apple.com/search?term=${term}&media=music&entity=song&limit=10&country=US`),
-    getJson(fetcher, `https://api.deezer.com/search?q=${term}&limit=10`),
-  ]);
-  return mergeTracks(parseItunes(it), parseDeezer(dz));
+  // Apple's search is called from each guest's phone (it allows browser requests): from
+  // Cloudflare's shared addresses it answers "Rate limit exceeded" almost every time.
+  const dz = await getJson(fetcher, `https://api.deezer.com/search?q=${encodeURIComponent(q)}&limit=12`);
+  return mergeTracks([], parseDeezer(dz));
 }

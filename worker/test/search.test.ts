@@ -17,11 +17,11 @@ describe("search", () => {
     const merged = mergeTracks(parseItunes(itunes), parseDeezer(deezer));
     expect(merged.map((t) => `${t.source}:${t.title}`)).toEqual(["itunes:September", "deezer:WAP"]);
   });
-  it("survives one source failing", async () => {
-    const fetcher = async (url: string | URL | Request) =>
-      String(url).includes("itunes") ? new Response("nope", { status: 404 }) : Response.json(deezer);
-    const got = await searchAll("september", fetcher as typeof fetch);
-    expect(got.length).toBe(2);
+  it("worker search is Deezer only and survives Deezer failing", async () => {
+    const ok = (async () => Response.json(deezer)) as unknown as typeof fetch;
+    expect((await searchAll("september", ok)).map((t) => t.source)).toEqual(["deezer", "deezer"]);
+    const down = (async () => new Response("nope", { status: 503 })) as unknown as typeof fetch;
+    expect(await searchAll("september", down)).toEqual([]);
   });
   it("garbage input yields empty arrays", () => {
     expect(parseItunes(null)).toEqual([]);

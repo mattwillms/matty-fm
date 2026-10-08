@@ -134,6 +134,28 @@ function art(src) {
   if (!src) return el("div", "art", "📻");
   const img = el("img"); img.alt = ""; img.src = src; img.onerror = () => img.replaceWith(el("div", "art", "📻")); return img;
 }
+function songKeyOf(t) {
+  const n = (x) => String(x || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/\((?:[^)]*(?:remaster|version|edit|mono|stereo|feat)[^)]*)\)/g, " ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  return n(t.artist) + "|" + n(t.title);
+}
+async function appleSearch(q) {
+  // Straight from this phone: Apple allows it, and each phone has its own rate limit.
+  try {
+    const r = await fetch("https://itunes.apple.com/search?media=music&entity=song&limit=10&country=US&term=" + encodeURIComponent(q),
+                          { signal: AbortSignal.timeout(5000) });
+    const j = JSON.parse((await r.text()).trim());
+    return (j.results || []).filter((x) => x.trackName && x.artistName).map((x) => ({
+      title: x.trackName, artist: x.artistName, album: x.collectionName || "", durationMs: x.trackTimeMillis || null,
+      explicit: x.trackExplicitness === "explicit",
+      artwork: String(x.artworkUrl100 || "").replace("100x100", "200x200"), source: "itunes" }));
+  } catch { return []; }
+}
+function mergeResults(a, b) {
+  const seen = new Set(), out = [];
+  for (const t of [...a, ...b]) { const k = songKeyOf(t); if (!seen.has(k)) { seen.add(k); out.push(t); } }
+  return out.slice(0, 12);
+}
 function cleanTitle(t) {
   return String(t || "")
     .replace(/\s*[(\[][^)\]]*(remaster|version|edit|mono|stereo|mix|single|live|from)[^)\]]*[)\]]/gi, "")
@@ -219,7 +241,8 @@ $("aq").addEventListener("input", () => {
   if (text.length < 3) { $("aresults").replaceChildren(); return; }
   $("aresults").replaceChildren(el("div", "empty", "Searching…"));
   timer = setTimeout(async () => {
-    const { results } = await call("/api/admin/search?q=" + encodeURIComponent(text));
+    const [apple, worker] = await Promise.all([appleSearch(text), call("/api/admin/search?q=" + encodeURIComponent(text))]);
+    const results = mergeResults(apple, worker.results || []);
     $("aresults").replaceChildren(...(results.length ? results.slice(0, 6).map((t) => {
       const x = el("button", "pick", `${t.title} — ${t.artist}`);
       x.onclick = async (e) => { await act({ action: "add", track: t, name: $("aname").value || "the family", message: $("amsg").value }, e); $("aq").value = $("amsg").value = ""; $("aresults").replaceChildren(); };

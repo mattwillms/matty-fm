@@ -215,6 +215,28 @@ function showNow(np) {
   const key = `${np.title}|${np.artist}`;
   if (key !== lastNow) { lastNow = key; tune(key); }
 }
+function songKeyOf(t) {
+  const n = (x) => String(x || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/\((?:[^)]*(?:remaster|version|edit|mono|stereo|feat)[^)]*)\)/g, " ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+  return n(t.artist) + "|" + n(t.title);
+}
+async function appleSearch(q) {
+  // Straight from this phone: Apple allows it, and each phone has its own rate limit.
+  try {
+    const r = await fetch("https://itunes.apple.com/search?media=music&entity=song&limit=10&country=US&term=" + encodeURIComponent(q),
+                          { signal: AbortSignal.timeout(5000) });
+    const j = JSON.parse((await r.text()).trim());
+    return (j.results || []).filter((x) => x.trackName && x.artistName).map((x) => ({
+      title: x.trackName, artist: x.artistName, album: x.collectionName || "", durationMs: x.trackTimeMillis || null,
+      explicit: x.trackExplicitness === "explicit",
+      artwork: String(x.artworkUrl100 || "").replace("100x100", "200x200"), source: "itunes" }));
+  } catch { return []; }
+}
+function mergeResults(a, b) {
+  const seen = new Set(), out = [];
+  for (const t of [...a, ...b]) { const k = songKeyOf(t); if (!seen.has(k)) { seen.add(k); out.push(t); } }
+  return out.slice(0, 12);
+}
 async function api(path, opts) {
   const sep = path.includes("?") ? "&" : "?";
   const r = await fetch(path + sep + "k=" + encodeURIComponent(k), opts);
@@ -248,8 +270,10 @@ $("q").addEventListener("input", () => {
   $("results").replaceChildren(el("li", "empty", "Searching…"));
   timer = setTimeout(async () => {
     let results = [];
-    try { ({ results } = await api("/api/search?q=" + encodeURIComponent(q))); }
-    catch (e) { if (e.message !== "gate") toast("Search didn't go through. Try again.", true); return; }
+    try {
+      const [apple, worker] = await Promise.all([appleSearch(q), api("/api/search?q=" + encodeURIComponent(q))]);
+      results = mergeResults(apple, worker.results || []);
+    } catch (e) { if (e.message !== "gate") toast("Search didn't go through. Try again.", true); return; }
     if (!results.length) { $("results").replaceChildren(el("li", "empty", "No matches. Try other words, or type it in.")); return; }
     $("results").replaceChildren(...results.map((t) => {
       const b = el("button", "pick"); b.type = "button"; b.append(songRow(t, t.explicit ? "Explicit" : "", "bad"));
