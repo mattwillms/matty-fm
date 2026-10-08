@@ -82,7 +82,9 @@ def score(c: Candidate, title: str, artist: str, duration_s: float | None) -> fl
         return -100.0
     if duration_s:
         diff = abs(c.duration - duration_s)
-        s += 40 if diff <= 3 else 25 if diff <= 6 else 10 if diff <= 15 else -30
+        # a few seconds is the same recording (uploads differ by a fade or a silent tail): a 1 s
+        # edge must not outweigh "official audio" (Piano Man played the music video's mix)
+        s += 40 if diff <= 6 else 20 if diff <= 15 else -30
     if c.channel.endswith(" - Topic"):
         s += 30
     got, wanted = norm(c.title), norm(f"{title} {artist}")
@@ -96,8 +98,12 @@ def score(c: Candidate, title: str, artist: str, duration_s: float | None) -> fl
         s += 10
     if "official audio" in got:
         s += 10
-    if "official video" in got or "music video" in got:
+    if re.search(r"\bvideo\b", got) and not re.search(r"\bvideo\b", wanted):   # official/original/HD/music video: often its own mix
         s -= 10
+    # the artist's own channel ("billyjoelVEVO", "Billy Joel"), not a fan's lyrics upload
+    squash = lambda t: re.sub(r"[^a-z0-9]", "", t.lower())
+    if squash(artist) and squash(artist) in squash(c.channel):
+        s += 10
     return s
 
 

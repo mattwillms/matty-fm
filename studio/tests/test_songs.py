@@ -247,3 +247,19 @@ def test_ampersand_and_the_word_and_make_the_same_key_like_the_worker():
     assert songs.song_key("Kool & The Gang", "Celebration") == songs.song_key("Kool and the Gang", "Celebration")
     assert songs.song_key("Simon & Garfunkel", "Cecilia") == "simon garfunkel|cecilia"
     assert songs.song_key("Band", "Sandman") == "band|sandman"
+
+
+def test_the_album_audio_beats_a_music_video_a_second_closer_in_length():
+    # 2026-10-08: Piano Man played the music video's mix: catalog 336 s, video 339 s, official audio 340 s
+    cands = [c("Billy Joel - Piano Man (Official HD Video)", "billyjoelVEVO", 342, "hd"),
+             c("Billy Joel - Piano Man (Official Audio)", "billyjoelVEVO", 340, "audio"),
+             c("Billy Joel - Piano Man (Original Video)", "billyjoelVEVO", 339, "orig"),
+             c("Billy Joel - Piano Man (Lyrics)", "Billy Joel lyrics video's", 341, "lyrics")]
+    for dur in (336, 338, 340, 343):
+        assert songs.ranked(cands, "Piano Man", "Billy Joel", dur)[0][0].id == "audio", dur
+
+
+def test_the_artist_s_own_channel_beats_a_fan_lyrics_upload():
+    cands = [c("Billy Joel - She's Always a Woman (Lyrics)", "Golden Network", 201, "fan"),
+             c("Billy Joel - She's Always a Woman", "billyjoelVEVO", 202, "own")]
+    assert songs.ranked(cands, "She's Always a Woman", "Billy Joel", 200)[0][0].id == "own"

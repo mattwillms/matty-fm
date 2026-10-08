@@ -111,7 +111,9 @@ export class Party extends DurableObject<Env> {
     this.ordered().forEach((w, i) => this.sql.exec("UPDATE items SET rank=? WHERE id=?", i + 1, w.id));
   }
   private newId(): string {
-    const n = Number(this.setting("seq", "0")) + 1;
+    // A new queue (QUEUE_VERSION bump) starts from the clock, not 1: the Pi may still be playing
+    // the old queue's r1, and a new r1 would share its files and be marked played when it ends.
+    const n = Number(this.setting("seq", String(100_000 + (Math.floor(Date.now() / 1000) % 800_000) * 1000))) + 1;
     this.set("seq", String(n));
     return `r${n}`;
   }

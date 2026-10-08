@@ -410,4 +410,11 @@ describe("QA round", () => {
     expect(songKey("Simon & Garfunkel", "Cecilia")).toBe("simon garfunkel|cecilia");
     expect(songKey("Band", "Sandman")).toBe("band|sandman");   // only the whole word
   });
+  it("a new queue doesn't reuse the old queue's request ids (the Pi may still be playing one)", async () => {
+    const p = stub("fresh-ids");
+    const { id: a } = await p.submit("d1", { track: T("Lay All Your Love On Me"), name: "x" });
+    const { id: b } = await p.submit("d2", { track: T("The Name of the Game"), name: "y" });
+    expect(a).toMatch(/^r\d{6,}$/);
+    expect(Number(b!.slice(1))).toBe(Number(a!.slice(1)) + 1);
+  });
 });
