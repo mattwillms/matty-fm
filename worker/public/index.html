@@ -376,7 +376,7 @@ function shoutout(line, np) {
   return s ? s + "." : "";
 }
 let lcdKey = "";
-const SCROLL_PX_S = 55;   // the title's scroll speed; the request screen runs 20% slower
+const SCROLL_PX_S = 55;   // the title's scroll speed; the request screen runs at half that
 function setLine(id, text, always, speed = SCROLL_PX_S) {
   const track = $(id), line = track.parentElement;
   line.classList.remove("ticking");
@@ -397,8 +397,8 @@ function lcd(np) {
   const key = name + "|" + msg;
   if (key === lcdKey) return;   // unchanged: leave the scroll running where it is
   lcdKey = key;
-  setLine("lcdName", name, false, SCROLL_PX_S * 0.8);
-  setLine("lcdMsg", msg, true, SCROLL_PX_S * 0.8);
+  setLine("lcdName", name, false, SCROLL_PX_S * 0.5);
+  setLine("lcdMsg", msg, true, SCROLL_PX_S * 0.5);
 }
 
 // The hen spins like a record while a request plays; when SomaFM returns it finishes
