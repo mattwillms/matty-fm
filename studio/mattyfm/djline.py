@@ -5,7 +5,31 @@ import re
 from dataclasses import dataclass
 
 MODEL = "claude-haiku-5-5"
-DENY = re.compile(r"\b(fuck\w*|shit\w*|cunt\w*|bitch\w*|whore\w*|slut\w*|retard\w*)\b", re.I)
+# Word stems that are never spoken on air. Checked per word after undoing common
+# disguises (look-alike characters, punctuation, spaced-out letters).
+DENY_STEMS = ("fuck", "shit", "cunt", "bitch", "whore", "slut", "retard", "nigg", "fag", "pussy")
+LOOKALIKE = str.maketrans({"!": "i", "1": "i", "|": "i", "3": "e", "0": "o", "@": "a", "$": "s", "5": "s", "4": "a", "*": "u"})
+
+
+def is_offensive(text: str) -> bool:
+    words, run = [], ""
+    for raw in str(text).lower().translate(LOOKALIKE).split():
+        token = re.sub(r"[^a-z.]", "", raw)
+        if len(token.replace(".", "")) == 1:      # f u c k  -> one word
+            run += token.replace(".", "")
+            continue
+        if run:
+            words.append(run)
+            run = ""
+        words.append(token.replace(".", ""))      # f.u.c.k -> fuck
+    if run:
+        words.append(run)
+    return any(stem in w for w in words for stem in DENY_STEMS)
+
+
+def _safe(text: str) -> str:
+    """Guest text inside the prompt: no angle brackets, so it cannot close the <request> tag."""
+    return " ".join(str(text).replace("<", " ").replace(">", " ").split())
 
 SYSTEM = """You are the DJ of MattyFM, a pretend 1970s FM radio station playing at \
 a family reunion with kids and grandparents in the room. Write what the DJ says \
@@ -45,24 +69,28 @@ def names_phrase(names: list[str]) -> str:
 def _names(item: dict) -> list[str]:
     seen: list[str] = []
     for r in item.get("requesters", []):
-        if r["name"] not in seen:
-            seen.append(r["name"])
+        name = _safe(r["name"])
+        if name and name not in seen and not is_offensive(name):
+            seen.append(name)
     return seen
 
 
 def template(item: dict, ok: bool = True) -> DJLine:
-    who = names_phrase(_names(item)) or "the family"
-    script = (f"This one goes out from {who}! Here's {item['title']} by "
-              f"{item['artist']}, right here on MattyFM.")
+    who = names_phrase(_names(item)) or "a mystery guest"
+    title, artist = _safe(item["title"]), _safe(item["artist"])
+    if is_offensive(f"{title} {artist}"):
+        script = f"This one goes out from {who}! Turn it up, right here on MattyFM."
+    else:
+        script = f"This one goes out from {who}! Here's {title} by {artist}, right here on MattyFM."
     return DJLine(ok, "funny", script, True)
 
 
 def _request_block(item: dict) -> str:
-    lines = [f"song: {item['title']} by {item['artist']}"]
+    lines = [f"song: {_safe(item['title'])} by {_safe(item['artist'])}"]
     for r in item.get("requesters", []):
-        lines.append(f"requested by: {r['name']}")
+        lines.append(f"requested by: {_safe(r['name'])}")
         if r.get("message"):
-            lines.append(f"their message: {r['message']}")
+            lines.append(f"their message: {_safe(r['message'])}")
     return "<request>\n" + "\n".join(lines) + "\n</request>"
 
 
@@ -84,7 +112,7 @@ def write_line(item: dict, client) -> DJLine:
     if not isinstance(data, dict) or not data.get("ok"):
         return template(item, ok=False)
     script = " ".join(str(data.get("script", "")).split())
-    if not script or DENY.search(script) or len(script) > 400:
+    if not script or is_offensive(script) or len(script) > 400:
         return template(item)
     tone = "sweet" if data.get("tone") == "sweet" else "funny"
     return DJLine(True, tone, script, False)
