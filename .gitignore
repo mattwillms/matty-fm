@@ -1,0 +1,10 @@
+.env
+*.env
+secrets/
+node_modules/
+.wrangler/
+__pycache__/
+.venv/
+media/
+*.mp3
+!station/assets/*.mp3
