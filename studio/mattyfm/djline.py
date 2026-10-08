@@ -50,7 +50,8 @@ def is_offensive(text: str) -> bool:
 
 def _safe(text: str) -> str:
     """Guest text inside the prompt: no angle brackets, so it cannot close the <request> tag."""
-    return speech_text(str(text).replace("<", " ").replace(">", " "))
+    # Fold to ASCII FIRST: NFKC turns full-width ＜ ＞ into < >, which must then be removed.
+    return " ".join(speech_text(text).replace("<", " ").replace(">", " ").split())
 
 SYSTEM = """You are the DJ of MattyFM, a pretend 1970s FM radio station playing at \
 a family reunion with kids and grandparents in the room. Write what the DJ says \
