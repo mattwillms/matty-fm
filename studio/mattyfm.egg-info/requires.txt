@@ -1,0 +1,6 @@
+anthropic>=1.12
+httpx>=0.28
+yt-dlp[default]==2026.8.19
+
+[dev]
+pytest>=8

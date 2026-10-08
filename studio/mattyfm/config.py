@@ -12,6 +12,8 @@ def load_env(path: Path = ENV_FILE) -> None:
     """Load KEY=VALUE lines without overriding variables already set.
 
     A trailing " # note" is a comment; a "#" inside a value is kept.
+    Matching surrounding quotes are removed (values with spaces are quoted so
+    the same file also works with systemd and `set -a; . env`).
     """
     if not path.exists():
         return
@@ -20,7 +22,10 @@ def load_env(path: Path = ENV_FILE) -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
-        os.environ.setdefault(key.strip(), value.split(" #")[0].strip())
+        value = value.split(" #")[0].strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+            value = value[1:-1]
+        os.environ.setdefault(key.strip(), value)
 
 
 @dataclass(frozen=True)
