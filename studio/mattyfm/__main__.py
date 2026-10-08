@@ -71,8 +71,11 @@ def main() -> None:
                     return
                 url, seconds, text = f"breaks/{path.name}", float(joke["seconds"]), joke.get("script", "")
                 label = joke.get("kind") or "joke"   # "announcement" or "joke": shown as such on the admin page
-            elif kind == "backannounce" and soma_np.last:
-                line = djline.backannounce(soma_np.prev, soma_np.last, deps.claude)
+            elif kind in ("backannounce", "return") and soma_np.last:
+                if kind == "return":   # requests just handed back: "that was <request>, back to ..."
+                    line = djline.backannounce(last_request or None, soma_np.last, deps.claude, returning=True)
+                else:
+                    line = djline.backannounce(soma_np.prev, soma_np.last, deps.claude)
                 stamp = int(time.time())
                 raw = cfg.media_dir / "breaks" / f"live-{stamp}.raw.mp3"
                 out = cfg.media_dir / "breaks" / f"live-{stamp}.mp3"
@@ -86,7 +89,9 @@ def main() -> None:
                 except Exception:
                     log.warning("pause stretch failed for %s; playing it as made", out.name)
                 url, text, path = f"breaks/{out.name}", line.script, out
-                log.info("break back-announce via %s (%.1fs): %s", engine, seconds, text)
+                log.info("break %s via %s (%.1fs): %s", kind, engine, seconds, text)
+            elif kind == "return":   # SomaFM's song is unknown: say nothing rather than guess
+                return
             else:
                 pool_kind = kind if clips.get(kind) else next((k for k in ("id", "goof") if clips.get(k)), None)
                 if not pool_kind:
@@ -148,6 +153,10 @@ def main() -> None:
     next_joke: dict | None = None    # the oldest recorded joke, from the last beat
     joke_on: dict[str, tuple[str, int, float]] = {}   # request id -> (joke id, beat it was pushed): told when that song starts
     last_push: dict | None = None    # what the console holds queued (Skip may put a joke in front of it)
+    pushed_titles: dict[str, dict] = {}   # request id -> title and artist, for the "back to SomaFM" line
+    last_request: dict = {}          # the request last heard on air
+    cached_sent: list[str] | None = None   # the song cache list the Worker has (3 KB: not resent every beat)
+    cached_at = 0.0
     joke_on_file = cfg.media_dir / "breaks" / "joke_on.json"   # kept on disk: a restart must not tell it again
     try:
         joke_on.update({str(r): (str(v[0]), 0, float(v[2])) for r, v in json.loads(joke_on_file.read_text()).items()})
@@ -266,6 +275,8 @@ def main() -> None:
         started = time.monotonic()
         try:
             status, unreachable = feed.station_status(station)
+            if status["source"] == "requests" and status["current"] in pushed_titles:
+                last_request = pushed_titles[status["current"]]
             if unreachable:
                 last_error = unreachable
             seen = (status["source"], status["current"] if status["source"] == "requests" else "", status["queued"])
@@ -280,8 +291,13 @@ def main() -> None:
                         "wantNext": feed.wants_next(status), "soma": soma_np.get(),
                         "lastDj": dict(last_dj) or None,
                         "nextBreakS": round(sched.seconds_left(time.monotonic(), joke_ready=bool(next_joke))),
-                        "cached": sorted(p.stem for p in (cfg.media_dir / "cache").glob("*.mp3"))}
+                        "breakHold": sched.holding(time.monotonic())}   # due, waiting for SomaFM's next song
+                cached = sorted(p.stem for p in (cfg.media_dir / "cache").glob("*.mp3"))
+                if cached != cached_sent or time.monotonic() - cached_at > 600:   # only when it changes (or now and then)
+                    body["cached"] = cached
             reply = api.beat(body)
+            if "cached" in body:
+                cached_sent, cached_at = body["cached"], time.monotonic()
             beat_no += 1
             pushed = []
             # a joke rode in front of a request's intro: told once that song is on air; dropped if the
@@ -362,6 +378,7 @@ def main() -> None:
             for action in feed.decide(status, reply):
                 if action[0] == "skip":
                     log.info("command: skip")
+                    sched.skipped(time.monotonic())   # its stinger says it: no "back to SomaFM" line too
                     skip_clips = clips.get("skip") or []
                     clip = rotation.pick(skip_clips) if skip_clips else None
                     jf = joke_file(next_joke) if next_joke and next_joke["id"] not in [j for j, _, _ in joke_on.values()] else None
@@ -425,6 +442,9 @@ def main() -> None:
                                  "songS": song_s, "voiceS": voice_s}
                     station.push(last_push)
                     pushed.append(item["id"])
+                    pushed_titles[item["id"]] = {"title": item["title"], "artist": item["artist"]}
+                    if len(pushed_titles) > 50:
+                        pushed_titles.pop(next(iter(pushed_titles)))
                     log.info("pushed %s: %s - %s (station was source=%s remaining=%.0fs)", item["id"],
                              item["artist"], item["title"], status["source"], status["remaining"])
             if joke_on != joke_on_saved:   # which queued song carries which joke: survives a studio restart

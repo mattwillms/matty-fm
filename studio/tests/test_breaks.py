@@ -124,9 +124,13 @@ def test_jokes_keep_their_own_5_minute_clock_and_requests_dont_delay_them():
     assert not s.joke_due(100 + JOKE_GAP_S - 1)
     s.due(req, 200, None)                                    # a request on air...
     assert s.joke_due(100 + JOKE_GAP_S)                      # ...doesn't push the next joke back
-    assert s.due(soma, 100 + JOKE_GAP_S, None, joke_ready=True) == "joke"
-    s.joke_told(100 + JOKE_GAP_S)
-    assert s.due(soma, 100 + 2 * JOKE_GAP_S - 1, None, joke_ready=True) is None
+    t = 100 + JOKE_GAP_S
+    assert s.due(soma, t, None, joke_ready=True) is None        # requests just ended: "back to SomaFM" is owed first
+    assert s.due(soma, t + 10, None, joke_ready=True) == "return"
+    s.done(t + 10, "return")
+    assert s.due(soma, t + 70, None, joke_ready=True) == "joke"  # a minute after the last talk
+    s.joke_told(t + 70)
+    assert s.due(soma, t + 70 + JOKE_GAP_S - 1, None, joke_ready=True) is None
 
 
 def test_a_joke_isnt_crammed_right_after_another_break():
@@ -136,3 +140,67 @@ def test_a_joke_isnt_crammed_right_after_another_break():
     s.done(1000, "id")
     assert s.due(soma, 1030, None, joke_ready=True) is None   # a bumper just played
     assert s.due(soma, 1070, None, joke_ready=True) == "joke"
+
+
+SOMA_T = {"source": "soma", "current": "", "remaining": -1, "queued": 0}
+REQ_T = {"source": "requests", "current": "r1", "remaining": 100, "queued": 0}
+
+
+def test_jokes_never_move_the_bumper_clock():
+    s = breaks.Scheduler(gap_s=10 * 60, now=0)
+    s.joke_told(9 * 60 + 30)                                  # a joke 30 s before the bumper is due
+    assert s.due(SOMA_T, 10 * 60, soma_age=30) is None        # a minute's spacing after the joke...
+    assert s.due(SOMA_T, 10 * 60 + 30, soma_age=30) is not None   # ...then the bumper, on its own clock
+
+
+def test_a_due_bumper_waits_for_the_next_song_change_then_goes_anyway():
+    s = make()
+    assert s.due(SOMA, now=10 * 60, soma_age=200) is None      # mid-song: waits
+    assert s.holding(10 * 60)
+    assert s.due(SOMA, now=10 * 60 + 60, soma_age=20) is not None   # the next song's intro
+    s2 = make()
+    assert s2.due(SOMA, now=10 * 60 + breaks.BUMPER_HOLD_S - 1, soma_age=200) is None
+    assert s2.due(SOMA, now=10 * 60 + breaks.BUMPER_HOLD_S, soma_age=200) is not None   # waited long enough
+
+
+def test_a_due_joke_waits_a_minute_at_most_for_a_song_change():
+    s = make()
+    assert s.due(SOMA, now=100, soma_age=200, joke_ready=True) is None
+    assert s.due(SOMA, now=100 + breaks.JOKE_HOLD_S, soma_age=210, joke_ready=True) == "joke"
+
+
+def test_requests_ending_get_a_back_to_somafm_line():
+    s = make()
+    s.due(REQ_T, now=100, soma_age=None)
+    assert s.due(SOMA_T, now=103, soma_age=None) is None       # still fading over
+    assert s.due(SOMA_T, now=111, soma_age=None) == "return"
+    s.done(111, "return")
+    assert s.due(SOMA_T, now=120, soma_age=None) is None       # said once
+
+
+def test_no_back_to_somafm_line_after_a_skip_stinger_or_once_stale():
+    s = make()
+    s.due(REQ_T, now=100, soma_age=None)
+    s.skipped(98)
+    s.due(SOMA_T, now=101, soma_age=None)
+    assert s.due(SOMA_T, now=110, soma_age=None) != "return"
+    s2 = make()
+    s2.due(REQ_T, now=100, soma_age=None)
+    s2.due({**SOMA_T, "queued": 1}, now=101, soma_age=None)   # the next request is already on its way
+    s2.due(REQ_T, now=110, soma_age=None)
+    s2.due(SOMA_T, now=400, soma_age=None)
+    assert s2.due(SOMA_T, now=400 + breaks.RETURN_WINDOW_S[1] + 1, soma_age=None) != "return"
+
+
+def test_back_announces_take_half_the_turns_at_song_starts():
+    s = make()
+    kinds = []
+    t = 0
+    while t < 8 * 3600:
+        t += 10
+        k = s.due(SOMA, now=t, soma_age=30)
+        if k:
+            kinds.append(k)
+            s.done(now=t, kind=k)
+    assert kinds.count("backannounce") * 2 == len(kinds) or abs(kinds.count("backannounce") * 2 - len(kinds)) <= 1
+    assert all(not (a == b == "id") and not (a == b == "goof") for a, b in zip(kinds, kinds[1:]))
