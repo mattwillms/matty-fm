@@ -74,4 +74,17 @@ describe("device cookie", () => {
     expect(((await (await cancel(other)).json()) as { ok: boolean }).ok).toBe(false);
     expect(((await (await cancel(mine)).json()) as { ok: boolean }).ok).toBe(true);
   });
+  it("a joke needs the phone's signed id; the studio reports it back", async () => {
+    const ip = { "cf-connecting-ip": "198.51.100.30" };
+    const joke = (cookie: string) => SELF.fetch("https://fm.test/api/joke?k=dev", {
+      method: "POST", headers: { ...ip, cookie, "content-type": "application/json" },
+      body: JSON.stringify({ name: "Ray", text: "I used to hate facial hair, but then it grew on me." }) });
+    expect((await joke("mfm_dev=00000000-0000-4000-8000-000000000000")).status).toBe(403);
+    const cookie = ((await SELF.fetch("https://fm.test/api/state?k=dev", { headers: ip })).headers.get("set-cookie") ?? "").split(";")[0];
+    const r = await (await joke(cookie)).json() as { ok: boolean; id: string };
+    expect(r.ok).toBe(true);
+    const res = await SELF.fetch("https://fm.test/api/studio/joke", { method: "POST",
+      headers: { authorization: "Bearer devstudio", "content-type": "application/json" }, body: JSON.stringify({ id: r.id, status: "rejected" }) });
+    expect(res.status).toBe(200);
+  });
 });

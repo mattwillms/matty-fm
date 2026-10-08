@@ -132,6 +132,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
         return json({ error: "unauthorized" }, 401);
       if (path === "/api/studio/beat") return json(await party.beat(await body(req)));
       if (path === "/api/studio/result") return json(await party.result(await body(req)));
+      if (path === "/api/studio/joke") return json(await party.jokeResult(await body(req)));
       if (path === "/api/studio/tts") {
         const { text } = await body(req);
         const audio: unknown = await env.AI.run("@cf/deepgram/aura-2-en", { text: String(text).slice(0, 1000), speaker: "orion", encoding: "mp3" });
@@ -177,6 +178,13 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
       if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
         return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
       return json(await party.submit(dev.id, input, false, ip), 200, extra);
+    }
+    if (path === "/api/joke" && req.method === "POST") {   // a joke for the DJ to read on air
+      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
+      const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
+        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+      return json(await party.submitJoke(dev.id, await body(req), ip), 200, extra);
     }
     if (path === "/api/cancel" && req.method === "POST") {   // a guest takes back their own request
       if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);

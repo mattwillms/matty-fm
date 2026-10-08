@@ -113,3 +113,20 @@ def test_rotation_survives_a_missing_or_corrupt_counts_file(tmp_path):
     assert rot.pick([{"file": "a.mp3"}])["file"] == "a.mp3"
     rot.played("a.mp3")
     assert Rotation(f).counts == {"a.mp3": 1}
+
+
+def test_waiting_jokes_come_first_every_5_minutes_then_the_slider_gap():
+    from mattyfm.breaks import Scheduler, JOKE_GAP_S
+    soma = {"source": "soma", "current": "", "remaining": -1, "queued": 0}
+    s = Scheduler(gap_s=20 * 60, now=0)
+    assert s.due(soma, JOKE_GAP_S - 1, None, joke_ready=True) is None
+    assert s.due(soma, JOKE_GAP_S, None, joke_ready=True) == "joke"        # 5 min, not the slider's 20
+    s.done(JOKE_GAP_S, "joke")
+    assert s.seconds_left(JOKE_GAP_S, joke_ready=True) == JOKE_GAP_S
+    assert s.due(soma, 2 * JOKE_GAP_S, None, joke_ready=False) is None      # no jokes left: back to the slider
+    assert s.due(soma, JOKE_GAP_S + 20 * 60, None, joke_ready=False) == "id"   # the rotation didn't move for the joke
+    s2 = Scheduler(gap_s=5 * 60, now=0)
+    s2.done(0, "backannounce")
+    assert s2.due(soma, 300, None, joke_ready=True) == "joke"
+    s2.done(300, "joke")
+    assert s2.due(soma, 600, None) == "id"

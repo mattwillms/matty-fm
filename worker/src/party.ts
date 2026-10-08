@@ -1,6 +1,6 @@
 // The one Durable Object ("party"): queue, settings, studio beats, admin actions.
 import { DurableObject } from "cloudflare:workers";
-import { clean, displayText, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, visible, type Waiting } from "./queue";
+import { clean, displayText, isOffensive, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, visible, type Waiting } from "./queue";
 import type { Track } from "./search";
 
 const WAITING = "('pending','preparing','ready','queued')";
@@ -21,6 +21,8 @@ export type Beat = {
   source: string; current: string; remaining: number; queued: number;
   pushed: string[]; working: string[]; want: number; ack: number[]; error: string;
   wantNext?: boolean;   // the studio is ready to push a song right now
+  wantJokes?: number;   // jokes the studio can write and record now
+  jokesPlayed?: string[];   // jokes told on air (sent until the Worker has them; marking played twice is harmless)
   recent?: { id: string; agoS: number }[];   // requests the Pi actually started, and how long ago (it may have played them while the studio was offline)
   // SomaFM's current song (its public feed), with the studio's Apple lookup for the guests' record sleeve
   soma?: { artist: string; title: string; since: number; artwork?: string; year?: string; album?: string; apple?: string } | null;
@@ -61,6 +63,10 @@ export class Party extends DurableObject<Env> {
         name TEXT NOT NULL, message TEXT NOT NULL DEFAULT '', created_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS settings(key TEXT PRIMARY KEY, value TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS muted(device TEXT PRIMARY KEY);
+      CREATE TABLE IF NOT EXISTS jokes(
+        id TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT NOT NULL, text TEXT NOT NULL,
+        status TEXT NOT NULL, created_at INTEGER NOT NULL, lease_until INTEGER DEFAULT 0,
+        file TEXT, seconds REAL, script TEXT, played_at INTEGER, ip TEXT);
       CREATE TABLE IF NOT EXISTS commands(
         id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, done INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL);`);
@@ -215,16 +221,16 @@ export class Party extends DurableObject<Env> {
    *  requesters and messages, play history, muted phones, settings. Commands are left behind (stale). */
   async exportState() {
     const table = (t: string) => this.all(`SELECT * FROM ${t}`);
-    return { items: table("items"), requesters: table("requesters"), settings: table("settings"), muted: table("muted") };
+    return { items: table("items"), requesters: table("requesters"), settings: table("settings"), muted: table("muted"), jokes: table("jokes") };
   }
 
   /** Takes over an old queue's state, once, and only into an empty queue (ids are kept, so the
    *  console's song on air and every phone's "Your requests" still match). */
-  async importState(data: { items?: Row[]; requesters?: Row[]; settings?: Row[]; muted?: Row[] }) {
+  async importState(data: { items?: Row[]; requesters?: Row[]; settings?: Row[]; muted?: Row[]; jokes?: Row[] }) {
     if (this.one("SELECT 1 AS x FROM items LIMIT 1") || this.one("SELECT 1 AS x FROM requesters LIMIT 1"))
       return { ok: false, error: "this queue isn't empty" };
     let n = 0;
-    for (const t of ["items", "requesters", "settings", "muted"] as const) {
+    for (const t of ["items", "requesters", "settings", "muted", "jokes"] as const) {
       const cols = new Set(this.all(`PRAGMA table_info(${t})`).map((c) => String(c.name)));
       for (const row of Array.isArray(data?.[t]) ? data[t]! : []) {
         const keys = Object.keys(row).filter((k) => cols.has(k));   // only columns this schema has
@@ -239,6 +245,35 @@ export class Party extends DurableObject<Env> {
       await this.ctx.storage.setAlarm(now < PURGE_AT ? PURGE_AT : now + PURGE_AFTER_MS);
     }
     return { ok: true, rows: n };
+  }
+
+  /** A guest's joke for the DJ to read on air: written up and recorded by the studio, told as a break. */
+  async submitJoke(device: string, j: { name?: unknown; text?: unknown }, ip = "") {
+    if (!this.flags().accepting) return { ok: false, error: "The DJ isn't taking jokes right now." };
+    if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
+    const name = clean(j?.name, 40), text = clean(j?.text, 400);
+    if (!visible(name)) return { ok: false, error: "Add your name (letters, not just emoji)." };
+    if (text.replace(/[^\p{L}\p{N}]/gu, "").length < 8) return { ok: false, error: "Type out the joke." };
+    if (isOffensive(text) || isOffensive(name)) return { ok: false, error: "The DJ can't read that one on air." };
+    const waiting = Number(this.one("SELECT COUNT(*) AS n FROM jokes WHERE device=? AND status IN ('pending','preparing','ready')", device)?.n ?? 0);
+    if (waiting >= 2) return { ok: false, error: "You have 2 jokes waiting. Once one is told, send another!" };
+    const id = "j" + this.newId().slice(1);
+    this.sql.exec("INSERT INTO jokes(id,device,name,text,status,created_at,ip) VALUES(?,?,?,?, 'pending', ?, ?)", id, device, name, text, Date.now(), ip);
+    if ((await this.ctx.storage.getAlarm()) === null) {
+      const now = Date.now();
+      await this.ctx.storage.setAlarm(now < PURGE_AT ? PURGE_AT : now + PURGE_AFTER_MS);
+    }
+    return { ok: true, id };
+  }
+
+  /** The studio's answer for a joke: recorded (ready), declined by the DJ (rejected), or failed. */
+  async jokeResult(r: { id: string; status: string; file?: string; seconds?: number; script?: string }) {
+    const status = r?.status === "ready" ? "ready" : r?.status === "rejected" ? "rejected" : r?.status === "failed" ? "failed" : "";
+    if (!status) return { ok: false };
+    const secs = Number(r.seconds);
+    this.sql.exec(`UPDATE jokes SET status=?, file=?, seconds=?, script=?, lease_until=0 WHERE id=? AND status IN ('preparing','pending')`,
+      status, status === "ready" ? String(r.file ?? "") : null, Number.isFinite(secs) ? secs : null, clean(r.script ?? "", 1000), String(r.id));
+    return { ok: true };
   }
 
   /** A guest takes back their own request before it plays. A song others asked for too keeps going
@@ -286,6 +321,8 @@ export class Party extends DurableObject<Env> {
       mine: mine.map((i) => ({ ...this.pub(i), status: String(i.status),
         position: waiting.findIndex((w) => w.id === i.id) + 1 || null })),
       accepting: this.flags().accepting,
+      myJokes: this.all("SELECT id, text, status FROM jokes WHERE device=? AND status<>'deleted' ORDER BY created_at DESC LIMIT 3", device)
+        .map((j) => ({ id: String(j.id), text: String(j.text), status: String(j.status) })),
       djOnBreak: Date.now() - this.health().at > OFFLINE_MS,
     };
   }
@@ -295,7 +332,20 @@ export class Party extends DurableObject<Env> {
     const now = Date.now();
     this.set("health", JSON.stringify({ ...b, at: now }));
     for (const c of b.ack ?? []) this.sql.exec("UPDATE commands SET done=1 WHERE id=?", c);
-    for (const id of b.working ?? []) this.sql.exec("UPDATE items SET lease_until=? WHERE id=? AND status='preparing'", now + LEASE_MS, id);
+    for (const id of b.working ?? []) {
+      this.sql.exec("UPDATE items SET lease_until=? WHERE id=? AND status='preparing'", now + LEASE_MS, id);
+      this.sql.exec("UPDATE jokes SET lease_until=? WHERE id=? AND status='preparing'", now + LEASE_MS, id);
+    }
+    this.sql.exec("UPDATE jokes SET status='pending', lease_until=0 WHERE status='preparing' AND lease_until<?", now);
+    for (const id of Array.isArray(b.jokesPlayed) ? b.jokesPlayed : [])
+      this.sql.exec("UPDATE jokes SET status='played', played_at=? WHERE id=? AND status='ready'", now, String(id));
+    const jokeJobs = this.all("SELECT id, name, text FROM jokes WHERE status='pending' ORDER BY created_at LIMIT ?",
+      Math.max(0, Math.min(2, Number(b.wantJokes) || 0))).map((j) => {
+      this.sql.exec("UPDATE jokes SET status='preparing', lease_until=? WHERE id=?", now + LEASE_MS, j.id);
+      return { id: String(j.id), name: String(j.name), text: String(j.text) };
+    });
+    const nj = this.one("SELECT id, file, seconds, script FROM jokes WHERE status='ready' ORDER BY created_at LIMIT 1");
+    const nextJoke = nj ? { id: String(nj.id), file: String(nj.file), seconds: Number(nj.seconds), script: String(nj.script ?? "") } : null;
     this.sql.exec("UPDATE items SET status='pending', lease_until=0 WHERE status='preparing' AND lease_until<?", now);
     // "silence": the studio couldn't reach the Pi, so this beat says nothing about what's playing.
     // Change no song's state and hand nothing out (that marked the on-air song played and handed a
@@ -337,6 +387,8 @@ export class Party extends DurableObject<Env> {
       settings: { somaOnly: f.somaOnly, stopAfterCurrent: f.stopAfterCurrent, breakEveryMin: f.breakEveryMin },
       next: next ? this.studioItem(next) : null,
       jobs,
+      jokeJobs,
+      nextJoke,   // the oldest recorded joke: the studio plays it as the next break
     };
   }
 
@@ -440,8 +492,11 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "cutoff-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "jokes-1",          // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
+      jokes: this.all("SELECT * FROM jokes WHERE status<>'deleted' ORDER BY CASE WHEN status IN ('pending','preparing','ready') THEN 0 ELSE 1 END, created_at DESC LIMIT 20")
+        .map((j) => ({ id: String(j.id), name: String(j.name), text: String(j.text), status: String(j.status),
+                       script: String(j.script ?? ""), device: String(j.device) })),
       items: items.map((i) => ({
         id: String(i.id), title: String(i.title), artist: String(i.artist), status: String(i.status),
         confidence: i.confidence == null ? null : Number(i.confidence), djLine: i.dj_line, tone: i.tone,
@@ -469,6 +524,11 @@ export class Party extends DurableObject<Env> {
         this.command(`pad${n}`);
         return { ok: true };
       }
+      case "deleteJoke":
+        if (!this.one("SELECT 1 AS j FROM jokes WHERE id=? AND status IN ('pending','preparing','ready')", String(a.id ?? "")))
+          return { ok: false, error: "no such joke waiting" };
+        this.sql.exec("UPDATE jokes SET status='deleted' WHERE id=?", String(a.id));
+        return { ok: true };
       case "replay":   // the DJ read of the song on air, over the PA again
         if (status !== "playing") return { ok: false, error: "Only the song on air can be replayed." };
         this.command("replay", a.id!);
@@ -522,6 +582,7 @@ export class Party extends DurableObject<Env> {
         this.sql.exec(`UPDATE items SET status='deleted' WHERE status IN ('pending','preparing','ready','queued')
           AND id IN (${solo})`, a.device);
         if (inConsole) this.command("clear");   // its song was already handed to the console
+        this.sql.exec("UPDATE jokes SET status='deleted' WHERE device=? AND status IN ('pending','preparing','ready')", a.device);
         return { ok: true };
       }
       case "unmute":

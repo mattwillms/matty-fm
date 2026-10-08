@@ -58,7 +58,18 @@ def main() -> None:
 
     def run_break(kind: str, soma_only: bool) -> None:
         try:
-            if kind == "backannounce" and soma_np.last:
+            if kind == "joke":   # a guest's joke, written up and recorded when it came in
+                joke = dict(next_joke or {})
+                if not joke:
+                    return
+                path = cfg.media_dir / "breaks" / str(joke.get("file", ""))
+                if not path.is_file():   # its recording is gone: let it go rather than stall every break
+                    log.warning("joke %s has no recording; skipped", joke.get("id"))
+                    with lock:
+                        jokes_played.append(joke["id"])
+                    return
+                url, seconds, text = f"breaks/{path.name}", float(joke["seconds"]), joke.get("script", "")
+            elif kind == "backannounce" and soma_np.last:
                 line = djline.backannounce(soma_np.prev, soma_np.last, deps.claude)
                 stamp = int(time.time())
                 raw = cfg.media_dir / "breaks" / f"live-{stamp}.raw.mp3"
@@ -89,7 +100,10 @@ def main() -> None:
             text = djline.display(text)
             if station.voice(url, seconds, soma_only=soma_only, speech=speech):
                 log.info("break on air (%s): %s", kind, text)
-                if not url.startswith("breaks/live-"):   # a fresh back-announce isn't a clip in the rotation
+                if kind == "joke":
+                    with lock:
+                        jokes_played.append(joke["id"])   # sent with every beat until the Worker has it
+                elif not url.startswith("breaks/live-"):   # a fresh back-announce isn't a clip in the rotation
                     rotation.played(url.rsplit("/", 1)[-1])
                 last_dj.update({"kind": kind, "text": text, "at": int(time.time() * 1000)})
                 sched.done(time.monotonic(), kind)
@@ -115,6 +129,46 @@ def main() -> None:
     last_error = ""
 
     unsent: dict[str, dict] = {}   # finished results the Worker hasn't taken yet: re-sent every beat
+    joke_working: set[str] = set()   # guests' jokes being written up and recorded
+    jokes_played: list[str] = []     # told on air, not yet confirmed by the Worker
+    next_joke: dict | None = None    # the oldest recorded joke, from the last beat
+
+    def run_joke(job: dict) -> None:
+        """Write the joke up in the DJ's voice, record it, and hand it back as a ready break."""
+        jid = job["id"]
+        try:
+            line = djline.joke_line(job["name"], job["text"], deps.claude)
+            if not line.ok:
+                api.joke_result({"id": jid, "status": "rejected"})
+                log.info("joke %s declined by the DJ", jid)
+                return
+            raw, out = cfg.media_dir / "breaks" / f"joke-{jid}.raw.mp3", cfg.media_dir / "breaks" / f"joke-{jid}.mp3"
+            engine = tts.speak(line.script, "funny", raw, http=deps.http, aura=deps.aura,
+                               assets=cfg.media_dir / "assets", names=deps.names)
+            if engine == "generic":   # no voice could say it: the generic clip is not this joke
+                raw.unlink(missing_ok=True)
+                api.joke_result({"id": jid, "status": "failed"})
+                log.warning("joke %s: no voice could record it", jid)
+                return
+            seconds = mix.prepare_voice(raw, out, cfg.sample_rate)
+            raw.unlink(missing_ok=True)
+            try:
+                if mix.lengthen_pauses(out):   # the pause before the punchline: +0.5 s
+                    seconds = mix.duration(out)
+            except Exception:
+                log.warning("joke %s pause stretch failed; using it as made", jid)
+            api.joke_result({"id": jid, "status": "ready", "file": out.name, "seconds": round(seconds, 2),
+                             "script": djline.display(line.script)})
+            log.info("joke %s ready via %s (%.1fs): %s", jid, engine, seconds, djline.display(line.script))
+        except Exception:
+            log.exception("joke %s failed", jid)
+            try:
+                api.joke_result({"id": jid, "status": "failed"})
+            except Exception:
+                pass   # its lease lapses and it's tried again
+        finally:
+            with lock:
+                joke_working.discard(jid)
 
     def run_job(item: dict) -> None:
         nonlocal last_error
@@ -165,14 +219,23 @@ def main() -> None:
                          seen[0], seen[1] or "-", seen[2], status["remaining"])
                 last_seen = seen
             with lock:
-                body = {**status, "pushed": pushed, "working": sorted(working),
+                body = {**status, "pushed": pushed, "working": sorted(working | joke_working),
                         "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error,
+                        "wantJokes": 0 if joke_working else 1, "jokesPlayed": list(jokes_played),
                         "wantNext": feed.wants_next(status), "soma": soma_np.get(),
                         "lastDj": dict(last_dj) or None,
-                        "nextBreakS": round(sched.seconds_left(time.monotonic())),
+                        "nextBreakS": round(sched.seconds_left(time.monotonic(), joke_ready=bool(next_joke))),
                         "cached": sorted(p.stem for p in (cfg.media_dir / "cache").glob("*.mp3"))}
             reply = api.beat(body)
             pushed = []
+            with lock:   # the Worker has these now (marking played twice is harmless)
+                del jokes_played[:len(body["jokesPlayed"])]
+            next_joke = reply.get("nextJoke")
+            for j in reply.get("jokeJobs") or []:
+                log.info("joke %s claimed from %s", j["id"], j["name"])
+                with lock:
+                    joke_working.add(j["id"])
+                pool.submit(run_joke, j)
             resend()
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]
             done_cmds = {c["id"] for c in reply["commands"]} | {c["id"] for c in fresh}
@@ -206,7 +269,7 @@ def main() -> None:
                 start_break(random.choice(["id", "goof"]), soma_only=False)
             soma = soma_np.last
             soma_age = time.time() - soma["since"] if soma else None
-            kind = sched.due(status, time.monotonic(), soma_age)
+            kind = sched.due(status, time.monotonic(), soma_age, joke_ready=bool(next_joke))
             if kind:
                 start_break(kind)
             for action in feed.decide(status, reply):

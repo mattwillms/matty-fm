@@ -20,5 +20,8 @@ class WorkerAPI:
     def result(self, body: dict) -> dict:
         return self._post("/api/studio/result", body).json()
 
+    def joke_result(self, body: dict) -> dict:
+        return self._post("/api/studio/joke", body).json()
+
     def tts(self, text: str) -> bytes:
         return self._post("/api/studio/tts", {"text": text}).content

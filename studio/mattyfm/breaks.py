@@ -14,6 +14,7 @@ DEFAULT_GAP_S = 10 * 60
 MIN_GAP_S, MAX_GAP_S, STEP_S = 5 * 60, 30 * 60, 5 * 60
 BACKANNOUNCE_WINDOW_S = (10, 75)   # seconds after a SomaFM song started (its intro)
 ROTATION = ("backannounce", "id", "goof")
+JOKE_GAP_S = 5 * 60   # guests' jokes go first, one every 5 minutes, until all are told
 
 
 class Scheduler:
@@ -29,20 +30,26 @@ class Scheduler:
         stepped = round(gap_s / STEP_S) * STEP_S
         self.gap_s = min(MAX_GAP_S, max(MIN_GAP_S, stepped))
 
+    def gap(self, joke_ready: bool = False) -> float:
+        return JOKE_GAP_S if joke_ready else self.gap_s
+
     @property
     def next_due(self) -> float:
         return self.last + self.gap_s
 
-    def seconds_left(self, now: float) -> float:
-        return max(0.0, self.next_due - now)
+    def seconds_left(self, now: float, joke_ready: bool = False) -> float:
+        return max(0.0, self.last + self.gap(joke_ready) - now)
 
-    def due(self, status: dict, now: float, soma_age: float | None) -> str | None:
-        """The kind of break to play now, or None. `soma_age`: seconds since SomaFM's song began."""
+    def due(self, status: dict, now: float, soma_age: float | None, joke_ready: bool = False) -> str | None:
+        """The kind of break to play now, or None. `soma_age`: seconds since SomaFM's song began.
+        A guest's joke waiting: it goes first, on a 5-minute gap instead of the slider's."""
         if status["source"] == "requests":
             self.last = max(self.last, now)
             return None
-        if now < self.next_due or status["source"] != "soma" or status["queued"]:
+        if now < self.last + self.gap(joke_ready) or status["source"] != "soma" or status["queued"]:
             return None
+        if joke_ready:
+            return "joke"
         lo, hi = BACKANNOUNCE_WINDOW_S
         fresh_song = soma_age is not None and lo <= soma_age <= hi
         for i in range(len(ROTATION)):
@@ -54,7 +61,8 @@ class Scheduler:
     def done(self, now: float, kind: str | None = None) -> None:
         # the next turn follows the kind that actually played, so a skipped back-announce
         # doesn't make the station ID come round twice in a row
-        self.turn = (ROTATION.index(kind) if kind in ROTATION else self.turn) + 1
+        if kind != "joke":   # a joke doesn't take a turn from the station's own rotation
+            self.turn = (ROTATION.index(kind) if kind in ROTATION else self.turn) + 1
         self.last = now
 
 

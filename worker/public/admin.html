@@ -126,6 +126,10 @@
   .details .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
   .details .buttons button { white-space: normal; max-width: 100%; height: auto; min-height: 34px; overflow-wrap: anywhere; }
   .empty { color: var(--faint); }
+  .joke { padding: 12px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
+  .joke:first-child { border-top: 0; }
+  .joke .jhead { color: var(--faint); font-size: .85rem; margin-bottom: 2px; }
+  .joke .jbtns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 
   /* ---- add a request ---- */
   input { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 12px; }
@@ -173,6 +177,11 @@
   <section aria-label="Up next">
     <h2>Up next<span class="count" id="upCount"></span></h2>
     <div id="up"></div>
+  </section>
+
+  <section aria-label="Jokes">
+    <h2>Jokes<span class="count" id="jokeCount"></span></h2>
+    <div id="jokes"></div>
   </section>
 
   <section id="mutedBox" hidden aria-label="Muted phones">
@@ -243,7 +252,7 @@ async function call(path, body) {
   if (fromLink) { try { localStorage.setItem("mfm_t", token); } catch {} }   // a typo in the link never replaces a good token
   return r.json();
 }
-const DONE = { replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
+const DONE = { deleteJoke: "Joke removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
   mute: "Phone muted", unmute: "Phone unmuted", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
@@ -406,6 +415,25 @@ function render() {
     return itemBlock(it, el("span", "num", String(i + 1)), [up, down],
       (x) => [btn("sm danger", "Delete", (e) => act({ action: "delete", id: x.id }, e)), ...muteButtons(x)], true);
   }) : [el("div", "empty", "No requests waiting.")]));
+
+  // guests' jokes: waiting ones first (told one every 5 minutes, before the usual bumpers)
+  const JOKE = { pending: "Waiting", preparing: "Being written up", ready: "Recorded, up next", played: "Told on air",
+                 rejected: "DJ passed", failed: "Couldn't record" };
+  const jokes = state.jokes || [];
+  const live = jokes.filter((j) => ["pending", "preparing", "ready"].includes(j.status));
+  $("jokeCount").textContent = live.length ? String(live.length) : "";
+  $("jokes").replaceChildren(...(jokes.length ? jokes.map((j) => {
+    const box = el("div", "joke");
+    box.append(el("div", "jhead", `${j.name} · ${JOKE[j.status] || j.status}`), el("div", "jtext", j.text));
+    if (j.script) box.append(quote("The DJ says", j.script));
+    if (["pending", "preparing", "ready"].includes(j.status)) {
+      const row = el("div", "jbtns");
+      row.append(btn("sm danger", "Delete", (e) => act({ action: "deleteJoke", id: j.id }, e)),
+                 btn("sm ghost", `Mute ${j.name}'s phone`, (e) => confirm(`Mute ${j.name}'s phone? Their waiting requests and jokes are removed.`) && act({ action: "mute", device: j.device }, e)));
+      box.append(row);
+    }
+    return box;
+  }) : [el("div", "empty", "No jokes yet. Guests can send one from the request page.")]));
 
   const muted = state.muted || [];
   $("mutedBox").hidden = !muted.length;

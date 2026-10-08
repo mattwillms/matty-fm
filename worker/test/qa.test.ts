@@ -520,4 +520,46 @@ describe("QA round", () => {
     }
     expect((await p.adminState()).items.find((i) => i.id === id)!.status).toBe("played");
   });
+  it("a guest's joke goes to the studio, comes back recorded, is offered until played, then is done", async () => {
+    const p = stub("jokes");
+    const sent = await p.submitJoke("me", { name: "Uncle Ray", text: "Why did the scarecrow win an award? He was outstanding in his field." });
+    expect(sent.ok).toBe(true);
+    const r1 = await p.beat({ ...beat, wantJokes: 1 });
+    expect(r1.jokeJobs.map((j) => j.text)).toEqual(["Why did the scarecrow win an award? He was outstanding in his field."]);
+    expect((await p.guestState("me")).myJokes[0].status).toBe("preparing");
+    await p.jokeResult({ id: sent.id!, status: "ready", file: `joke-${sent.id}.mp3`, seconds: 12.5, script: "Uncle Ray sent this one in." });
+    const r2 = await p.beat(beat);
+    expect(r2.nextJoke).toEqual(expect.objectContaining({ id: sent.id, file: `joke-${sent.id}.mp3`, seconds: 12.5 }));
+    const r3 = await p.beat({ ...beat, jokesPlayed: [sent.id!] });
+    expect(r3.nextJoke).toBeNull();
+    expect((await p.guestState("me")).myJokes[0].status).toBe("played");
+    expect((await p.adminState()).jokes[0]).toEqual(expect.objectContaining({ name: "Uncle Ray", status: "played" }));
+  });
+
+  it("jokes: a declined one tells the guest; slurs, empty text, muted phones and a third waiting joke are refused", async () => {
+    const p = stub("jokes-refused");
+    const { id } = await p.submitJoke("me", { name: "Ann", text: "Knock knock. Who's there? Lettuce." });
+    await p.beat({ ...beat, wantJokes: 1 });
+    await p.jokeResult({ id: id!, status: "rejected" });
+    expect((await p.guestState("me")).myJokes[0].status).toBe("rejected");
+    expect((await p.submitJoke("me", { name: "Ann", text: "  " })).ok).toBe(false);
+    expect((await p.submitJoke("me", { name: "", text: "A real joke here" })).ok).toBe(false);
+    expect((await p.submitJoke("me", { name: "Ann", text: "you fucking idiot" })).ok).toBe(false);
+    expect((await p.submitJoke("me", { name: "Ann", text: "Joke one, a long enough one." })).ok).toBe(true);
+    expect((await p.submitJoke("me", { name: "Ann", text: "Joke two, a long enough one." })).ok).toBe(true);
+    expect((await p.submitJoke("me", { name: "Ann", text: "Joke three, a long enough one." })).ok).toBe(false);
+    await p.adminAction({ action: "mute", device: "troll" });
+    expect((await p.submitJoke("troll", { name: "T", text: "A real joke here" })).ok).toBe(false);
+  });
+
+  it("the admin can remove a joke before it's told; a lapsed lease hands it out again", async () => {
+    const p = stub("jokes-admin");
+    const { id } = await p.submitJoke("me", { name: "Ann", text: "What do you call a fish with no eyes? A fsh." });
+    await p.beat({ ...beat, wantJokes: 1 });
+    await runInDurableObject(p, async (_i: Party, state) => { state.storage.sql.exec("UPDATE jokes SET lease_until=1"); });
+    expect((await p.beat({ ...beat, wantJokes: 1 })).jokeJobs.length).toBe(1);   // the studio lost it: again
+    expect((await p.adminAction({ action: "deleteJoke", id })).ok).toBe(true);
+    await p.jokeResult({ id: id!, status: "ready", file: "j.mp3", seconds: 9, script: "x" });
+    expect((await p.beat(beat)).nextJoke).toBeNull();
+  });
 });

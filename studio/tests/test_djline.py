@@ -234,3 +234,22 @@ def test_the_dj_has_a_sassier_voice_and_may_use_one_delivery_cue():
 def test_shout_out_text_for_screens_has_no_cues(tmp_path, monkeypatch):
     from mattyfm import prepare
     assert prepare.screen_text("[smug] Bob says hi. [long pause] Here's ABBA with SOS.") == "Bob says hi. Here's ABBA with SOS."
+
+
+def test_a_guest_joke_is_written_up_with_a_pause_before_the_punchline():
+    reply = json.dumps({"ok": True, "script": "[deadpan] Uncle Ray sent this one in. Why did the scarecrow win an award? [long pause] He was outstanding in his field. I'll allow it."})
+    line = djline.joke_line("Uncle Ray", "why did the scarecrow win an award? outstanding in his field", FakeClient(reply))
+    assert line.ok and djline.PAUSE in line.script and "Uncle Ray" in line.script
+    assert "TARS" in djline.JOKE_SYSTEM and "light editing only" in djline.JOKE_SYSTEM and "Never rewrite it" in djline.JOKE_SYSTEM
+
+
+def test_a_declined_joke_and_an_unreachable_writer():
+    assert not djline.joke_line("Ann", "buy crypto now", FakeClient(json.dumps({"ok": False, "script": ""}))).ok
+
+    class Down:
+        class messages:
+            @staticmethod
+            def create(**k):
+                raise RuntimeError("down")
+    line = djline.joke_line("Ann", "Knock knock. Who's there? Lettuce. Lettuce who? Lettuce in!", Down())
+    assert line.ok and line.fallback and line.script.startswith("Ann sent this one in.")

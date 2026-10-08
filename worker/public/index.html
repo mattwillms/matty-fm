@@ -140,6 +140,9 @@
   .meter i.scan3 { background: #6fe3c82e; }
   .meter i { background: #6fe3c814; border-radius: 1px; }
   .meter i.lit { background: var(--teal); box-shadow: 0 0 4px #6fe3c8aa; }
+  .jokes { list-style: none; margin: 10px 0 0; padding: 0; }
+  .jokes li { display: flex; gap: 10px; align-items: baseline; padding: 8px 0; border-top: 1px solid #ffffff12; color: var(--cream-dim); font-size: .92rem; }
+  .jokes li .jt { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .song .cancel { background: none; border: 0; padding: 8px 0 2px; margin: 0; font: inherit; font-size: .8rem; color: var(--cream-dim);
                   text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
   .song .cancel.armed { color: var(--bad); font-weight: 700; }
@@ -418,6 +421,16 @@
   </section>
 
   <section class="panel" id="mineBox" hidden><h2>Your requests</h2><ul id="mine"></ul></section>
+
+  <section class="panel" id="jokeBox">
+    <h2>Tell the DJ a joke</h2>
+    <p class="hint" style="margin-top:6px">The DJ reads them on air between songs.</p>
+    <label for="joke">Your joke</label><textarea id="joke" maxlength="400"></textarea>
+    <label for="jname">Your name</label><input id="jname" maxlength="40" autocomplete="given-name">
+    <div class="row"><button id="jsend" type="button">Send the joke</button></div>
+    <p id="jokeErr" class="hint" style="color:var(--bad)"></p>
+    <ul id="myJokes" class="jokes"></ul>
+  </section>
 
 </main>
 <script>
@@ -982,6 +995,37 @@ function badge(m) {
 const lastBadge = new Map();   // request id -> badge text, to flash changes
 let pollTimer = null, lastNextKey = "", lastMineKey = "";
 
+// Jokes: written up in the DJ's voice by the studio and told between songs.
+const JOKE_STATUS = { pending: ["The DJ is reading it over", ""], preparing: ["The DJ is reading it over", "prep"],
+  ready: ["Coming up on air", "up"], played: ["Told on air", "playing"], rejected: ["The DJ passed on this one", "bad"],
+  failed: ["Didn't make it on air", "bad"] };
+try { $("jname").value = localStorage.getItem("mfm_name") || ""; } catch {}
+let lastJokesKey = "";
+function showJokes(list) {
+  const key = JSON.stringify(list || []);
+  if (key === lastJokesKey) return;
+  lastJokesKey = key;
+  $("myJokes").replaceChildren(...(list || []).map((j) => {
+    const [label, cls] = JOKE_STATUS[j.status] || [j.status, ""];
+    const li = el("li");
+    li.append(el("span", "jt", j.text), el("span", "chip " + cls, label));
+    return li;
+  }));
+}
+$("jsend").onclick = () => busy($("jsend"), "Sending…", async () => {
+  try {
+    const r = await api("/api/joke", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: $("jname").value, text: $("joke").value }), signal: AbortSignal.timeout(15000) });
+    if (!r.ok) { $("jokeErr").textContent = r.error; toast(r.error, true); return; }
+    $("jokeErr").textContent = "";
+    try { localStorage.setItem("mfm_name", $("jname").value); } catch {}
+    toast("Joke sent! The DJ will tell it between songs.");
+    $("joke").value = ""; refresh();
+  } catch (e) {
+    const m = e.message === "gate" ? $("gate").textContent : "Didn't send. Check your connection and try again.";
+    $("jokeErr").textContent = m; toast(m, true);
+  }
+});
 // Taking back a request: two taps (the first arms it for 3 s), so a stray tap never removes a song.
 const armed = new Map();   // request id -> when its Cancel was armed
 function cancelButton(m) {
@@ -1009,6 +1053,9 @@ async function refresh() {
     $("onbreak").hidden = !s.djOnBreak;
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;
     $("freeBtn").disabled = !s.accepting; $("freeBtn").closest("p").hidden = !s.accepting;
+    $("jokeBox").hidden = !s.accepting && !(s.myJokes || []).length;
+    $("jsend").disabled = !s.accepting;
+    showJokes(s.myJokes);
     showNow(s.nowPlaying);
     $("nextBox").hidden = !s.upNext.length;
     const waiting = s.waitingCount ?? s.upNext.length;
