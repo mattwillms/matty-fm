@@ -129,4 +129,20 @@ describe("party", () => {
     const np = (await p.guestState("d1")).nowPlaying;
     expect(np).toMatchObject({ title: "Woman", artist: "Dane Donohue", soma: true });
   });
+
+  it("resend puts a played request back at the end of the line, ready to play", async () => {
+    const p = stub("resend");
+    const a = await p.submit("d1", { track: T("Ring Ring"), name: "x" });
+    const b = await p.submit("d2", { track: T("Honey Honey"), name: "y" });
+    await p.beat({ ...beat, want: 2 });
+    await p.result({ id: a.id!, status: "ready", file: `${a.id}.mp3`, durationS: 200 });
+    await runInDurableObject(p, async (_i: Party, state) => {
+      state.storage.sql.exec("UPDATE items SET status='played' WHERE id=?", a.id!);
+    });
+    await p.adminAction({ action: "resend", id: a.id });
+    const st = await p.adminState();
+    const waiting = st.items.filter((i) => ["pending", "preparing", "ready", "queued"].includes(i.status));
+    expect(waiting.map((i) => i.id)).toEqual([b.id, a.id]);
+    expect(st.items.find((i) => i.id === a.id)?.status).toBe("ready");
+  });
 });

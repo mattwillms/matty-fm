@@ -71,7 +71,7 @@ async function call(path, body) {
   if (r.status === 401) { $("auth").hidden = false; throw new Error("auth"); }
   return r.json();
 }
-const DONE = { skip: "Skipped", delete: "Deleted", move: "Moved", retry: "Retrying", add: "Added to the queue", mute: "Phone muted", settings: "Updated" };
+const DONE = { skip: "Skipped", delete: "Deleted", move: "Moved", retry: "Retrying", resend: "Back in line", add: "Added to the queue", mute: "Phone muted", settings: "Updated" };
 async function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
   const run = async () => {
@@ -115,9 +115,9 @@ function render() {
     if (it.error) d.append(el("div", "small bad", it.error));
     const acts = el("div", "acts");
     const b = (t, f) => { const x = el("button", "", t); x.onclick = (e) => f(e); acts.append(x); };
-    if (["pending", "preparing", "ready", "queued"].includes(it.status)) { b("▲", (e) => act({ action: "move", id: it.id, dir: -1 }, e)); b("▼", (e) => act({ action: "move", id: it.id, dir: 1 }, e)); }
+    if (["pending", "preparing", "ready", "queued"].includes(it.status)) { b("▲ Up", (e) => act({ action: "move", id: it.id, dir: -1 }, e)); b("▼ Down", (e) => act({ action: "move", id: it.id, dir: 1 }, e)); }
     if (it.status === "playing") b("Skip", (e) => act({ action: "skip" }, e));
-    if (it.status === "failed") b("Retry", (e) => act({ action: "retry", id: it.id }, e));
+    if (["played", "failed", "deleted"].includes(it.status)) b("Resend", (e) => act({ action: "resend", id: it.id }, e));
     if (!["played", "deleted"].includes(it.status)) b("Delete", (e) => act({ action: "delete", id: it.id }, e));
     d.append(acts); return d;
   }));

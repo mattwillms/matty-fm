@@ -1,6 +1,7 @@
 [Unit]
 Description=MattyFM studio (prepares requests, feeds the station)
-After=network-online.target mattyfm-station.service
+After=network-online.target mattyfm-files.service
+Wants=mattyfm-files.service
 
 [Service]
 WorkingDirectory=%h/dev/mattyfm/studio

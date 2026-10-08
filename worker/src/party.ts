@@ -272,6 +272,14 @@ export class Party extends DurableObject<Env> {
         }
         return { ok: true };
       }
+      case "resend": {
+        // A played song's files still exist: back to ready at the end of the line.
+        // A failed one goes back to pending so the studio tries again.
+        const last = Number(this.one(`SELECT MAX(rank) AS r FROM items WHERE status IN ${WAITING}`)?.r ?? 0);
+        this.sql.exec(`UPDATE items SET status=CASE WHEN file IS NOT NULL AND status='played' THEN 'ready' ELSE 'pending' END,
+          rank=?, played_at=NULL, error=NULL WHERE id=? AND status IN ('played','failed','deleted')`, last + 1, a.id!);
+        return { ok: true };
+      }
       case "retry":
         this.sql.exec("UPDATE items SET status='pending', error=NULL WHERE id=? AND status='failed'", a.id!);
         return { ok: true };

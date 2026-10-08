@@ -1,13 +1,9 @@
 """Decide what to tell Liquidsoap on each beat. Pure, so it is easy to test."""
 
-PUSH_WINDOW_S = 30.0
-
-
 def wants_next(status: dict) -> bool:
-    """True when the station has room for the next song right now (idle, or the last 30 s)."""
-    idle = status["source"] != "requests"
-    ending = 0 <= status["remaining"] <= PUSH_WINDOW_S
-    return status["queued"] == 0 and (idle or ending)
+    """The console holds one queued song: hand the next over as soon as there is room,
+    so a skip or a song's end can go straight into it."""
+    return status["queued"] == 0
 
 
 def decide(status: dict, reply: dict) -> list[tuple]:

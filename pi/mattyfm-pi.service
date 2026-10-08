@@ -1,5 +1,5 @@
 [Unit]
-Description=MattyFM receiver (SomaFM + station, crossfaded)
+Description=OrrFM console (SomaFM, two song decks and the DJ, mixed on the Pi)
 After=network-online.target sound.target
 Wants=network-online.target
 StartLimitIntervalSec=0

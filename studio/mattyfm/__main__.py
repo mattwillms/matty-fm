@@ -1,5 +1,6 @@
 """Studio main loop: one beat every 3 s; preparation runs in a 2-thread pool."""
 
+import json
 import logging
 import threading
 import time
@@ -9,7 +10,7 @@ import anthropic
 import httpx
 
 from . import config, feed, mix, prepare, somafm, tts
-from .station import Station
+from .pilink import PiLink
 from .worker_api import WorkerAPI
 
 BEAT_S = 3.0
@@ -17,11 +18,24 @@ WORKERS = 2
 log = logging.getLogger("mattyfm")
 
 
+def write_backup_index(media) -> None:
+    """backup/index.json lists the offline playlist (with lengths) for the Pi console."""
+    entries = []
+    for f in sorted((media / "backup").glob("*.mp3")):
+        try:
+            entries.append({"url": f"backup/{f.name}", "songS": mix.duration(f)})
+        except Exception as e:
+            log.warning("backup %s unreadable: %s", f.name, e)
+    (media / "backup" / "index.json").write_text(json.dumps(entries))
+    log.info("backup index: %d songs", len(entries))
+
+
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
     cfg = config.load()
     api = WorkerAPI(cfg.worker_url, cfg.studio_secret)
-    station = Station(cfg.telnet_host, cfg.telnet_port)
+    station = PiLink(cfg.pi_url, cfg.pi_token)
+    write_backup_index(cfg.media_dir)
     deps = prepare.Deps(cfg=cfg, claude=anthropic.Anthropic(max_retries=1), http=httpx.Client(),
                         aura=api.tts, names=tts.load_names(cfg.repo / "studio" / "names.toml"))
     soma_np = somafm.NowPlaying(httpx.Client())
@@ -85,10 +99,11 @@ def main() -> None:
                     station.clear()
                 elif action[0] == "push":
                     item = action[1]
+                    song = cfg.media_dir / "ready" / f"{item['id']}.mp3"
                     voice = cfg.media_dir / "voice" / f"{item['id']}.mp3"
-                    fade = mix.song_start(mix.duration(voice)) if voice.exists() else 2.0
-                    station.push(f"{cfg.station_media_dir}/ready/{item['id']}.mp3",
-                                 item["id"], item["title"], item["artist"], fade=fade)
+                    station.push({"id": item["id"], "title": item["title"], "artist": item["artist"],
+                                  "songS": mix.duration(song),
+                                  "voiceS": mix.duration(voice) if voice.exists() else 0.0})
                     pushed.append(item["id"])
                     log.info("pushed %s: %s - %s (station was source=%s remaining=%.0fs)", item["id"],
                              item["artist"], item["title"], status["source"], status["remaining"])

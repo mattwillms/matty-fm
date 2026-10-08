@@ -31,18 +31,27 @@ after the event (`docs/teardown.md`) and rebuilt from `docs/setup.md`.
 guests' phones ──► fm.willms.co  (Cloudflare Worker + one Durable Object)
                        ▲ │  HTTPS beat ~3 s, bearer secret
                        │ ▼
-Arch workstation:  studio (Python) ──telnet──► Liquidsoap 2.4.5 ──► Icecast 2.4.4
-                                               (requests, backup)     │ MP3 + ICY titles, LAN :8040
-                                                                      ▼
-SomaFM (internet) ─────────────────────────────────────────► Pi 1 Model B: two mpg123 players,
-                                                              crossfaded via ALSA softvol ──► PA
+Arch workstation:  studio (Python) ── prepares song + DJ voice files ──► file server :8040
+                       │ HTTP control (push / skip / status), token          │
+                       ▼                                                      ▼ fetched over LAN
+SomaFM (internet) ──► Pi 1 Model B = the console: four channels into dmix ──► PA
+                       SomaVol · DeckAVol · DeckBVol · DjVol (always 100)
 ```
 
-**SomaFM is played only by the Pi, as an ordinary listener.** SomaFM blocks
-Liquidsoap (any user agent containing "Liquidsoap" gets zero bytes), which is
-how they enforce their no-restreaming terms; we do not disguise around it.
+**Revision 2026-10-08 (three-channel console).** The Pi does all mixing, from
+local channels, like a two-deck radio console. Mixing in two places over a
+lagging stream (Liquidsoap → Icecast → Pi) made fades land seconds off, so
+Liquidsoap and Icecast are retired. **SomaFM is played only by the Pi, as an
+ordinary listener** (SomaFM blocks relaying software).
 
-Every connection starts from inside the house. Nothing listens on the internet.
+**One transition rule** for SomaFM→song, song→song, song→SomaFM and skips:
+the outgoing channel starts fading down 0.5 s before the DJ voice starts; the
+incoming channel fades up across from it and lands at full volume exactly as
+the voice ends; the DJ channel plays at full volume on top. Without a voice it
+is a plain 3 s crossfade. A song's next transition starts that lead time before
+the song ends; with nothing queued the song crossfades to SomaFM over its last
+5 s. A skip goes straight into the queued request's transition (the next
+request is handed to the Pi as soon as it is ready), or to SomaFM if none.
 
 ### 1. Worker — `worker/`
 

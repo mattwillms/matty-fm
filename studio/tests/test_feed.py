@@ -13,14 +13,10 @@ def test_push_when_idle_and_ready():
     assert decide(IDLE, reply(ITEM)) == [("push", ITEM)]
 
 
-def test_no_push_while_song_has_time_left():
+def test_push_as_soon_as_ready_even_mid_song():
+    # The console holds one queued song so a skip can go straight to it.
     playing = {"source": "requests", "current": "r0", "remaining": 90.0, "queued": 0}
-    assert decide(playing, reply(ITEM)) == []
-
-
-def test_push_in_last_30_seconds():
-    ending = {"source": "requests", "current": "r0", "remaining": 25.0, "queued": 0}
-    assert decide(ending, reply(ITEM)) == [("push", ITEM)]
+    assert decide(playing, reply(ITEM)) == [("push", ITEM)]
 
 
 def test_never_push_when_something_is_queued():
@@ -45,5 +41,4 @@ def test_wants_next_only_when_it_would_push():
     from mattyfm.feed import wants_next
     assert wants_next(IDLE) is True
     assert wants_next({**IDLE, "queued": 1}) is False
-    assert wants_next({"source": "requests", "current": "r0", "remaining": 90.0, "queued": 0}) is False
-    assert wants_next({"source": "requests", "current": "r0", "remaining": 20.0, "queued": 0}) is True
+    assert wants_next({"source": "requests", "current": "r0", "remaining": 90.0, "queued": 0}) is True

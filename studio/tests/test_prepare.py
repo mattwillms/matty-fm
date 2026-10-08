@@ -18,10 +18,10 @@ def test_ready_result(tmp_path, monkeypatch):
     monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache: SongFile(tmp_path / "s.mp3", 77.0, "v"))
     monkeypatch.setattr(prepare.djline, "write_line", lambda item, c: DJLine(True, "sweet", "Hello Ann.", False))
     monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: "eleven")
-    monkeypatch.setattr(prepare.mix, "premix", lambda *a, **k: 201.5)
+    monkeypatch.setattr(prepare.mix, "prepare_files", lambda *a, **k: (201.5, 4.2))
     r = prepare.prepare(ITEM, deps(tmp_path))
     assert r == {"id": "r7", "status": "ready", "file": "r7.mp3", "durationS": 201.5, "confidence": 77.0,
-                 "djLine": "Hello Ann.", "tone": "sweet", "voice": "eleven"}
+                 "djLine": "Hello Ann.", "tone": "sweet", "voice": "eleven", "voiceS": 4.2}
 
 
 def test_song_not_found_fails_fast_without_tts(tmp_path, monkeypatch):
@@ -42,5 +42,5 @@ def test_unexpected_error_becomes_failed(tmp_path, monkeypatch):
     def broken(*a, **k):
         raise RuntimeError("ffmpeg exploded")
 
-    monkeypatch.setattr(prepare.mix, "premix", broken)
+    monkeypatch.setattr(prepare.mix, "prepare_files", broken)
     assert prepare.prepare(ITEM, deps(tmp_path))["status"] == "failed"

@@ -27,25 +27,16 @@ def parts(tmp_path):
     return tmp_path
 
 
-def test_song_is_whole_and_starts_mid_script(parts):
-    out = parts / "out.mp3"
-    seconds = mix.premix(parts / "song.mp3", parts / "voice.mp3", None, out, 44100)
-    start = mix.song_start(5.0)
-    assert abs(start - (mix.VOICE_AT + 2.5)) < 0.01
-    assert abs(seconds - (60 + start)) < 1.5
+def test_prepare_files_writes_song_and_voice_separately(parts):
+    song_out, voice_out = parts / "ready.mp3", parts / "voice-out.mp3"
+    song_s, voice_s = mix.prepare_files(parts / "song.mp3", parts / "voice.mp3", song_out, voice_out, 44100)
+    assert song_out.exists() and voice_out.exists()
+    assert abs(song_s - 60) < 1.0 and abs(voice_s - 5) < 0.5
+    # the voice file is voice only: no 220 Hz song in it
+    assert mean_db(voice_out, 1, 2) > -40
 
 
-def band(parts, out, f):
-    dest = parts / f"b{f}.wav"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(out), "-af", f"bandpass=f={f}:w=60", str(dest)], check=True)
-    return dest
-
-
-def test_voice_first_then_song_fades_up_by_the_end_of_the_script(parts):
-    out = parts / "out.mp3"
-    mix.premix(parts / "song.mp3", parts / "voice.mp3", None, out, 44100)
-    song, voice = band(parts, out, 220), band(parts, out, 880)
-    assert mean_db(voice, 0.7, 1.5) > -30                      # voice at full from ~0.5 s
-    assert mean_db(song, 0.5, 2.0) < -45                       # no song under the first half
-    assert mean_db(song, 6.0, 2.0) > mean_db(song, 3.2, 0.5) + 6   # song rising through the second half
-    assert mean_db(song, 30, 2) - mean_db(song, 5.4, 0.3) < 3  # near full volume as the script ends
+def test_rejects_short_song(parts):
+    tone(parts / "tiny.mp3", 220, 5)
+    with pytest.raises(ValueError):
+        mix.prepare_files(parts / "tiny.mp3", parts / "voice.mp3", parts / "o.mp3", parts / "v.mp3", 44100)

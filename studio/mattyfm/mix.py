@@ -49,30 +49,26 @@ def _normalize(src: Path, dest: Path, target: int, rate: int, pre: str = "") -> 
     _ffmpeg("-i", str(src), "-af", f"{chain},aresample={rate}", "-ac", "2", str(dest))
 
 
-def premix(song: Path, voice: Path, sting: Path | None, dest: Path, rate: int) -> float:
-    """Voice from VOICE_AT; song from the script's midpoint, fading up to full by its end.
+def prepare_files(song: Path, voice: Path, song_out: Path, voice_out: Path, rate: int) -> tuple[float, float]:
+    """Loudness-match the song and the DJ voice into two files; the Pi mixes them live.
 
-    `sting` is accepted for bumpers but not used on song transitions.
+    Returns (song seconds, voice seconds).
     """
-    work = dest.with_suffix(".work")
+    work = song_out.with_suffix(".work")
     work.mkdir(exist_ok=True)
-    song_n, voice_n = work / "song.wav", work / "voice.wav"
-    _normalize(song, song_n, SONG_LUFS, rate)
-    _normalize(voice, voice_n, VOICE_LUFS, rate, pre=VOICE_CHAIN)
-    if duration(song_n) < 20:
-        raise ValueError(f"Song too short ({duration(song_n):.1f}s)")
-    voice_s = duration(voice_n)
-    start = song_start(voice_s)
-    fade = VOICE_AT + voice_s - start            # second half of the script
-    fmt = f"aformat=sample_fmts=fltp:sample_rates={rate}:channel_layouts=stereo"
-    graph = (f"[1:a]{fmt},adelay={int(VOICE_AT * 1000)}:all=1[v];"
-             f"[0:a]{fmt},adelay={int(start * 1000)}:all=1,afade=t=in:st={start:.3f}:d={fade:.3f}[s];"
-             "[s][v]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.95[out]")
-    tmp = dest.with_name(dest.stem + ".tmp.mp3")
-    _ffmpeg("-i", str(song_n), "-i", str(voice_n), "-filter_complex", graph, "-map", "[out]",
-            "-ar", str(rate), "-c:a", "libmp3lame", "-b:a", "192k", str(tmp))
-    tmp.rename(dest)
-    for f in work.iterdir():
-        f.unlink()
-    work.rmdir()
-    return duration(dest)
+    try:
+        song_n, voice_n = work / "song.wav", work / "voice.wav"
+        _normalize(song, song_n, SONG_LUFS, rate)
+        song_s = duration(song_n)
+        if song_s < 20:
+            raise ValueError(f"Song too short ({song_s:.1f}s)")
+        _normalize(voice, voice_n, VOICE_LUFS, rate, pre=VOICE_CHAIN + ",silenceremove=start_periods=1:start_threshold=-45dB")
+        for src, dest in ((song_n, song_out), (voice_n, voice_out)):
+            tmp = dest.with_name(dest.stem + ".tmp.mp3")
+            _ffmpeg("-i", str(src), "-ar", str(rate), "-c:a", "libmp3lame", "-b:a", "192k", str(tmp))
+            tmp.rename(dest)
+        return duration(song_out), duration(voice_out)
+    finally:
+        for f in work.iterdir():
+            f.unlink()
+        work.rmdir()
