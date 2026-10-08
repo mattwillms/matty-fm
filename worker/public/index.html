@@ -11,7 +11,7 @@
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="icon" type="image/png" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,100,1&family=Jost:wght@400;500;700&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,100,1&family=Jost:wght@400;500;700&family=Kalam:wght@400;700&family=VT323&display=swap" rel="stylesheet">
 <style>
   :root {
     --cocoa: #2A1A12; --walnut: #4A2E1E; --walnut-2: #5B3A26;
@@ -28,12 +28,16 @@
 
   /* ---- wordmark: chunky soft serif over the era's three stripes ---- */
   .mark { margin: 6px 0 18px; }
-  .mark-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .mark-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   /* same height as the OrrFM letters: their ink measures 0.71 of the font size at every width */
-  .hen { flex: none; width: calc(clamp(3.4rem, 17vw, 4.6rem) * .71); aspect-ratio: 1; border-radius: 50%; overflow: hidden; }
+  .hen { flex: none; width: calc(clamp(3.4rem, 17vw, 4.6rem) * 1.25); aspect-ratio: 1; border-radius: 50%; overflow: hidden;
+         margin-top: calc(clamp(3.4rem, 17vw, 4.6rem) * -.08); }   /* top of the hen = top of the letters */
   .hen img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .mark h1 { font-family: Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
-             font-weight: 900; font-size: clamp(3.4rem, 17vw, 4.6rem); line-height: .86; letter-spacing: -.02em; margin: 0; color: var(--cream); }
+             font-weight: 900; font-size: clamp(3.4rem, 17vw, 4.6rem); line-height: .86; letter-spacing: -.02em; margin: 0; color: var(--cream);
+             /* the 70s offset stack: stepped copies in the stripe colours */
+             text-shadow: .035em .035em 0 var(--gold), .07em .07em 0 var(--orange), .105em .105em 0 #B2361F, .14em .14em 0 #5A2A14;
+             padding: 0 .14em .14em 0; }
   .stripes { display: grid; gap: 4px; margin-top: 10px; }
   .stripes i { display: block; height: 7px; border-radius: 4px; }
   .stripes i:nth-child(1) { background: var(--gold); width: 100%; }
@@ -81,22 +85,28 @@
   .vfd .a, .vfd .s { font-size: .9rem; line-height: 1.3; overflow-wrap: anywhere; }
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
-  .controls { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; margin-top: 12px; }
+  .controls { margin-top: 12px; }
   .engrave { font: 700 .72rem Jost, sans-serif; color: #4b453c; text-shadow: 0 1px 0 #fffb; letter-spacing: .04em; }
-  .brand { text-align: center; font-weight: 500; white-space: nowrap; }
-  .lamp-wrap, .knob-wrap { display: flex; align-items: center; gap: 8px; }
+  .label { display: flex; align-items: center; gap: 7px; margin: 0 0 6px 2px; }
+  .request-mod { min-width: 0; }
+  /* the LCD: grey-green reflective glass, dark segments over faint ghost segments */
+  .lcd { position: relative; border-radius: 4px; padding: 6px 10px 7px; overflow: hidden;
+         background: linear-gradient(180deg, #a9b392, #c0c8a6 40%, #b4bd98);
+         box-shadow: inset 0 2px 5px #0006, inset 0 0 0 1px #0003, 0 1px 0 #fff9; font-family: VT323, monospace; color: #232a1c; }
+  .lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none;
+                background: repeating-linear-gradient(0deg, #0000 0 2px, #00000008 2px 3px), linear-gradient(170deg, #ffffff40 0 25%, transparent 25%); }
+  .lcd-line { position: relative; white-space: nowrap; overflow: hidden; }
+  .lcd-line::before { content: attr(data-ghost); position: absolute; left: 0; top: 0; color: #23291c0a; pointer-events: none; }
+  .lcd-line.name { font-size: 1.15rem; line-height: 1.05; opacity: .85; }
+  .lcd-line.msg { font-size: 1.7rem; line-height: 1.05; }
+  .tick { display: inline-block; padding-right: 0; }
+  .ticking .tick { padding-right: 3em; animation: tick var(--dur, 12s) linear infinite; }
+  .ticking .tick + .tick { }
+  @keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   .lamp { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #8a5a2a, #4a2b12);
           box-shadow: inset 0 1px 2px #000a, 0 1px 0 #fff8; transition: background .4s, box-shadow .4s; }
   .lamp.on { background: radial-gradient(circle at 40% 35%, #ffe2a0, #f0a92b 45%, #c46a10);
              box-shadow: 0 0 10px #f0a92bcc, 0 0 2px #fff inset; }
-  .knob { position: relative; width: 44px; height: 44px; border-radius: 50%;
-          background: conic-gradient(#e9e4da, #8f897f, #e9e4da, #8f897f, #e9e4da, #8f897f, #e9e4da);
-          box-shadow: 0 3px 6px #0007, inset 0 0 0 3px #0000, 0 0 0 3px #b9b2a5;
-          transition: transform 1.1s cubic-bezier(.3, .7, .2, 1); }
-  .knob::before { content: ""; position: absolute; inset: 4px; border-radius: 50%;
-                  background: repeating-conic-gradient(#d9d3c8 0 4deg, #a29b90 4deg 8deg); }
-  .knob::after { content: ""; position: absolute; inset: 11px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #f6f2ea, #b9b2a5); }
-  .knob i { position: absolute; z-index: 1; left: 50%; top: 5px; width: 3px; height: 10px; margin-left: -1.5px; border-radius: 2px; background: var(--orange); }
 
   /* ---- coming up: a mixtape J-card, handwritten in ballpoint ---- */
   .jcard { position: relative; margin: -6px 0 24px; padding: 14px 16px 12px 40px; transform: rotate(-.6deg);
@@ -170,7 +180,8 @@
            box-shadow: 0 8px 24px #0009; transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: var(--bad); color: #fff; }
 
-  @media (prefers-reduced-motion: reduce) { .needle, .knob, .lamp { transition: none; } button { transition: none; } .chip.prep, .chip.flash { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .ticking .tick { animation: none; } .lcd-line { white-space: normal; }
+    .needle, .lamp { transition: none; } button { transition: none; } .chip.prep, .chip.flash { animation: none; } }
 </style>
 </head>
 <body>
@@ -198,10 +209,14 @@
       <div class="glass">
         <div class="display" id="display"><div class="vfd"><div class="idle">Warming up…</div></div></div>
       </div>
-      <div class="controls" aria-hidden="true">
-        <div class="lamp-wrap"><span class="lamp" id="lamp"></span><span class="engrave">Request</span></div>
-        <div class="engrave brand">OrrFM Stereo</div>
-        <div class="knob-wrap"><span class="knob" id="knob"><i></i></span><span class="engrave">Tuning</span></div>
+      <div class="controls">
+        <div class="request-mod">
+          <div class="engrave label"><span class="lamp" id="lamp" aria-hidden="true"></span>Requested by</div>
+          <div class="lcd" aria-live="polite">
+            <div class="lcd-line name"><span class="tick" id="lcdName">SomaFM</span></div>
+            <div class="lcd-line msg"><span class="tick" id="lcdMsg">Got a song in your head? Request it below.</span></div>
+          </div>
+        </div>
       </div>
     </div>
   </section>
@@ -273,20 +288,54 @@ function songRow(s, extra, chipClass) {
   if (extra) li.append(el("span", "chip " + (chipClass || ""), extra));
   return li;
 }
+// The LCD: requester on line 1 (still unless it doesn't fit), the DJ's shout-out ticking on line 2,
+// without its ending ("…here's Tears for Fears with Shout"): the display above already names the song.
+function shoutout(line, np) {
+  let s = String(line || "").trim();
+  const cut = s.search(/(?:^|[,.;:!?\s])(?:so\s+)?(?:here'?s|here is|this is|now,? here'?s)\b/i);
+  if (cut > 0) s = s.slice(0, cut);
+  else for (const w of [np.title, np.artist]) { const i = w ? s.toLowerCase().lastIndexOf(cleanTitle(w).toLowerCase()) : -1; if (i > 0) s = s.slice(0, i); }
+  s = s.replace(/[\s,;:.!?—-]+$/, "").replace(/\s+(?:and|so|with)$/i, "").trim();
+  return s ? s + "." : "";
+}
+let lcdKey = "";
+function setLine(id, text, always) {
+  const span = $(id), line = span.parentElement;
+  line.classList.remove("ticking"); line.querySelectorAll(".tick.copy").forEach((c) => c.remove());
+  span.textContent = text; line.dataset.ghost = "8".repeat(60);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (always || span.scrollWidth > line.clientWidth) {
+    const copy = span.cloneNode(true); copy.classList.add("copy"); copy.removeAttribute("id"); line.append(copy);
+    line.classList.add("ticking");
+    const px = span.getBoundingClientRect().width + 48;
+    line.style.setProperty("--dur", `${Math.max(6, px / 55).toFixed(1)}s`);   // ~55 px a second
+    line.querySelectorAll(".tick").forEach((t) => t.style.animationDuration = `${Math.max(6, px / 55).toFixed(1)}s`);
+  }
+}
+function lcd(np) {
+  const req = np && !np.soma;
+  const name = req ? (np.names || "The family") : "SomaFM";
+  const msg = req ? (shoutout(np.djLine, np) || "Turn it up.") : "Got a song in your head? Request it below.";
+  const key = name + "|" + msg;
+  if (key === lcdKey) return;
+  lcdKey = key;
+  setLine("lcdName", name, false);
+  setLine("lcdMsg", msg, true);
+}
+
 // The dial: each song gets its own spot on the scale, and the needle swings there when it changes.
 function tune(key) {
   let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
   const pos = 6 + (h % 880) / 10;
   $("needle").style.left = `calc(12px + ${pos.toFixed(1)}% * .97)`;
-  $("knob").style.transform = `rotate(${(pos * 3.2).toFixed(0)}deg)`;   // the knob turns with the needle
 }
 function showNow(np) {
   const d = $("display");
-  if (!np) { $("lamp").classList.remove("on"); const v = el("div", "vfd"); v.append(el("div", "idle", "Between songs")); d.replaceChildren(v); return; }
+  if (!np) { $("lamp").classList.remove("on"); lcd(null); const v = el("div", "vfd"); v.append(el("div", "idle", "Between songs")); d.replaceChildren(v); return; }
   $("lamp").classList.toggle("on", !np.soma);
   const v = el("div", "vfd");
-  v.append(el("div", "t", cleanTitle(np.title)), el("div", "a", np.artist),
-           el("div", "s", np.soma ? "SomaFM, 70s" : `Requested by ${np.names || "the family"}`));
+  v.append(el("div", "t", cleanTitle(np.title)), el("div", "a", np.artist), ...(np.soma ? [el("div", "s", "SomaFM, 70s")] : []));
+  lcd(np);
   d.replaceChildren(art(np.artwork), v);
   const key = `${np.title}|${np.artist}`;
   if (key !== lastNow) { lastNow = key; tune(key); }

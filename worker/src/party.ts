@@ -150,7 +150,7 @@ export class Party extends DurableObject<Env> {
   private nowPlaying() {
     const playing = this.one("SELECT * FROM items WHERE status='playing' LIMIT 1");
     const h = this.health() as unknown as Beat & { at: number };
-    if (playing) return this.pub(playing);
+    if (playing) return { ...this.pub(playing), djLine: String(playing.dj_line ?? "") };
     if (h.soma && h.source !== "requests")
       return { id: "soma", title: String(h.soma.title), artist: String(h.soma.artist),
                artwork: safeArtwork((h.soma as { artwork?: string }).artwork), names: "", soma: true };
