@@ -46,3 +46,13 @@ def test_asks_as_a_desktop_browser_for_us_songs():
     apple.release_info("ABBA", "SOS", http_with([], seen))
     q = seen[0].url.params
     assert q["entity"] == "song" and q["country"] == "US" and "ABBA SOS" in q["term"]
+
+
+def test_one_odd_row_does_not_lose_the_rest_and_links_are_checked():
+    results = [{"trackName": "Dreams", "artistName": None, "releaseDate": "1970-01-01T00:00:00Z"},
+               hit("Dreams", "Fleetwood Mac", "1977-02-04T08:00:00Z", "Rumours", 7)]
+    assert apple.release_info("Fleetwood Mac", "Dreams", http_with(results))["year"] == "1977"
+    bad = hit("Dreams", "Fleetwood Mac", "1977-02-04T08:00:00Z", "Rumours")
+    bad["trackViewUrl"], bad["artworkUrl100"] = "javascript:alert(1)", "http://evil.example/x.jpg"
+    info = apple.release_info("Fleetwood Mac", "Dreams", http_with([bad]))
+    assert "apple" not in info and "artwork" not in info and info["year"] == "1977"

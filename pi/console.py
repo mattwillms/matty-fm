@@ -52,6 +52,7 @@ TICK_S = 0.1
 SOMA_STALL_S = 4.0
 SOMA_DOWN_S = 6.0       # SomaFM must be gone this long before the backup takes over (a reconnect is ~2 s)
 SOMA_BACK_S = 10.0      # and back this long before the backup hands over to it again
+SOMA_STEADY_S = 5.0     # a stream that reconnects, bursts and stalls stays "down" until it holds this long
 CHUNK = 4096
 PIPE_BYTES = 4096
 F_SETPIPE_SZ = 1031
@@ -130,12 +131,16 @@ class Engine:
     # SomaFM health with hysteresis: a short blip must not cause two transitions
     def _soma_watch(self, now: float) -> None:
         if self.soma_up():
-            self.soma_down_since, self.soma_up_since = None, self.soma_up_since or now
+            self.soma_up_since = self.soma_up_since or now
+            if now - self.soma_up_since >= SOMA_STEADY_S:   # short bursts don't wipe the outage clock
+                self.soma_down_since = None
         else:
             self.soma_up_since, self.soma_down_since = None, self.soma_down_since or now
 
     def _soma_out(self) -> bool:
-        return self.soma_down_since is not None and self.clock() - self.soma_down_since >= SOMA_DOWN_S
+        """Down right now, and not properly back since it first dropped SOMA_DOWN_S ago."""
+        return (self.soma_down_since is not None and self.soma_up_since is None
+                and self.clock() - self.soma_down_since >= SOMA_DOWN_S)
 
     def _soma_back(self) -> bool:
         return self.soma_up_since is not None and self.clock() - self.soma_up_since >= SOMA_BACK_S

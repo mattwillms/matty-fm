@@ -24,4 +24,28 @@ describe("device cookie", () => {
     });
     expect(bad.status).toBe(403);
   });
+
+  it("new phone ids are handed out at a human pace per address", async () => {
+    let issued = 0;
+    for (let i = 0; i < 40; i++) {
+      const r = await SELF.fetch("https://fm.test/api/state?k=dev", { headers: { "cf-connecting-ip": "198.51.100.7" } });
+      if (r.headers.get("set-cookie")) issued++;
+    }
+    expect(issued).toBeLessThanOrEqual(30);
+    expect(issued).toBeGreaterThan(0);
+  });
+
+  it("junk posts don't use up the house's request allowance", async () => {
+    const state = await SELF.fetch("https://fm.test/api/state?k=dev", { headers: { "cf-connecting-ip": "198.51.100.8" } });
+    const junkCookie = (state.headers.get("set-cookie") ?? "").split(";")[0];
+    for (let i = 0; i < 130; i++)
+      await SELF.fetch("https://fm.test/api/request?k=dev", { method: "POST", headers: { cookie: junkCookie, "cf-connecting-ip": "198.51.100.8" }, body: "{}" });
+    const fresh = await SELF.fetch("https://fm.test/api/state?k=dev", { headers: { "cf-connecting-ip": "198.51.100.8" } });
+    const cookie = (fresh.headers.get("set-cookie") ?? "").split(";")[0];
+    const ok = await SELF.fetch("https://fm.test/api/request?k=dev", {
+      method: "POST", headers: { cookie, "content-type": "application/json", "cf-connecting-ip": "198.51.100.8" },
+      body: JSON.stringify({ track: { title: "Ring Ring", artist: "ABBA" }, name: "Grandma" }),
+    });
+    expect(ok.status).toBe(200);
+  });
 });

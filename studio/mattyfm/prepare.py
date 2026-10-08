@@ -103,7 +103,7 @@ def prepare(item: dict, deps: Deps) -> dict:
                                              media / "voice" / f"{rid}.mp3", deps.cfg.sample_rate)
     except Exception as e:  # any failure here must not kill the studio
         log.exception("prepare %s failed", item["id"])
-        if mixing:
+        if mixing and not is_audio(song.path):
             # a cached song ffmpeg can't read would fail every retry: drop it so the next try downloads afresh
             song.path.unlink(missing_ok=True)
             song.path.with_suffix(".json").unlink(missing_ok=True)

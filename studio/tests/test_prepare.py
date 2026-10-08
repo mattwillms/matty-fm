@@ -122,3 +122,15 @@ def test_a_ready_song_carries_release_info_for_the_sleeve(tmp_path, monkeypatch)
     d.http = object()
     r = prepare.prepare(ITEM, d)
     assert r["year"] == "1975" and r["appleUrl"] == "https://music.apple.com/x?app=music" and r["albumName"] == "Arrival"
+
+
+def test_a_bad_voice_does_not_delete_a_good_cached_song(tmp_path, monkeypatch):
+    cached, meta = tmp_path / "abba|sos.mp3", tmp_path / "abba|sos.json"
+    cached.write_bytes(b"ID3"); meta.write_text("{}")
+    monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache, **k: SongFile(cached, 77.0, "v"))
+    monkeypatch.setattr(prepare.djline, "write_line", lambda item, c: DJLine(True, "funny", "x", False))
+    monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: "aura")
+    monkeypatch.setattr(prepare.mix, "prepare_files", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("voice: Invalid data")))
+    monkeypatch.setattr(prepare, "is_audio", lambda p: p == cached)   # the song itself decodes fine
+    assert prepare.prepare(ITEM, deps(tmp_path))["status"] == "failed"
+    assert cached.exists() and meta.exists()

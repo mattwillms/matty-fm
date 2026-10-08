@@ -177,3 +177,17 @@ def test_compounds_that_start_or_carry_a_rude_stem_are_caught_like_the_worker():
         assert djline.is_offensive(bad), bad
     for ok in ("Pussycat", "Shitake Sam", "Fagan", "niggle"):
         assert not djline.is_offensive(ok), ok
+
+
+def test_slurs_count_anywhere_in_a_word_with_a_few_innocent_exceptions():
+    for bad in ("nigga", "niggas", "n1gga", "fagot", "pussies"):
+        assert djline.is_offensive(bad), bad
+    for ok in ("snigger", "niggle", "niggling", "Fagan", "Scunthorpe", "Pussycat"):
+        assert not djline.is_offensive(ok), ok
+
+
+def test_stretched_and_split_words_are_caught_like_the_worker():
+    for bad in ("fuuuck", "shitt", "fu ck", "sh it", "ꜱʜɪᴛ"):
+        assert djline.is_offensive(bad), bad
+    for ok in ("As it is", "Fu Manchu", "Sheila", "Bossa Nova", "Ramblin' Man"):
+        assert not djline.is_offensive(ok), ok

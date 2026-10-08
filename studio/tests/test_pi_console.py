@@ -337,3 +337,11 @@ def test_status_lists_the_requests_that_actually_started():
     recent = eng.status()["recent"]
     assert [r["id"] for r in recent[-2:]] == ["r1", "r2"]
     assert recent[-1]["agoS"] < recent[-2]["agoS"]   # how long ago each started: a resent song can be told apart
+
+
+def test_a_soma_stream_that_keeps_reconnecting_and_stalling_still_reaches_the_backup():
+    eng, clock, players, mixer = make()
+    eng.backup = [{"url": "backup/a.mp3", "songS": 300.0}]
+    eng.soma_up = lambda: (clock.t - 1000.0) % 6.5 < 4.0   # up 4 s, down 2.5 s, over and over (38% down)
+    run(eng, clock, 40)
+    assert eng.status()["source"] == "backup"

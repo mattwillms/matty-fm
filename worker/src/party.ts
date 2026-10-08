@@ -1,6 +1,6 @@
 // The one Durable Object ("party"): queue, settings, studio beats, admin actions.
 import { DurableObject } from "cloudflare:workers";
-import { clean, displayText, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, type Waiting } from "./queue";
+import { clean, displayText, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, visible, type Waiting } from "./queue";
 import type { Track } from "./search";
 
 const WAITING = "('pending','preparing','ready','queued')";
@@ -11,7 +11,6 @@ const OFFLINE_MS = 60_000;
 const PURGE_AT = Date.UTC(2026, 9, 13, 12);
 const PURGE_AFTER_MS = 3 * 24 * 3600_000;   // only once that date has passed (code reused for another party)
 const COMMAND_TTL_MS = 20_000;   // a command the studio didn't pick up by then is dropped, not fired late
-const MAX_WAITING_PER_IP = 40;   // the whole family shares the home Wi-Fi: generous, but a ceiling on floods
 const APPLE_HOSTS = ["music.apple.com"];
 const MAX_WAITING_PER_DEVICE = 2;
 const QUEUED_GRACE_MS = 15_000;
@@ -36,7 +35,7 @@ export type Result = {
 function appleLink(url: unknown): string {
   try {
     const u = new URL(String(url ?? ""));
-    return u.protocol === "https:" && APPLE_HOSTS.includes(u.hostname) ? u.href : "";
+    return u.protocol === "https:" && APPLE_HOSTS.includes(u.hostname) && !u.username && !u.password && !u.port ? u.href : "";
   } catch {
     return "";
   }
@@ -66,7 +65,7 @@ export class Party extends DurableObject<Env> {
         id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, done INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL);`);
     for (const [table, col] of [["items", "queued_at INTEGER DEFAULT 0"], ["items", "match_note TEXT"], ["items", "year TEXT"],
-                                ["items", "apple_url TEXT"], ["requesters", "ip TEXT"], ["commands", "target TEXT"]]) {
+                                ["items", "apple_url TEXT"], ["requesters", "ip TEXT"], ["commands", "target TEXT"], ["items", "redos INTEGER DEFAULT 0"]]) {
       try {
         this.sql.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`);
       } catch {
@@ -154,16 +153,12 @@ export class Party extends DurableObject<Env> {
       return { ok: false, error: "Requests are paused for this phone." };
     const name = clean(s.name, 40), message = clean(s.message ?? "", 280);
     const title = clean(s.track?.title, 200), artist = clean(s.track?.artist, 200);
-    if (!name || !title || !artist) return { ok: false, error: "Pick a song and add your name." };
+    if (!visible(name) || !title || !artist) return { ok: false, error: "Pick a song and add your name." };
     if (!asAdmin) {
       const n = Number(this.one(`SELECT COUNT(*) AS n FROM requesters r JOIN items i ON i.id=r.item_id
         WHERE r.device=? AND i.status IN ${WAITING}`, device)?.n ?? 0);
       if (n >= MAX_WAITING_PER_DEVICE)
         return { ok: false, error: "You have 2 songs waiting. Once one plays, add another!" };
-      const fromIp = ip ? Number(this.one(`SELECT COUNT(DISTINCT r.item_id) AS n FROM requesters r JOIN items i ON i.id=r.item_id
-        WHERE r.ip=? AND i.status IN ${WAITING}`, ip)?.n ?? 0) : 0;
-      if (fromIp >= MAX_WAITING_PER_IP)
-        return { ok: false, error: "The line is full right now. Try again after a few songs." };
     }
     const key = songKey(artist, title);
     const now = Date.now();
@@ -177,7 +172,8 @@ export class Party extends DurableObject<Env> {
         return { ok: true, id, position: this.display().findIndex((i) => i.id === id) + 1 };
       // still being prepared: once more, so the DJ names everyone. Already ready: just join it
       // (re-preparing a ready song on every join kept popular songs off the air).
-      if (dup.status === "preparing") this.sql.exec("UPDATE items SET redo=1 WHERE id=?", id);
+      // at most once per song: a join every cycle could otherwise keep it from ever finishing
+      if (dup.status === "preparing") this.sql.exec("UPDATE items SET redo=1 WHERE id=? AND COALESCE(redos,0)<1", id);
     } else {
       id = this.newId();
       const t = s.track;
@@ -279,8 +275,9 @@ export class Party extends DurableObject<Env> {
     // Songs the Pi started since they were handed out are played, even if the studio never saw them
     // (it was offline): otherwise the grace rule below would hand them out and they'd play twice.
     for (const r of Array.isArray(b.recent) ? b.recent : []) {
-      const started = now - Number(r?.agoS) * 1000;
-      if (!Number.isFinite(started) || typeof r?.id !== "string" || r.id === b.current) continue;
+      if (typeof r?.agoS !== "number" || !Number.isFinite(r.agoS) || r.agoS < 0) continue;   // only a real age counts
+      const started = now - r.agoS * 1000;
+      if (typeof r?.id !== "string" || r.id === b.current) continue;
       this.sql.exec(`UPDATE items SET status='played', played_at=? WHERE id=? AND status IN ('queued','ready','playing')
         AND queued_at>0 AND queued_at<=?`, now, r.id, started);
     }
@@ -319,7 +316,7 @@ export class Party extends DurableObject<Env> {
     }
     if (!item || item.status !== "preparing") return { ok: false };
     if (r.status === "ready" && item.redo) {
-      this.sql.exec("UPDATE items SET status='pending', redo=0, lease_until=0 WHERE id=?", r.id);
+      this.sql.exec("UPDATE items SET status='pending', redo=0, redos=COALESCE(redos,0)+1, lease_until=0 WHERE id=?", r.id);
       return { ok: true, redo: true };
     }
     this.sql.exec(`UPDATE items SET status=?, file=?, duration_s=?, confidence=?, dj_line=?, tone=?,

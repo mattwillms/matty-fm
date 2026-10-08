@@ -168,7 +168,8 @@
   .listen-btn svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
   .sleeve-close:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   .sleeve-fig { margin: 0; min-height: 100%; display: grid; place-content: center; justify-items: center; gap: 26px; }
-  .sleeve-stage { --w: min(66vw, 360px, 50vh, 42svh); position: relative; width: var(--w); height: var(--w); margin-right: calc(var(--w) * .3); }
+  @media (max-height: 380px) { .sleeve-fig { gap: 12px; } .listen { margin-top: 10px; } .sl-t { font-size: 1.5rem; } }
+  .sleeve-stage { --w: min(66vw, 360px, 50vh, 42svh, calc(100svh - 230px)); position: relative; width: var(--w); height: var(--w); margin-right: calc(var(--w) * .3); }
   .vinyl { position: absolute; inset: 3%; border-radius: 50%; box-shadow: 0 8px 22px #000b; will-change: transform;
            animation: pull .8s .3s cubic-bezier(.2, .7, .2, 1) both; }   /* starts as the fade finishes */
   .vinyl::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;   /* the shine stays put while the disc turns */
@@ -609,7 +610,10 @@ async function henWild() {
 }
 function eggRain() {
   const layer = $("eggs"), h = innerHeight;
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 26; i++) requestAnimationFrame(() => setTimeout(() => dropEgg(layer, h), (i % 3) * 16));
+}
+function dropEgg(layer, h) {
+  {
     const near = Math.random(), egg = el("span", "egg", "🥚");   // near 0..1: far eggs are small, dim and slow
     egg.style.left = `${Math.random() * 100}vw`;
     egg.style.fontSize = `${16 + near * 30}px`;
@@ -685,7 +689,7 @@ function decoded(src) {   // resolves when the picture is ready to paint (or fai
 }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function openSleeve(np = onAir) {
-  if (!np || sleeveFor === np && $("sleeve").open) return;
+  if (!np || !np.artist || sleeveFor === np && $("sleeve").open) return;   // a hidden (offensive) title has no artist
   sleeveFor = np;
   // Ask for everything first, give it up to 450 ms, then open with whatever is ready: a complete
   // first frame. Anything slower fades in later without moving the rest.
@@ -759,7 +763,7 @@ let screenKey = null;
 function showNow(np, force) {
   const d = $("display");
   onAir = np;
-  $("glass").setAttribute("aria-disabled", String(!np));
+  $("glass").setAttribute("aria-disabled", String(!np || !np.artist));
   if (!np) { $("lamp").classList.remove("on"); henSpin(false); lcd(null); }
   else { $("lamp").classList.toggle("on", !np.soma); henSpin(!np.soma); lcd(np); }
   // Rebuild only when the song changes: a rebuild restarts the scroll, which read as the title jumping.
@@ -851,8 +855,12 @@ function mergeResults(a, b) {
 async function api(path, opts) {
   const sep = path.includes("?") ? "&" : "?";
   const r = await fetch(path + sep + "k=" + encodeURIComponent(k), opts);
-  if (r.status === 403) { $("gate").hidden = false; throw new Error("gate"); }
-  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  if (!r.ok) {
+    const body = await r.json().catch(() => null);
+    if (r.status === 403 && !/reload/i.test(body?.error ?? "")) { $("gate").hidden = false; throw new Error("gate"); }
+    if (r.status < 500 && body && typeof body.error === "string") return { ok: false, ...body };   // "slow down", "reload", ...
+    throw new Error(`HTTP ${r.status}`);
+  }
   $("gate").hidden = true;
   try { localStorage.setItem("mfm_k", k); } catch {}   // only a code that worked is remembered
   return r.json();
@@ -922,7 +930,7 @@ $("q").addEventListener("input", () => {
     if ($("q").value.trim() !== q) return;   // the guest kept typing: this answer is for an old query
     const fromWorker = worker.status === "fulfilled" ? worker.value.results || [] : [];
     const fromApple = apple.status === "fulfilled" ? apple.value : [];
-    if (worker.status === "rejected" && worker.reason?.message === "gate") return;
+    if (worker.status === "rejected" && worker.reason?.message === "gate") { $("results").replaceChildren(); return; }
     const results = mergeResults(fromApple, fromWorker);
     if (!results.length && worker.status === "rejected") {
       $("results").replaceChildren(el("li", "empty", "Search didn't go through. Try again in a moment."));
@@ -954,10 +962,11 @@ function typeIn(q) {
   choose({ title: "", artist: "", durationMs: null }, true);
   // "Artist - Song", or "Song by Artist" split on the LAST " by " ("Stand By Me by Ben E. King"),
   // but only when what follows looks like a name (not "stand by me"); otherwise the guest adds the artist
-  const dash = q.split(/\s+[-–—]\s+/), at = q.search(/\s+by\s+(?!.*\s+by\s+)/i);
-  const after = at > 0 ? q.slice(at).replace(/^\s+by\s+/i, "") : "";
-  const byOk = at > 0 && (after.split(/\s+/).length >= 2 || /^[A-Z0-9]/.test(after));
-  const [title, artist] = dash.length === 2 ? [dash[1], dash[0]] : byOk ? [q.slice(0, at), after] : [q, ""];
+  // Only "Song By Words by Artist" (by twice) is split, on the last " by ". "Stand By Your Man" and
+  // "Don't Stop Me Now - Queen" can't be told apart from "Song by Artist" or "Artist - Song", so
+  // the guest types the artist and the title is trimmed of it on send.
+  const bys = q.match(/\s+by\s+/gi) || [], at = q.search(/\s+by\s+(?!.*\s+by\s+)/i);
+  const [title, artist] = bys.length >= 2 ? [q.slice(0, at), q.slice(at).replace(/^\s+by\s+/i, "")] : [q, ""];
   $("ft").value = title; $("fa").value = artist;
   if (title && !artist) setTimeout(() => $("fa").focus({ preventScroll: true }), 350);   // after the scroll settles
 }
@@ -968,7 +977,11 @@ $("send").onclick = () => busy($("send"), "Sending…", async () => {
     track.artist = $("fa").value.trim();
     const t = $("ft").value.trim(), lead = track.artist.toLowerCase();
     // "Paul Carrack Foregone Conclusion" with artist "Paul Carrack" -> title "Foregone Conclusion"
-    track.title = lead && t.toLowerCase().startsWith(lead + " ") ? t.slice(lead.length).replace(/^[\s\-–—:]+/, "") : t;
+    // "Paul Carrack Foregone Conclusion" or "Don't Stop Me Now - Queen", with the artist typed: just the song
+    let title = t;
+    if (lead && t.toLowerCase().startsWith(lead + " ")) title = t.slice(lead.length).replace(/^[\s\-–—:]+/, "");
+    else if (lead && t.toLowerCase().endsWith(" " + lead)) title = t.slice(0, -lead.length).replace(/[\s\-–—:]+$/, "");
+    track.title = title || t;
   }
   try {
     const r = await api("/api/request", { method: "POST", headers: { "content-type": "application/json" },

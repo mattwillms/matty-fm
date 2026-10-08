@@ -11,7 +11,7 @@ MODEL = "claude-haiku-5-5"
 STATION = os.environ.get("MATTYFM_STATION_NAME", "OrrFM")
 # Word stems that are never spoken on air. Checked per word after undoing common
 # disguises (look-alike characters, punctuation, spaced-out letters).
-DENY_STEMS = ("fuck", "shit", "cunt", "bitch", "whore", "slut", "retard", "nigg", "fag", "pussy")
+DENY_STEMS = ("fuck", "shit", "cunt", "bitch", "whore", "slut", "retard", "nigg", "fag", "pussy", "pussi")
 LOOKALIKE = str.maketrans({"!": "i", "1": "i", "|": "i", "3": "e", "0": "o", "@": "a", "$": "s", "5": "s", "4": "a", "*": "u"})
 
 
@@ -20,6 +20,7 @@ CONFUSABLE = str.maketrans({
     "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "у": "y", "х": "x", "і": "i", "ј": "j", "ѕ": "s",
     "А": "A", "Е": "E", "О": "O", "Р": "P", "С": "C", "Х": "X", "І": "I", "К": "K", "М": "M", "Т": "T", "Н": "H",
     "α": "a", "ε": "e", "ι": "i", "κ": "k", "ν": "v", "ο": "o", "ρ": "p", "τ": "t", "υ": "u", "χ": "x",
+    "һ": "h", "ꜱ": "s", "ʜ": "h", "ɪ": "i", "ᴛ": "t", "ᴄ": "c", "ᴋ": "k", "ғ": "f", "ᴜ": "u", "ɢ": "g", "ɴ": "n", "ʙ": "b", "ᴡ": "w",
     "—": "-", "–": "-", "’": "'", "‘": "'", "“": "", "”": "",
 })
 
@@ -69,12 +70,19 @@ ENDINGS = {"", "s", "es", "ed", "er", "ers", "ing", "in", "ins", "y", "ty", "hea
 
 
 # Ordinary words that a stem-plus-word rule would catch. Mirrors SAFE_WORDS in worker/src/queue.ts.
-SAFE_WORDS = {"pussycat", "pussycats", "pussywillow", "pussywillows", "shitake", "shitakes"}
+SAFE_WORDS = {"pussycat", "pussycats", "pussywillow", "pussywillows", "shitake", "shitakes",
+              "snigger", "sniggers", "sniggered", "sniggering", "niggle", "niggles", "niggled", "niggling",
+              "fagan", "fagin", "scunthorpe"}
+# Slurs count anywhere in a word ("nigga", "fagot"); the other stems use the ending rule, which is
+# what keeps ordinary words and names from tripping it.
+ANYWHERE = ("nigg", "fag", "cunt")
 
 
 def _rude(word: str) -> bool:
     if word in SAFE_WORDS:
         return False
+    if any(stem in word for stem in ANYWHERE):
+        return True
     for stem in DENY_STEMS:
         i = word.find(stem)
         while i != -1:
@@ -95,7 +103,7 @@ def _offensive(folded: str) -> bool:
     words, run = [], ""
     for raw in folded.lower().translate(LOOKALIKE).split():
         token = re.sub(r"[^a-z.]", "", raw)
-        if len(token.replace(".", "")) == 1:      # f u c k  -> one word
+        if len(token.replace(".", "")) <= 2:      # f u c k, fu ck, sh it  -> one word
             run += token.replace(".", "")
             continue
         if run:
@@ -104,7 +112,8 @@ def _offensive(folded: str) -> bool:
         words.append(token.replace(".", ""))      # f.u.c.k -> fuck
     if run:
         words.append(run)
-    return any(_rude(w) for w in words)
+    # as written, and with stretched letters squeezed ("fuuuck", "shitt"); the raw form keeps "nigger"
+    return any(_rude(w) or _rude(re.sub(r"(.)\1+", r"\1", w)) for w in words)
 
 
 def _safe(text: str) -> str:

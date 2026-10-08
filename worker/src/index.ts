@@ -7,7 +7,7 @@ export { Party };
 // Bump whenever party.ts changes. A deployed Durable Object kept running its first
 // version all evening (deploys did not restart it), so each queue-code change gets a
 // fresh instance. Queue state resets on a bump: never bump on party day.
-const QUEUE_VERSION = 13;
+const QUEUE_VERSION = 15;
 
 const enc = new TextEncoder();
 
@@ -24,15 +24,25 @@ function json(body: unknown, status = 200, headers: HeadersInit = {}): Response 
 // A phone's id is signed by the Worker (HMAC of the id), so a request can prove the id was issued
 // here: an invented cookie, or one with a changed signature, counts as a new phone without one.
 async function sign(id: string, env: Env): Promise<string> {
-  const key = await crypto.subtle.importKey("raw", enc.encode(`device:${env.STUDIO_SECRET}`), { name: "HMAC", hash: "SHA-256" },
+  const secret = env.DEVICE_SECRET || `device:${env.STUDIO_SECRET}`;   // its own key; the studio's only as a fallback
+  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" },
                                             false, ["sign"]);
   const mac = new Uint8Array(await crypto.subtle.sign("HMAC", key, enc.encode(id))).slice(0, 16);
   return btoa(String.fromCharCode(...mac)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+async function signedDevice(req: Request, env: Env): Promise<boolean> {
+  const m = /(?:^|;\s*)mfm_dev=([0-9a-f-]{36})\.([A-Za-z0-9_-]{22})(?:;|$)/.exec(req.headers.get("cookie") ?? "");
+  return Boolean(m && same(m[2], await sign(m[1], env)));
+}
+
 async function device(req: Request, env: Env): Promise<{ id: string; cookie?: string }> {
-  const m = /(?:^|;\s*)mfm_dev=([0-9a-f-]{36})\.([A-Za-z0-9_-]{22})/.exec(req.headers.get("cookie") ?? "");
+  const m = /(?:^|;\s*)mfm_dev=([0-9a-f-]{36})\.([A-Za-z0-9_-]{22})(?:;|$)/.exec(req.headers.get("cookie") ?? "");
   if (m && same(m[2], await sign(m[1], env))) return { id: m[1] };
+  // new phones are handed out at a human pace per address: a script minting hundreds of
+  // identities (to dodge the 2-song cap or Mute) gets a few a minute
+  const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+  if (!(await env.NEWDEV_LIMIT.limit({ key: ip })).success) return { id: crypto.randomUUID() };   // no cookie: can look, can't request
   const id = crypto.randomUUID();
   return { id, cookie: `mfm_dev=${id}.${await sign(id, env)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` };
 }
@@ -135,14 +145,18 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
       return json({ keys: Array.isArray(h.cached) ? h.cached : [] }, 200, { ...extra, "cache-control": "max-age=60" });
     }
     if (path === "/api/request" && req.method === "POST") {
-      // A request needs the phone id the page handed out when it loaded: dropping the cookie
-      // no longer makes a fresh phone (that dodged the 2-song limit and Mute).
-      if (dev.cookie) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
+      // A request needs the signed phone id the page was handed when it loaded: dropping or
+      // inventing a cookie no longer makes a fresh phone (that dodged the 2-song limit and Mute).
+      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
+      const input = await body(req);
+      // only a real request spends the allowances: junk can't use up the house's
+      if (typeof input.name !== "string" || !input.name.trim() || typeof input.track?.title !== "string")
+        return json({ ok: false, error: "Pick a song and add your name." }, 400, extra);
       const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
       // per phone (one person can't lock out the house, which shares one address), plus a loose house-wide ceiling
       if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
         return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
-      return json(await party.submit(dev.id, await body(req), false, ip), 200, extra);
+      return json(await party.submit(dev.id, input, false, ip), 200, extra);
     }
     return json({ error: "not found" }, 404, extra);
 }

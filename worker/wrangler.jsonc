@@ -9,6 +9,7 @@
   "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Party"] }],
   "ai": { "binding": "AI", "remote": true },
   "ratelimits": [{ "name": "SUBMIT_LIMIT", "namespace_id": "1011", "simple": { "limit": 20, "period": 60 } },
-                 { "name": "IP_LIMIT", "namespace_id": "1012", "simple": { "limit": 120, "period": 60 } }],
+                 { "name": "IP_LIMIT", "namespace_id": "1012", "simple": { "limit": 120, "period": 60 } },
+                 { "name": "NEWDEV_LIMIT", "namespace_id": "1013", "simple": { "limit": 30, "period": 60 } }],
   "observability": { "enabled": true }
 }

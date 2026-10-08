@@ -264,4 +264,62 @@ describe("QA round", () => {
     const st = await p.guestState("d9");
     expect(st.upNext.find((i) => i.id === id)!.album).toBe("");
   });
+
+  it("slurs count anywhere in a word, with a few innocent exceptions (round 2)", () => {
+    for (const bad of ["nigga", "niggas", "n1gga", "fagot", "pussies"]) expect(isOffensive(bad), bad).toBe(true);
+    for (const ok of ["snigger", "niggle", "niggling", "Fagan", "Scunthorpe", "Pussycat"]) expect(isOffensive(ok), ok).toBe(false);
+  });
+
+  // ---- API round 2 ----
+  it("there is no per-address waiting cap: a big family on one Wi-Fi can all queue", async () => {
+    const p = stub("no-ip-cap");
+    for (let i = 0; i < 45; i++)
+      expect((await p.submit(`ph${i}`, { track: T(`Song ${i}`), name: "x" }, false, "203.0.113.9")).ok, `phone ${i}`).toBe(true);
+  });
+
+  it("stretched letters, split words and small-caps look-alikes are caught", () => {
+    for (const bad of ["fuuuck", "shitt", "fu ck", "sh it", "ꜱʜɪᴛ"]) expect(isOffensive(bad), bad).toBe(true);
+    for (const ok of ["As it is", "Fu Manchu", "Sheila", "Bossa Nova", "Ramblin' Man"]) expect(isOffensive(ok), ok).toBe(false);
+  });
+
+  it("joining while a song is being prepared re-prepares it at most once", async () => {
+    const p = stub("one-redo");
+    const { id } = await p.submit("d1", { track: T("Fernando"), name: "a" });
+    for (let round = 0; round < 3; round++) {
+      await p.beat({ ...beat, want: 1 });
+      await p.submit(`j${round}`, { track: T("Fernando"), name: `j${round}` });   // someone joins mid-preparation
+      await p.result({ id: id!, status: "ready", file: `${id}.mp3`, durationS: 200 });
+    }
+    expect((await p.adminState()).items.find((i) => i.id === id)?.status).toBe("ready");
+  });
+
+  it("names made of invisible filler characters are refused", async () => {
+    const p = stub("filler-names");
+    for (const name of ["\u3164\u3164", "\u2800\u2800", "\u0301\u0301", "\ufe0f"])
+      expect((await p.submit("d1", { track: T("SOS"), name }, true)).ok, JSON.stringify(name)).toBe(false);
+  });
+
+  it("emoji-only and punctuation-only titles are different songs", () => {
+    expect(songKey("ABBA", "🎉🎉")).not.toBe(songKey("ABBA", "💃💃"));
+    expect(songKey("ABBA", "!!!")).not.toBe(songKey("ABBA", "???"));
+  });
+
+  it("odd ages from the Pi never mark a song played", async () => {
+    const p = stub("odd-ago");
+    const x = await readyItem(p, "Chiquitita");
+    await p.beat({ ...beat, wantNext: true });
+    for (const agoS of [null, "", [], -50] as unknown[])
+      await p.beat({ ...beat, queued: 1, recent: [{ id: x, agoS }] } as typeof beat);
+    expect((await p.adminState()).items.find((i) => i.id === x)?.status).toBe("queued");
+  });
+
+  it("Apple links with a login or a port are not passed on", async () => {
+    const p = stub("apple-strict");
+    const { id } = await p.submit("d1", { track: T("Dreams", "Fleetwood Mac"), name: "x" });
+    await p.beat({ ...beat, want: 1 });
+    await p.result({ id: id!, status: "ready", file: "x.mp3", durationS: 200, year: "1977", appleUrl: "https://u:p@music.apple.com/x" });
+    expect((await p.guestState("d1")).mine[0].apple).toBe("");
+    await p.beat({ ...beat, soma: { artist: "A", title: "B", since: 1, apple: "https://music.apple.com:444/x" } });
+    expect((await p.guestState("d1")).nowPlaying!.apple).toBe("");
+  });
 });
