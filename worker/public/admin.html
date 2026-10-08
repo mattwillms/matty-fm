@@ -196,7 +196,7 @@ function renderNow() {
   $("now").replaceChildren(box, ...(extra.length ? [wrap] : []));
 }
 
-function row(it, actions) {
+function row(it, actions, inline = []) {
   const d = el("details"); if (openIds.has(it.id)) d.open = true;
   d.addEventListener("toggle", () => d.open ? openIds.add(it.id) : openIds.delete(it.id));
   const s = el("summary"), grow = el("div", "grow");
@@ -205,6 +205,11 @@ function row(it, actions) {
   if (it.confidence != null && it.confidence < 50) flags.push("low match");
   if (it.freeText) flags.push("typed-in");
   s.append(grow, el("span", "chip " + it.status, it.status), ...(flags.length ? [el("span", "chip", flags.join(" · "))] : []));
+  for (const [label, fn] of inline) {   // one-tap actions on the row itself
+    const b = el("button", "small", label);
+    b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); fn(e); };
+    s.append(b);
+  }
   const body = el("div", "detail");
   for (const r of it.requesters) {
     const qd = el("div", "quote"); qd.append(el("b", null, r.name), document.createTextNode(r.message || "(no message)"));
@@ -262,7 +267,7 @@ function render() {
 
   const past = state.items.filter((i) => ["played", "failed"].includes(i.status));
   $("histTitle").textContent = `Played (${past.length})`;
-  $("history").replaceChildren(...past.map((it) => row(it, [["Resend", (e) => act({ action: "resend", id: it.id }, e)]])));
+  $("history").replaceChildren(...past.map((it) => row(it, [], [["Resend", (e) => act({ action: "resend", id: it.id }, e)]])));
 }
 async function load() { try { state = await call("/api/admin/state"); render(); } catch {} }
 
