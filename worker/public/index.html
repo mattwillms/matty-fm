@@ -99,19 +99,20 @@
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
   /* the request module: a dark gunmetal plate (lamp, label, name screen), the script screen under it */
-  /* a sliver of molded plastic: lamp, label and name screen in one thin strip */
+  /* a sliver of brushed brass: lamp, engraved label and name screen in one thin strip */
   .plate { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 4px 28px; border-radius: var(--glass-r);   /* 14px clear of each screw; corners match the screens */
-           background: linear-gradient(#ffffff17, #ffffff00 45%, #00000022),   /* soft sheen on the moulding's top edge */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='2.2' numOctaves='1' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .22 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 120px,   /* fine matte stipple */
-                       linear-gradient(#2e2724, #1d1816);
-           background-blend-mode: normal, soft-light, normal;
-           box-shadow: inset 0 1px 0 #ffffff24, inset 0 -1px 1px #0009, 0 1px 0 #fff8, 0 0 0 1px #120f0d; }
+           background: linear-gradient(100deg, #fff0 20%, #fff5 42%, #fff0 62%),   /* the sheen brushed metal throws */
+                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 300px 60px,   /* the brush strokes, all one way */
+                       linear-gradient(#d9b766, #b38c3c 55%, #96722c);
+           background-blend-mode: soft-light, overlay, normal;
+           box-shadow: inset 0 1px 0 #fff3c0aa, inset 0 -1px 0 #5a4214, 0 1px 0 #fff8, 0 0 0 1px #5a4214; }
   .plate .lamp { flex: none; width: 9px; height: 9px; }
-  .plate .screw { width: 8px; height: 8px; top: 50%; margin-top: -4px; box-shadow: inset 0 0 0 1px #5a3f0f66, 0 1px 1px #0008;   /* brass */
-                  background: radial-gradient(circle at 35% 35%, #fff3c4, #d7b05a 45%, #9a7428 75%, #5f4413); }
-  .plate .slit { top: 3px; height: 1.5px; background: #4a3410; }
+  .plate .screw { width: 8px; height: 8px; top: 50%; margin-top: -4px; box-shadow: 0 1px 0 #fff4c066, 0 0 0 1px #0006;   /* black */
+                  background: radial-gradient(circle at 35% 35%, #7a7a7a, #2a2a2a 50%, #0b0b0b); }
+  .plate .slit { top: 3px; height: 1.5px; background: #000; }
   .plate .screw.ml { left: 6px; } .plate .screw.mr { right: 6px; }
-  .plate-label { font: 700 .55rem/1.05 Jost, sans-serif; letter-spacing: .08em; color: #d8cfbd; text-shadow: 0 -1px 0 #000c; white-space: nowrap; }
+  .plate-label { font: 700 .55rem/1.05 Jost, sans-serif; letter-spacing: .08em; white-space: nowrap;   /* engraved: dark cut, lit lower edge */
+                 color: #4a3310; text-shadow: 0 1px 0 #fbe7aacc, 0 -1px 0 #3a280833; }
   .lcd.name-screen { flex: 1; min-width: 0; padding: 2px 8px 3px; }   /* .lcd comes later in the file: match its weight to win */
   .msg-screen { margin-top: 12px; }
   /* the request VFD: dark glass, glowing teal dot-matrix, same family as the display above */
