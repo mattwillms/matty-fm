@@ -290,7 +290,8 @@ function shoutout(line, np) {
   const cut = s.search(/(?:^|[,.;:!?\s])(?:so\s+)?(?:here'?s|here is|this is|now,? here'?s)\b/i);
   if (cut > 0) s = s.slice(0, cut);
   else for (const w of [np.title, np.artist]) { const i = w ? s.toLowerCase().lastIndexOf(cleanTitle(w).toLowerCase()) : -1; if (i > 0) s = s.slice(0, i); }
-  s = s.replace(/[\s,;:.!?—-]+$/, "").replace(/\s+(?:and|so|with)$/i, "").trim();
+  // trim dangling punctuation and joining words until nothing changes ("crew, and" -> "crew")
+  for (let prev = ""; prev !== s; ) { prev = s; s = s.replace(/[\s,;:.!?—-]+$/, "").replace(/\s+(?:and|so|with|then|now)$/i, ""); }
   return s ? s + "." : "";
 }
 let lcdKey = "";
