@@ -15,7 +15,7 @@ def deps(tmp_path):
 
 
 def test_ready_result(tmp_path, monkeypatch):
-    monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache: SongFile(tmp_path / "s.mp3", 77.0, "v"))
+    monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache, **k: SongFile(tmp_path / "s.mp3", 77.0, "v"))
     monkeypatch.setattr(prepare.djline, "write_line", lambda item, c: DJLine(True, "sweet", "Hello Ann.", False))
     monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: "eleven")
     monkeypatch.setattr(prepare.mix, "prepare_files", lambda *a, **k: (201.5, 4.2))
@@ -25,7 +25,7 @@ def test_ready_result(tmp_path, monkeypatch):
 
 
 def test_song_not_found_fails_fast_without_tts(tmp_path, monkeypatch):
-    def nope(item, cache):
+    def nope(item, cache, **k):
         raise SongNotFound("No usable match")
 
     monkeypatch.setattr(prepare.songs, "get_song", nope)
@@ -35,7 +35,7 @@ def test_song_not_found_fails_fast_without_tts(tmp_path, monkeypatch):
 
 
 def test_unexpected_error_becomes_failed(tmp_path, monkeypatch):
-    monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache: SongFile(tmp_path / "s.mp3", 77.0, "v"))
+    monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache, **k: SongFile(tmp_path / "s.mp3", 77.0, "v"))
     monkeypatch.setattr(prepare.djline, "write_line", lambda item, c: DJLine(True, "funny", "x", False))
     monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: "eleven")
 

@@ -21,6 +21,9 @@ Version 0.1.0 (semver = big.small.bug).
 - The Worker queue is the single source of truth; Liquidsoap holds at most one pushed item.
 
 ## Findings
+- **Song sources keep the home IP off YouTube:** search = YouTube Data API v3 (key `YOUTUBE_API_KEY`, ~100 searches/day, cached in media/cache/search.json); download = Apify actors on their servers (`APIFY_TOKEN`; primary thenetaji/youtube-music-downloader, fallback lurkapi). yt-dlp from home tripped "confirm you're not a bot" after ~50 downloads — do not use it on party day.
+- **Durable Object kept running its first deploy's code** (deploys did not restart it, even idle). The queue instance name carries `QUEUE_VERSION` in worker/src/index.ts — bump it when party.ts changes (resets the queue; never on party day).
+- Pi is the console (pi/console.py): SomaFM + deckA/deckB + dj softvols into dmix; transition = outgoing fades to silence (1.5 s), DJ at +0.5 s, 0.4 s gap, incoming fades up to full as the voice ends. Liquidsoap/Icecast retired.
 - **SomaFM drops any client whose user agent contains "Liquidsoap"** (their no-restreaming rule). The Pi plays SomaFM itself; never disguise the station's user agent.
 - Liquidsoap 2.4.5 `output.harbor` never sends ICY titles; Icecast does. The Pi times crossfades from those titles.
 - The Liquidsoap image's entrypoint is `liquidsoap`: run checks as `docker run --rm --entrypoint sh … -c 'liquidsoap --check …'`, never `… liquidsoap --check` (the extra word is parsed as a script and the check is meaningless).

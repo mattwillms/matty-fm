@@ -18,6 +18,8 @@ class Deps:
     http: object                    # httpx.Client
     aura: Callable[[str], bytes]
     names: dict[str, str]
+    search: Callable | None = None     # sources.YouTubeSearch (Data API), never yt-dlp from home
+    download: Callable | None = None   # sources.ApifyDownload
 
 
 def prepare(item: dict, deps: Deps) -> dict:
@@ -25,7 +27,7 @@ def prepare(item: dict, deps: Deps) -> dict:
     rid = item["id"]
     t0 = time.monotonic()
     try:
-        song = songs.get_song(item, media / "cache")
+        song = songs.get_song(item, media / "cache", search=deps.search, download=deps.download, tries=2)
     except songs.SongNotFound as e:
         log.warning("%s song not found (%.1fs): %s", rid, time.monotonic() - t0, e)
         return {"id": rid, "status": "failed", "error": str(e)}

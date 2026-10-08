@@ -2,6 +2,7 @@
 
 import json
 import logging
+import os
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -9,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 import anthropic
 import httpx
 
-from . import config, feed, mix, prepare, somafm, tts
+from . import config, feed, mix, prepare, somafm, sources, tts
 from .pilink import PiLink
 from .worker_api import WorkerAPI
 
@@ -36,8 +37,13 @@ def main() -> None:
     api = WorkerAPI(cfg.worker_url, cfg.studio_secret)
     station = PiLink(cfg.pi_url, cfg.pi_token)
     write_backup_index(cfg.media_dir)
+    yt_key, apify = os.environ.get("YOUTUBE_API_KEY", ""), os.environ.get("APIFY_TOKEN", "")
+    if not (yt_key and apify):
+        log.error("YOUTUBE_API_KEY / APIFY_TOKEN missing: only cached songs can play")
     deps = prepare.Deps(cfg=cfg, claude=anthropic.Anthropic(max_retries=1), http=httpx.Client(),
-                        aura=api.tts, names=tts.load_names(cfg.repo / "studio" / "names.toml"))
+                        aura=api.tts, names=tts.load_names(cfg.repo / "studio" / "names.toml"),
+                        search=sources.YouTubeSearch(yt_key, httpx.Client(), cfg.media_dir / "cache" / "search.json") if yt_key else None,
+                        download=sources.ApifyDownload(apify, httpx.Client()) if apify else None)
     soma_np = somafm.NowPlaying(httpx.Client())
     pool = ThreadPoolExecutor(WORKERS)
     working: set[str] = set()

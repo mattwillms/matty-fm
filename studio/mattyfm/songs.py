@@ -132,14 +132,16 @@ def yt_download(video_id: str, dest: Path) -> None:
 
 
 def get_song(item: dict, cache_dir: Path,
-             search: Callable[[str], list[Candidate]] = yt_search,
-             download: Callable[[str, Path], None] = yt_download) -> SongFile:
+             search: Callable[[str], list[Candidate]] | None = yt_search,
+             download: Callable[[str, Path], None] | None = yt_download, tries: int = MAX_TRIES) -> SongFile:
     cache_dir.mkdir(parents=True, exist_ok=True)
     key = item["songKey"]
     path, meta = cache_dir / f"{key}.mp3", cache_dir / f"{key}.json"
     if path.exists() and meta.exists():
         m = json.loads(meta.read_text())
         return SongFile(path, float(m["confidence"]), m["video_id"])
+    if search is None or download is None:
+        raise SongNotFound("Not cached, and no song source is configured (APIFY_TOKEN / YOUTUBE_API_KEY)")
     duration_s = item["durationMs"] / 1000 if item.get("durationMs") else None
     try:
         cands = search(f'"{item["artist"]} - {item["title"]}"')
@@ -149,11 +151,11 @@ def get_song(item: dict, cache_dir: Path,
     if not options:
         raise SongNotFound(f"No usable match for {item['artist']} - {item['title']}")
     reasons = []
-    for best, confidence in options[:MAX_TRIES]:
+    for best, confidence in options[:tries]:
         try:
             download(best.id, path)
-        except subprocess.SubprocessError as e:   # unavailable, region-blocked, age-gated: try the next
-            reasons.append(f"{best.id}: {_reason(e)}")
+        except (subprocess.SubprocessError, SongNotFound) as e:   # blocked, unavailable: try the next
+            reasons.append(f"{best.id}: {_reason(e) if isinstance(e, subprocess.SubprocessError) else e}")
             log.warning("download %s failed: %s", best.id, reasons[-1])
             continue
         meta.write_text(json.dumps({"confidence": confidence, "video_id": best.id,
