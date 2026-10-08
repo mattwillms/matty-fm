@@ -46,8 +46,7 @@ def main() -> None:
     deps = prepare.Deps(cfg=cfg, claude=anthropic.Anthropic(max_retries=1), http=httpx.Client(),
                         aura=api.tts, names=tts.load_names(cfg.repo / "studio" / "names.toml"),
                         search=sources.YouTubeSearch(yt_key, httpx.Client(), cfg.media_dir / "cache" / "search.json") if yt_key else None,
-                        download=[sources.ApifyDownload(apify, httpx.Client(), only="thenetaji"),
-                                  sources.ApifyDownload(apify, httpx.Client(), only="lurkapi")] if apify else None)
+                        download=sources.downloaders(apify) if apify else None)
     soma_np = somafm.NowPlaying(httpx.Client())
     sched = breaks.Scheduler(now=time.monotonic())
     clips = breaks.library(cfg.media_dir)

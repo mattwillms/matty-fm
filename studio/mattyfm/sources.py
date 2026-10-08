@@ -5,8 +5,8 @@ video lengths so songs.score() can match the catalog duration. Results are cache
 on disk because search.list is limited to ~100 calls a day.
 
 Download: Apify actors fetch the audio on their servers; we download the finished
-file from Apify's storage. Primary thenetaji/youtube-music-downloader, fallback
-lurkapi/youtube-to-mp3-audio-downloader.
+file from Apify's storage. In order: streamers/youtube-video-downloader,
+thenetaji/youtube-music-downloader, lurkapi/youtube-to-mp3-audio-downloader.
 """
 
 import html
@@ -75,7 +75,7 @@ class YouTubeSearch:
 
 
 class ApifyDownload:
-    """`only`: restrict to one actor ("thenetaji" or "lurkapi"); default tries both in order."""
+    """`only`: restrict to one actor ("streamers", "thenetaji" or "lurkapi"); default tries all in order."""
 
     def __init__(self, token: str, http: httpx.Client, only: str | None = None):
         self.token, self.http, self.only = token, http, only
@@ -91,6 +91,11 @@ class ApifyDownload:
     def __call__(self, video_id: str, dest: Path) -> None:
         url = f"https://www.youtube.com/watch?v={video_id}"
         attempts = [
+            # first since 2026-10-08, when YouTube blocked the other two; it also returns a direct
+            # googlevideo link, which is YouTube itself and must never be fetched from home
+            ("streamers~youtube-video-downloader",
+             {"videos": [{"url": url}], "preferredFormat": "mp3", "preferredQuality": "144p"},
+             lambda it: it.get("downloadedFileUrl")),
             ("thenetaji~youtube-music-downloader",
              {"urls": [{"url": url}], "region": "US", "saveMedia": True, "audioFormat": "mp3"},
              lambda it: (it.get("savedFile") or {}).get("url")),
@@ -124,3 +129,9 @@ class ApifyDownload:
                 reasons.append(f"{actor.split('~')[0]}: {type(e).__name__} {status}".strip())
                 log.warning("apify %s failed for %s: %s", actor, video_id, reasons[-1])
         raise SongNotFound("Download failed: " + " | ".join(reasons))
+
+
+def downloaders(token: str) -> list:
+    """The download chain, in order: each actor separately, so every candidate gets the
+    first actor before any slower fallback (songs.get_song tries downloader x candidate)."""
+    return [ApifyDownload(token, httpx.Client(), only=a) for a in ("streamers", "thenetaji", "lurkapi")]

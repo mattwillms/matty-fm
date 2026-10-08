@@ -64,7 +64,7 @@ def test_apify_falls_back_to_the_second_actor_and_downloads_from_storage(tmp_pat
 
     def handler(r):
         seen.append(r.url.path)
-        if "thenetaji" in r.url.path:
+        if "streamers" in r.url.path or "thenetaji" in r.url.path:
             return httpx.Response(200, json=[{"error": "YouTube is blocking this video"}])
         if "lurkapi" in r.url.path:
             body = json.loads(r.content)
@@ -120,3 +120,24 @@ def test_only_apify_storage_links_are_downloaded(tmp_path):
     with pytest.raises(SongNotFound):
         dl("abc", tmp_path / "x.mp3")
     assert fetched == []
+
+
+def test_streamers_goes_first_and_only_its_apify_copy_is_fetched(tmp_path):
+    # 2026-10-08: YouTube blocked thenetaji and lurkapi; streamers still worked
+    seen = []
+
+    def handler(r):
+        seen.append(str(r.url))
+        if "streamers~youtube-video-downloader" in r.url.path:
+            body = json.loads(r.content)
+            assert body["videos"] == [{"url": "https://www.youtube.com/watch?v=abc"}] and body["preferredFormat"] == "mp3"
+            return httpx.Response(200, json=[{
+                "audioOnlyUrl": "https://rr1---sn-x.googlevideo.com/videoplayback?id=abc",   # YouTube itself: never from home
+                "downloadedFileUrl": "https://api.apify.com/v2/key-value-stores/s/records/abc_ABBA.mp3"}])
+        return httpx.Response(200, content=b"ID3audio")
+
+    dest = tmp_path / "x.mp3"
+    sources.ApifyDownload("tok", client(handler))("abc", dest)
+    assert dest.read_bytes() == b"ID3audio"
+    assert "streamers" in seen[0] and len(seen) == 2
+    assert not any("googlevideo" in u for u in seen)
