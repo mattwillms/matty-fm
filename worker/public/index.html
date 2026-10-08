@@ -103,8 +103,8 @@
   .cabinet :focus, .cabinet :focus-visible { outline: none; }
   .glass::after { content: ""; position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none;
                   background: linear-gradient(165deg, #ffffff14 0 22%, transparent 22%); }
-  /* the art is exactly as tall as the title and artist lines together: (2.2rem + 1.6rem) × line-height 1.15 */
-  .display { --art: calc((2.2rem + 1.6rem) * 1.15); display: flex; gap: 12px; align-items: center; min-height: var(--art); }
+  /* the art is exactly as tall as the title and artist lines together: (2.2rem + --small) × line-height 1.15 */
+  .display { --art: calc((2.2rem + var(--small)) * 1.15); display: flex; gap: 12px; align-items: center; min-height: var(--art); }
   .display > img, .display > .art { width: var(--art); height: var(--art); border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
   .display .art { display: grid; place-items: center; font-size: 42px; background: #16201d; }
   /* LED dot matrix, near-square dots, drawn narrow: each line is laid out 25% wider and squeezed
@@ -114,23 +114,30 @@
   .vfd { flex: 1; min-width: 0; color: var(--teal);   /* a definite width, so 125% lines resolve */ text-shadow: 0 0 6px #6fe3c899, 0 0 1px #b8fff0; }
   /* line-height 1.15: Doto's tails (g, j, p, q, y) drop .20em below the baseline; at 1.0 the box ends at .15em and cuts them */
   .vfd .t { font-size: 2.2rem; line-height: 1.15; }
-  .vfd .a { font-size: 1.6rem; line-height: 1.15; }
+  .vfd .a { font-size: var(--small); line-height: 1.15; }   /* the artist: same size and baseline as the REMAIN digits */
   .vfd .t, .vfd .a { white-space: nowrap; overflow: hidden; }   /* a VFD never wraps: it scrolls */
   .vfd .s { color: #6fe3c8aa; }
   /* The deck's time readout: a small REMAIN annunciator over the digits, bottom right of the glass, as on
      a 70s/80s cassette or CD deck. The artist line gives up the room (its width is pre-scale: ×1.25). */
   .vfd { position: relative; }
   .vfd.timed .a { width: calc((100% - var(--clock)) * 1.25); }
-  .vfd { --clock: 4rem; }
-  .remain { position: absolute; right: 0; bottom: 0; width: var(--clock); height: calc(1.6rem * 1.15); display: none;
-            flex-direction: column; align-items: flex-end; justify-content: flex-end; line-height: 1; }
+  .vfd { --clock: 6.4rem; }
+  :root { --small: 1.12rem; }
+  .remain { position: absolute; right: 0; bottom: 0; width: var(--clock); display: none;
+            align-items: baseline; justify-content: flex-end; gap: .3rem; }   /* REMAIN beside the digits, one baseline */
   .vfd.timed .remain { display: flex; }
-  .remain .ann { font: 400 .42rem/1 Michroma, sans-serif; letter-spacing: .14em; color: #6fe3c8b0; margin-bottom: 2px; text-shadow: 0 0 4px #6fe3c866; }
-  .remain .clk { font-size: 1.12rem; line-height: 1; transform: scaleX(.8); transform-origin: right; font-variant-numeric: tabular-nums; }   /* label + digits fit inside the artist line */
+  .remain .ann { font: 400 .42rem/1 Michroma, sans-serif; letter-spacing: .14em; color: #6fe3c8b0; text-shadow: 0 0 4px #6fe3c866; }
+  .remain .clk { font-size: var(--small); line-height: 1.15; transform: scaleX(.8); transform-origin: right; font-variant-numeric: tabular-nums; }   /* the artist's size and line: one baseline */
   /* elapsed time as a row of VFD segments along the bottom of the glass; unlit ones ghost faintly, as real ones do */
-  .meter { position: absolute; left: 14px; right: 14px; bottom: 4px; height: 3px; display: none; gap: 2px; pointer-events: none;
+  /* the meter sits as far from the glass's bottom edge as the title does from its top (12px) */
+  .meter { position: absolute; left: 14px; right: 14px; bottom: 12px; height: 3px; display: none; gap: 2px; pointer-events: none;
            grid-template-columns: repeat(40, 1fr); }
   .meter.on { display: grid; }
+  .glass:has(.meter.on) { padding-bottom: 24px; }   /* 12px edge + 3px meter + 9px clear of the text */
+  /* SomaFM: a slow scanner, Knight Rider style, dimmer than a song's progress */
+  .meter i.scan1 { background: #6fe3c880; box-shadow: 0 0 3px #6fe3c855; }
+  .meter i.scan2 { background: #6fe3c84d; }
+  .meter i.scan3 { background: #6fe3c82e; }
   .meter i { background: #6fe3c814; border-radius: 1px; }
   .meter i.lit { background: var(--teal); box-shadow: 0 0 4px #6fe3c8aa; }
   .song .cancel { background: none; border: 0; padding: 8px 0 2px; margin: 0; font: inherit; font-size: .8rem; color: var(--cream-dim);
@@ -475,6 +482,7 @@ function scrollFrame(now) {
     const x = t < sc.holdMs ? 0 : -sc.dist * (t - sc.holdMs) / sc.moveMs;
     track.style.transform = `translate3d(${x.toFixed(2)}px,0,0)`;
   }
+  if (typeof scanFrame === "function") scanFrame(now);
   requestAnimationFrame(scrollFrame);
 }
 requestAnimationFrame(scrollFrame);
@@ -813,13 +821,32 @@ function setClock(np) {
   if (!endAt || Math.abs(at - endAt) > 2000) endAt = at;
   lengthS = np.durationS;
 }
+// SomaFM has no length to count down: the meter runs a scanner instead (head plus a fading trail,
+// sweeping one way then back), driven by the frame loop so it moves smoothly.
+const SCAN_MS = 2600;   // one sweep across
+let scanAt = -1;
+function scanFrame(now) {
+  const soma = Boolean(onAir && onAir.soma) && !(endAt > 0);
+  $("meter").classList.toggle("scanning", soma);
+  if (!soma) { if (scanAt !== -1) { scanAt = -1; [...$("meter").children].forEach((seg) => seg.classList.remove("scan1", "scan2", "scan3")); } return; }
+  $("meter").classList.add("on");
+  const t = (now % (2 * SCAN_MS)) / SCAN_MS, forward = t < 1;
+  const head = Math.round((forward ? t : 2 - t) * (METER - 1));
+  if (head === scanAt) return;
+  scanAt = head;
+  [...$("meter").children].forEach((seg, i) => {
+    const behind = forward ? head - i : i - head;   // the trail follows the head's direction
+    seg.classList.remove("lit", "scan1", "scan2", "scan3");
+    if (behind >= 0 && behind < 3) seg.classList.add(`scan${behind + 1}`);
+  });
+}
 function tickClock() {
   const on = endAt > 0, v = document.querySelector("#display .vfd");
   if (v && v.classList.contains("timed") !== on) {
     v.classList.toggle("timed", on);
     if ($("vfdArtist") && onAir) setLine("vfdArtist", onAir.artist, false, SCROLL_PX_S, 1500);   // its room changed: measure again
   }
-  $("meter").classList.toggle("on", on);
+  $("meter").classList.toggle("on", on || Boolean(onAir && onAir.soma));
   if (!on) return;
   const left = Math.max(0, (endAt - Date.now()) / 1000), whole = Math.ceil(left);
   const clk = $("clk");

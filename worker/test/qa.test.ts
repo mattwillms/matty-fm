@@ -328,6 +328,9 @@ describe("QA round", () => {
     const p = stub("resend-twice");
     const id = await readyItem(p, "Hasta Mañana");
     await p.beat({ ...beat, source: "requests", current: id, remaining: 100 });
+    await runInDurableObject(p, async (_i: Party, state) => {   // it played to the end (not cut off)
+      state.storage.sql.exec("UPDATE items SET started_at=? WHERE id=?", Date.now() - 200_000, id);
+    });
     await p.beat({ ...beat, source: "soma" });
     await p.submit("d2", { track: T("Hasta Mañana"), name: "Two" });
     for (let i = 0; i < 3; i++) await p.adminAction({ action: "resend", id });
@@ -477,5 +480,44 @@ describe("QA round", () => {
     expect(await p.isFresh()).toBe(true);
     await p.beat(beat);                      // the studio checked in: in use, though empty
     expect(await p.isFresh()).toBe(false);
+  });
+  it("a song cut off by a Pi restart (no skip) goes back to the front and plays again", async () => {
+    const p = stub("cut-off");
+    const id = await readyItem(p, "Gimme! Gimme! Gimme!");
+    const other = await readyItem(p, "Money, Money, Money", "d2");
+    await p.beat({ ...beat, source: "requests", current: id, remaining: 150 });
+    await p.beat({ ...beat, source: "soma" });                      // the Pi restarted: back on SomaFM
+    const st = await p.adminState();
+    expect(st.items.find((i) => i.id === id)!.status).toBe("ready");
+    const r = await p.beat({ ...beat, wantNext: true });
+    expect(r.next?.id).toBe(id);                                    // first in line, before the other
+    expect(other).not.toBe(id);
+  });
+
+  it("a skipped song, or one that played nearly to the end, is done", async () => {
+    const p = stub("cut-vs-skip");
+    const a = await readyItem(p, "Lovers (Live a Little Longer)");
+    await p.beat({ ...beat, source: "requests", current: a, remaining: 150 });
+    await p.adminAction({ action: "skip" });
+    await p.beat({ ...beat, source: "soma" });
+    const b = await readyItem(p, "Hasta Mañana", "d2");
+    await p.beat({ ...beat, source: "requests", current: b, remaining: 10 });
+    await runInDurableObject(p, async (_i: Party, state) => {
+      state.storage.sql.exec("UPDATE items SET started_at=? WHERE id=?", Date.now() - 190_000, b);   // 190 of 200 s
+    });
+    await p.beat({ ...beat, source: "soma" });
+    const st = await p.adminState();
+    expect(st.items.find((i) => i.id === a)!.status).toBe("played");
+    expect(st.items.find((i) => i.id === b)!.status).toBe("played");
+  });
+
+  it("a song cut off twice is let go (a file that keeps failing can't loop)", async () => {
+    const p = stub("cut-twice");
+    const id = await readyItem(p, "So Long");
+    for (let i = 0; i < 2; i++) {
+      await p.beat({ ...beat, source: "requests", current: id, remaining: 150 });
+      await p.beat({ ...beat, source: "soma" });
+    }
+    expect((await p.adminState()).items.find((i) => i.id === id)!.status).toBe("played");
   });
 });

@@ -65,7 +65,8 @@ export class Party extends DurableObject<Env> {
         id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, done INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL);`);
     for (const [table, col] of [["items", "queued_at INTEGER DEFAULT 0"], ["items", "match_note TEXT"], ["items", "year TEXT"],
-                                ["items", "apple_url TEXT"], ["requesters", "ip TEXT"], ["commands", "target TEXT"], ["items", "redos INTEGER DEFAULT 0"]]) {
+                                ["items", "apple_url TEXT"], ["requesters", "ip TEXT"], ["commands", "target TEXT"], ["items", "redos INTEGER DEFAULT 0"],
+                                ["items", "started_at INTEGER DEFAULT 0"], ["items", "cuts INTEGER DEFAULT 0"]]) {
       try {
         this.sql.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`);
       } catch {
@@ -358,15 +359,16 @@ export class Party extends DurableObject<Env> {
         continue;
       this.sql.exec("UPDATE items SET status='queued', queued_at=? WHERE id=? AND status IN ('ready','queued')", now, id);
     }
+    // the song that was on air and isn't any more: done, unless it was cut off (endPlaying)
+    for (const it of this.all("SELECT id, started_at, duration_s, cuts FROM items WHERE status='playing' AND id<>?",
+                              b.source === "requests" ? (b.current ?? "") : ""))
+      this.endPlaying(it, now);
     if (b.source === "requests" && b.current) {
-      this.sql.exec("UPDATE items SET status='played', played_at=? WHERE status='playing' AND id<>?", now, b.current);
-      this.sql.exec("UPDATE items SET status='playing' WHERE id=? AND status IN ('queued','ready')", b.current);
+      this.sql.exec("UPDATE items SET status='playing', started_at=? WHERE id=? AND status IN ('queued','ready')", now, b.current);
       // a song deleted after it was handed out started anyway (the clear came too late): skip it, once
       if (this.one("SELECT 1 AS d FROM items WHERE id=? AND status='deleted'", b.current)
           && !this.one("SELECT 1 AS s FROM commands WHERE type='skip' AND target=?", b.current))
         this.command("skip", b.current);
-    } else {
-      this.sql.exec("UPDATE items SET status='played', played_at=? WHERE status='playing'", now);
     }
 
     // The station holds nothing, yet an item is marked queued and was not just pushed:
@@ -377,6 +379,22 @@ export class Party extends DurableObject<Env> {
           this.sql.exec("UPDATE items SET status='ready' WHERE id=?", q.id);
       }
     }
+  }
+
+  /** A song leaves the air. Cut off early with no skip (the Pi restarted, or lost its file): back to
+   *  the front of the line to play again from the start, once. Otherwise it's played. */
+  private endPlaying(it: Row, now: number): void {
+    const started = Number(it.started_at ?? 0), length = Number(it.duration_s ?? 0);
+    const skipped = this.one("SELECT 1 AS s FROM commands WHERE type='skip' AND (target=? OR target IS NULL) AND created_at>=?",
+      it.id, started - 5000);
+    const early = started > 0 && length > 0 && now - started < length * 1000 * 0.8;
+    if (early && !skipped && Number(it.cuts ?? 0) < 1) {
+      const first = Number(this.one(`SELECT MIN(rank) AS r FROM items WHERE status IN ${WAITING}`)?.r ?? 1);
+      this.sql.exec("UPDATE items SET status='ready', rank=?, queued_at=0, started_at=0, cuts=COALESCE(cuts,0)+1 WHERE id=?",
+        first - 1, it.id);
+      return;
+    }
+    this.sql.exec("UPDATE items SET status='played', played_at=? WHERE id=?", now, it.id);
   }
 
   async result(r: Result) {
@@ -422,7 +440,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "takeover-1",       // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "cutoff-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       items: items.map((i) => ({
         id: String(i.id), title: String(i.title), artist: String(i.artist), status: String(i.status),
