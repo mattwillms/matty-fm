@@ -601,4 +601,26 @@ describe("QA round", () => {
     expect((await p.submitJoke("b", { name: "B", text: "Blue truck lights are on outside.", kind: "announcement" })).ok).toBe(true);
     expect((await p.adminAction({ action: "announce", text: "The host can always announce." })).ok).toBe(true);
   });
+  it("Played is one timeline in the order things happened: songs, bumpers, jokes, failures included", async () => {
+    const p = stub("timeline");
+    const t0 = Date.now();
+    const a = await readyItem(p, "Waterloo");
+    await p.beat({ ...beat, source: "requests", current: a, remaining: 150 });
+    await runInDurableObject(p, async (_i: Party, state) => { state.storage.sql.exec("UPDATE items SET started_at=? WHERE id=?", t0 - 300_000, a); });
+    await p.beat({ ...beat, source: "soma" });                    // the song ends...
+    await new Promise((r) => setTimeout(r, 5));
+    const ident = { kind: "id", text: "You're tuned to OrrFM.", at: Date.now() };
+    await p.beat({ ...beat, source: "soma", aired: [ident] });   // ...then a station ID plays
+    await new Promise((r) => setTimeout(r, 5));
+    const { id: j } = await p.submitJoke("m", { name: "Matt", text: "This is two tents, a pun." });
+    await p.beat({ ...beat, wantJokes: 1 });
+    await p.jokeResult({ id: j!, status: "rejected" });
+    await new Promise((r) => setTimeout(r, 5));
+    const { id: b } = await p.submit("d2", { track: T("SOS"), name: "x" });
+    await p.beat({ ...beat, want: 1 });
+    await p.result({ id: b!, status: "failed", error: "nope" });
+    await p.beat({ ...beat, aired: [ident] });   // the studio re-sends until acked: counted once
+    const h = (await p.adminState()).history.map((e) => `${e.type}:${e.status ?? e.kind}`);
+    expect(h).toEqual(["song:failed", "joke:rejected", "break:id", "song:played"]);   // newest first
+  });
 });

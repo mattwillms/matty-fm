@@ -109,10 +109,10 @@
   .item { border-top: 1px solid var(--line); }
   .item:first-child { border-top: 0; }
   .item-row { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; padding: 10px 0; }
-  .history .item-row { grid-template-columns: 1fr auto; }
   .num { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; background: var(--raise); color: var(--muted);
          font-weight: 700; font-size: .85rem; }
   .meta { min-width: 0; cursor: pointer; }
+  .ico { width: 26px; height: 26px; border-radius: 6px; display: grid; place-items: center; background: var(--raise); font-size: .95rem; line-height: 1; }
   .meta .t { font-weight: 700; line-height: 1.3; overflow-wrap: anywhere; }
   .meta .a { color: var(--muted); font-size: .9rem; line-height: 1.3; overflow-wrap: anywhere; }
   .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
@@ -129,10 +129,6 @@
   #annText { box-sizing: border-box; resize: vertical; min-height: 76px; }
   .ann-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-top: 10px; font-size: .9rem; }
   .ann-row button { flex: none; }
-  .joke { padding: 12px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
-  .joke:first-child { border-top: 0; }
-  .joke .jhead { color: var(--faint); font-size: .85rem; margin-bottom: 2px; }
-  .joke .jbtns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 
   /* ---- add a request ---- */
   input, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 12px; }
@@ -379,7 +375,7 @@ setInterval(renderTimer, 1000);
 function tagsFor(it) {
   const t = [];
   const st = { pending: ["Waiting", ""], preparing: ["Preparing", "warn"], ready: ["Ready", "ok"], queued: ["Up next", "ok"],
-               failed: ["Not found", "bad"] }[it.status];
+               failed: ["Not found", "bad"], played: ["Played", ""], skipped: ["Skipped", "warn"], removed: ["Removed", "bad"] }[it.status];
   if (st) t.push(el("span", "tag " + st[1], st[0]));
   if (it.confidence != null && it.confidence < 50) t.push(el("span", "tag warn", "Low match"));
   if (it.freeText) t.push(el("span", "tag", "Typed in"));
@@ -408,21 +404,41 @@ function itemBlock(it, lead, tools, detailButtons, showTags) {
   return wrap;
 }
 
-const JOKE = { pending: "Waiting", preparing: "Being written up", ready: "Recorded, up next",
-               played: "Told on air", rejected: "DJ passed", failed: "Couldn't record" };
+// One look for every row: an icon for what it is, a title, a line under it, a status tag; tap for details.
+const ICON = { song: "🎵", skipped: "⏭️", failed: "⚠️", removed: "🗑️", joke: "🎤", announcement: "📣",
+               id: "📻", goof: "🎭", backannounce: "🎙️", skip: "💿" };
+const icon = (k) => { const b = el("span", "ico", ICON[k] || "•"); b.setAttribute("aria-hidden", "true"); return b; };
+const JOKE = { pending: ["Waiting", ""], preparing: ["Being written up", "warn"], ready: ["Recorded, up next", "ok"],
+               played: ["Told on air", ""], rejected: ["DJ passed", "bad"], failed: ["Couldn't record", "bad"], deleted: ["Removed", "bad"] };
 function jokeBlock(j) {
-  const box = el("div", "joke");
-  const what = j.kind === "announcement" ? (j.source === "host" ? "📣 Your announcement" : `📣 ${j.urgent ? "Urgent announcement" : "Announcement"} from ${j.name}`)
-                                         : `🎤 Joke from ${j.name}`;
-  box.append(el("div", "jhead", `${what} · ${JOKE[j.status] || j.status}`), el("div", "jtext", j.text));
-  if (j.script) box.append(quote("The DJ says", j.script));
+  const ann = j.kind === "announcement";
+  const title = ann ? (j.source === "host" ? "Your announcement" : `${j.urgent ? "Urgent announcement" : "Announcement"} from ${j.name}`)
+                    : `Joke from ${j.name}`;
+  const wrap = el("div", "item"), row = el("div", "item-row"), meta = el("div", "meta");
+  meta.append(el("div", "t", title), el("div", "a", j.text));
+  const [label, cls] = JOKE[j.status] || [j.status, ""];
+  const tg = el("div", "tags"); tg.append(el("span", "tag " + cls, label)); meta.append(tg);
+  row.append(icon(ann ? "announcement" : "joke"), meta, el("div", "row-tools"));
+  const key = "j:" + j.id, det = el("div", "details"); det.hidden = !openIds.has(key);
+  if (j.script) det.append(quote("The DJ says", j.script));
   if (["pending", "preparing", "ready"].includes(j.status)) {
-    const row = el("div", "jbtns");
-    row.append(btn("sm danger", "Delete", (e) => act({ action: "deleteJoke", id: j.id }, e)));
-    if (j.source !== "host") row.append(btn("sm ghost", `Mute ${j.name}'s phone`, (e) => confirm(`Mute ${j.name}'s phone? Their waiting requests and jokes are removed.`) && act({ action: "mute", device: j.device }, e)));
-    box.append(row);
+    const b = el("div", "buttons");
+    b.append(btn("sm danger", "Delete", (e) => act({ action: "deleteJoke", id: j.id }, e)));
+    if (j.source !== "host") b.append(btn("sm ghost", `Mute ${j.name}'s phone`, (e) => confirm(`Mute ${j.name}'s phone? Their waiting requests and jokes are removed.`) && act({ action: "mute", device: j.device }, e)));
+    det.append(b);
   }
-  return box;
+  if (!det.childNodes.length) det.append(el("div", "empty", "Nothing more to show."));
+  meta.onclick = () => { det.hidden = !det.hidden; det.hidden ? openIds.delete(key) : openIds.add(key); };
+  wrap.append(row, det);
+  return wrap;
+}
+const BREAK = { id: "Station ID", goof: "Goof", backannounce: "Back-announce", skip: "Skip stinger" };
+function breakBlock(e) {
+  const wrap = el("div", "item"), row = el("div", "item-row"), meta = el("div", "meta");
+  meta.append(el("div", "t", BREAK[e.kind] || e.kind), el("div", "a", e.text));
+  row.append(icon(e.kind), meta, el("div", "row-tools"));
+  wrap.append(row);
+  return wrap;
 }
 function render() {
   if (!state) return;
@@ -441,7 +457,7 @@ function render() {
   });
   const lineup = [];
   songRows.forEach((row, i) => { if (jokesWaiting[i]) lineup.push(jokeBlock(jokesWaiting[i])); lineup.push(row); });
-  lineup.push(...jokesWaiting.slice(songRows.length).map(jokeBlock));
+  lineup.push(...jokesWaiting.slice(songRows.length).map((j) => jokeBlock(j)));
   $("up").replaceChildren(...(lineup.length ? lineup : [el("div", "empty", "No requests waiting.")]));
 
   const muted = state.muted || [];
@@ -453,12 +469,13 @@ function render() {
     return r;
   }));
 
-  const past = state.items.filter((i) => ["played", "failed"].includes(i.status));
-  const jokesDone = jokes.filter((j) => ["played", "rejected", "failed"].includes(j.status));
-  $("histCount").textContent = past.length + jokesDone.length ? String(past.length + jokesDone.length) : "";
-  $("history").replaceChildren(...(past.length || jokesDone.length ? [...past.map((it) => itemBlock(it, null,
-      [btn("sm", "Resend", (e) => act({ action: "resend", id: it.id }, e))], muteButtons,
-      it.status === "failed" || (it.confidence != null && it.confidence < 50))), ...jokesDone.map(jokeBlock)]
+  // Played: everything in the order it happened, newest first; skipped, failed and passed stay put
+  const hist = state.history || [];
+  $("histCount").textContent = hist.length ? String(hist.length) : "";
+  $("history").replaceChildren(...(hist.length ? hist.map((e) =>
+      e.type === "song" ? itemBlock(e, icon(e.status === "played" ? "song" : e.status === "failed" ? "failed" : e.status),
+        [btn("sm", "Resend", (ev) => act({ action: "resend", id: e.id }, ev))], muteButtons, true)
+      : e.type === "joke" ? jokeBlock(e) : breakBlock(e))
     : [el("div", "empty", "Nothing played yet.")]));
 }
 let lastGood = 0;

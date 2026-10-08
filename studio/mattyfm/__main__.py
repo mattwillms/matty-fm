@@ -102,6 +102,9 @@ def main() -> None:
             text = djline.display(text)
             if station.voice(url, seconds, soma_only=soma_only, speech=speech):
                 log.info("break on air (%s): %s", kind, text)
+                if kind != "joke":
+                    with lock:
+                        aired.append({"kind": label, "text": text, "at": int(time.time() * 1000)})
                 if kind == "joke":
                     with lock:
                         jokes_played.append(joke["id"])   # sent with every beat until the Worker has it
@@ -134,6 +137,7 @@ def main() -> None:
     joke_working: set[str] = set()   # guests' jokes being written up and recorded
     writer_tries: dict[str, int] = {}   # messages the writer couldn't reach, per id (3 tries, then failed)
     jokes_played: list[str] = []     # told on air, not yet confirmed by the Worker
+    aired: list[dict] = []           # bumpers played, for the admin's timeline (sent until the Worker has them)
     next_joke: dict | None = None    # the oldest recorded joke, from the last beat
     joke_on: dict[str, tuple[str, int]] = {}   # request id -> (joke id, beat it was pushed): told when that song starts
     last_push: dict | None = None    # what the console holds queued (Skip may put a joke in front of it)
@@ -238,7 +242,7 @@ def main() -> None:
             with lock:
                 body = {**status, "pushed": pushed, "working": sorted(working | joke_working),
                         "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error,
-                        "wantJokes": 0 if joke_working else 1, "jokesPlayed": list(jokes_played),
+                        "wantJokes": 0 if joke_working else 1, "jokesPlayed": list(jokes_played), "aired": list(aired),
                         "wantNext": feed.wants_next(status), "soma": soma_np.get(),
                         "lastDj": dict(last_dj) or None,
                         "nextBreakS": round(sched.seconds_left(time.monotonic(), joke_ready=bool(next_joke))),
@@ -259,6 +263,7 @@ def main() -> None:
                     del joke_on[rid]
             with lock:   # the Worker has these now (marking played twice is harmless)
                 del jokes_played[:len(body["jokesPlayed"])]
+                del aired[:len(body["aired"])]
             next_joke = reply.get("nextJoke")
             for j in reply.get("jokeJobs") or []:
                 log.info("joke %s claimed from %s", j["id"], j["name"])
@@ -326,6 +331,8 @@ def main() -> None:
                     else:
                         if clip:
                             rotation.played(clip["file"])
+                            with lock:
+                                aired.append({"kind": "skip", "text": clip["text"], "at": int(time.time() * 1000)})
                         station.skip(bumper={"url": f"breaks/{clip['file']}", "voiceS": clip["seconds"]} if clip else None)
                 elif action[0] == "clear":
                     log.info("command: clear station queue")
