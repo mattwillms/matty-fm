@@ -49,3 +49,17 @@ describe("namesPhrase / clean", () => {
     expect(clean("  hi \n  there ", 5)).toBe("hi th");
   });
 });
+
+import { safeArtwork } from "../src/queue";
+
+describe("safeArtwork", () => {
+  it("keeps catalog image hosts only", () => {
+    expect(safeArtwork("https://is1-ssl.mzstatic.com/image/thumb/a/200x200bb.jpg")).toBe("https://is1-ssl.mzstatic.com/image/thumb/a/200x200bb.jpg");
+    expect(safeArtwork("https://e-cdns-images.dzcdn.net/images/cover/x/250x250.jpg")).toBe("https://e-cdns-images.dzcdn.net/images/cover/x/250x250.jpg");
+    expect(safeArtwork("https://evil.example/pixel.png")).toBe("");
+    expect(safeArtwork("http://is1-ssl.mzstatic.com/x.jpg")).toBe("");
+    expect(safeArtwork("https://mzstatic.com.evil.example/x.jpg")).toBe("");
+    expect(safeArtwork("javascript:alert(1)")).toBe("");
+    expect(safeArtwork(undefined)).toBe("");
+  });
+});

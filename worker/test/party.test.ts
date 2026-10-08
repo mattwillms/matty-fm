@@ -3,7 +3,7 @@ import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import type { Party } from "../src/party";
 
-const T = (title: string) => ({ title, artist: "ABBA", album: "", durationMs: 200000, explicit: false, artwork: "", source: "itunes" as const });
+const T = (title: string, artwork = "") => ({ title, artist: "ABBA", album: "", durationMs: 200000, explicit: false, artwork, source: "itunes" as const });
 const beat = { source: "soma", current: "", remaining: -1, queued: 0, pushed: [], working: [], want: 0, ack: [], error: "" };
 
 function stub(name: string) {
@@ -65,5 +65,11 @@ describe("party", () => {
     expect((await p.guestState("d1")).nowPlaying?.title).toBe("Mamma Mia");
     await p.beat(beat);
     expect((await p.guestState("d1")).nowPlaying).toBeNull();
+  });
+
+  it("drops artwork from hosts other than the catalogs", async () => {
+    const p = stub("art");
+    await p.submit("d1", { track: T("Chiquitita", "https://evil.example/pixel.png"), name: "x" });
+    expect((await p.guestState("d1")).upNext[0].artwork).toBe("");
   });
 });

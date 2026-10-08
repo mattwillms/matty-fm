@@ -75,7 +75,10 @@ Rules:
 - Party code required on every guest API call. Admin token on admin calls.
   Studio uses a separate bearer secret. All three are Worker secrets.
 - Device ID: random UUID in a cookie. Max **2 waiting** requests per device.
-  Rate limit binding: 5 submits / 60 s per IP.
+  Rate limit binding: 20 submits / 60 s per IP (everyone on the home wifi
+  shares one public IP). The device cap is a nudge, not a lock: a guest can
+  clear cookies; the owner can mute. Album art is accepted only from the
+  iTunes and Deezer image hosts.
 - **Order: round-robin by device.** Each device's next request waits until
   every other device with a waiting request has had a turn. An admin move
   pins an explicit position and overrides round-robin for that item.

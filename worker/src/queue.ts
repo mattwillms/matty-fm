@@ -49,3 +49,16 @@ export function namesPhrase(names: string[]): string {
 export function clean(text: string, max: number): string {
   return String(text ?? "").replace(/\s+/g, " ").trim().slice(0, max);
 }
+
+const ART_HOSTS = [".mzstatic.com", ".dzcdn.net"];
+
+/** Album art shown to every guest: only https images from the two catalogs we search. */
+export function safeArtwork(url: unknown): string {
+  try {
+    const u = new URL(String(url ?? ""));
+    const host = `.${u.hostname}`;
+    return u.protocol === "https:" && ART_HOSTS.some((h) => host.endsWith(h)) ? u.href : "";
+  } catch {
+    return "";
+  }
+}

@@ -1,6 +1,6 @@
 // The one Durable Object ("party"): queue, settings, studio beats, admin actions.
 import { DurableObject } from "cloudflare:workers";
-import { clean, namesPhrase, rankForNew, songKey, swapRanks, type Waiting } from "./queue";
+import { clean, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, type Waiting } from "./queue";
 import type { Track } from "./search";
 
 const WAITING = "('pending','preparing','ready','queued')";
@@ -129,7 +129,7 @@ export class Party extends DurableObject<Env> {
       const t = s.track;
       this.sql.exec(`INSERT INTO items(id,song_key,title,artist,album,duration_ms,artwork,explicit,free_text,status,rank,created_at)
         VALUES(?,?,?,?,?,?,?,?,?,'pending',?,?)`, id, key, title, artist, clean(t.album ?? "", 200),
-        t.durationMs ?? null, clean(t.artwork ?? "", 500), t.explicit ? 1 : 0, s.freeText ? 1 : 0,
+        Number(t.durationMs) || null, safeArtwork(t.artwork), t.explicit ? 1 : 0, s.freeText ? 1 : 0,
         rankForNew(this.ordered(), device), now);
     }
     this.sql.exec("INSERT INTO requesters(item_id,device,name,message,created_at) VALUES(?,?,?,?,?)",
