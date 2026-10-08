@@ -18,6 +18,7 @@
     --orange: #E2621B; --gold: #F0A92B; --avocado: #8A8F3C;
     --cream: #F3E3C3; --cream-dim: #CDB591; --teal: #6FE3C8; --glass: #0E1513;
     --bad: #E8644A;
+    --glass-r: 6px;   /* dial, display and request screen: one radius for all three */
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
@@ -59,26 +60,29 @@
            box-shadow: inset 0 0 0 1px #0003; }
   .screw::after { content: ""; position: absolute; left: 1px; right: 1px; top: 4px; height: 2px; background: #5d574e; transform: rotate(35deg); }
   .screw.tl { top: 6px; left: 6px; } .screw.tr { top: 6px; right: 6px; } .screw.bl { bottom: 6px; left: 6px; } .screw.br { bottom: 6px; right: 6px; }
-  .dial { position: relative; height: 54px; border-radius: 6px; background: linear-gradient(#1b1410, #2a201a);
+  .dial { position: relative; height: 54px; margin-top: 12px; border-radius: var(--glass-r); background: linear-gradient(#1b1410, #2a201a);
           box-shadow: inset 0 3px 8px #000d, 0 1px 0 #fff8; overflow: hidden; }
-  .dial::after { content: ""; position: absolute; inset: 0; background: linear-gradient(170deg, #ffffff1c 0 30%, transparent 30%); pointer-events: none; }
+  /* the window's shadow and glare sit above the needle, so it runs on behind the faceplate */
+  .dial::after { content: ""; position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none;
+                 background: linear-gradient(170deg, #ffffff1c 0 30%, transparent 30%); box-shadow: inset 0 3px 8px #000d, inset 0 -3px 6px #000a; }
   .scale { position: absolute; inset: 8px 12px auto; display: flex; justify-content: space-between;
            font: 500 .72rem Jost, sans-serif; color: var(--cream-dim); letter-spacing: .02em; }
   .ticks { position: absolute; left: 12px; right: 12px; bottom: 10px; height: 12px;
            background: repeating-linear-gradient(90deg, #cdb59188 0 1px, transparent 1px 10px); }
   .ticks::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--cream-dim) 0 2px, transparent 2px 50px); height: 12px; }
-  .needle { position: absolute; top: 4px; bottom: 4px; width: 3px; border-radius: 2px; background: var(--orange);
+  .needle { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--orange);
             box-shadow: 0 0 8px var(--orange); left: 50%; transition: left 1.1s cubic-bezier(.3, .7, .2, 1); }
-  .glass { position: relative; margin-top: 12px; border-radius: 6px; background: var(--glass); padding: 12px 14px;
+  .glass { position: relative; border-radius: var(--glass-r); cursor: pointer; background: var(--glass); padding: 12px 14px;
            box-shadow: inset 0 3px 10px #000, 0 1px 0 #fff8; }
-  .glass::after { content: ""; position: absolute; inset: 0; border-radius: 6px; pointer-events: none;
+  .glass:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
+  .glass::after { content: ""; position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none;
                   background: linear-gradient(165deg, #ffffff14 0 22%, transparent 22%); }
-  .display { display: flex; gap: 12px; align-items: center; min-height: 58px; }
-  .display img, .display .art { width: 58px; height: 58px; border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
-  .display .art { display: grid; place-items: center; font-size: 28px; background: #16201d; }
+  .display { display: flex; gap: 14px; align-items: center; min-height: 92px; }
+  .display > img, .display > .art { width: 92px; height: 92px; border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
+  .display .art { display: grid; place-items: center; font-size: 42px; background: #16201d; }
   .vfd { min-width: 0; color: var(--teal); text-shadow: 0 0 6px #6fe3c899, 0 0 1px #b8fff0; font-family: VT323, monospace; }
-  .vfd .t { font-size: 1.65rem; line-height: 1.05; }
-  .vfd .a { font-size: 1.3rem; line-height: 1.1; }
+  .vfd .t { font-size: 2.15rem; line-height: 1.05; }
+  .vfd .a { font-size: 1.6rem; line-height: 1.1; }
   .vfd .t, .vfd .a { white-space: nowrap; overflow: hidden; }   /* a VFD never wraps: it scrolls */
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
@@ -87,7 +91,7 @@
   .label { display: flex; align-items: center; gap: 7px; margin: 0 0 10px 2px; line-height: 1; }   /* centred between the screens */
   .request-mod { min-width: 0; }
   /* the request VFD: dark glass, glowing teal dot-matrix, same family as the display above */
-  .lcd { position: relative; border-radius: 4px; padding: 7px 10px 8px; overflow: hidden; background: var(--glass);
+  .lcd { position: relative; border-radius: var(--glass-r); padding: 7px 10px 8px; overflow: hidden; background: var(--glass);
          box-shadow: inset 0 3px 8px #000, 0 1px 0 #fff8; font-family: VT323, monospace; color: var(--teal);
          text-shadow: 0 0 6px #6fe3c899, 0 0 1px #b8fff0; }
   .lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none;
@@ -95,6 +99,47 @@
   .lcd-line { position: relative; white-space: nowrap; overflow: hidden; }
   .lcd-line.name { font-size: 1.2rem; line-height: 1.05; color: #6fe3c8b8; }
   .lcd-line.msg { font-size: 1.75rem; line-height: 1.05; }
+  /* ---- record sleeve lightbox: tap the screen to pull the record ---- */
+  dialog.sleeve-box { border: 0; padding: 24px 16px; margin: 0; width: 100%; height: 100%; max-width: none; max-height: none;
+                      background: transparent; color: var(--cream); overflow-x: hidden; }
+  dialog.sleeve-box::backdrop { background: radial-gradient(circle at 50% 38%, #4a2e1ef0, #170d08f7 72%); backdrop-filter: blur(5px); }
+  .sleeve-close { position: fixed; top: 14px; right: 14px; width: 44px; height: 44px; border: 0; border-radius: 50%;
+                  background: #0007; color: var(--cream); font: 400 1.8rem/1 Jost, sans-serif; cursor: pointer; }
+  .sleeve-close:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+  .sleeve-fig { margin: 0; min-height: 100%; display: grid; place-content: center; justify-items: center; gap: 26px; }
+  .sleeve-stage { --w: min(66vw, 360px, 50vh); position: relative; width: var(--w); height: var(--w); margin-right: calc(var(--w) * .3); }
+  .vinyl { position: absolute; inset: 3%; border-radius: 50%; box-shadow: 0 8px 22px #000b;
+           animation: pull .9s .15s cubic-bezier(.2, .7, .2, 1) both; }
+  .vinyl::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;   /* the shine stays put while the disc turns */
+                  background: conic-gradient(from 20deg, transparent 0 6%, #ffffff1f 12%, transparent 20% 50%, #ffffff1f 62%, transparent 70%); }
+  .disc { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center;
+          background: radial-gradient(circle, transparent 0 17%, #0b0b0b 17.5% 19%, transparent 19.5%),
+                      repeating-radial-gradient(circle, #121212 0 1.4px, #1f1f1f 1.4px 2.8px);
+          animation: spin 6s linear infinite; }
+  .disc img { width: 33%; height: 33%; border-radius: 50%; object-fit: cover; }
+  @keyframes pull { from { transform: translateX(0); } to { transform: translateX(31%); } }
+  @keyframes spin { to { transform: rotate(1turn); } }
+  .sleeve { position: absolute; inset: 0; border-radius: 2px; background: var(--walnut); box-shadow: 0 20px 44px #000c, inset 0 0 0 1px #ffffff1a; }
+  .sleeve img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 2px; }
+  .sleeve::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 2px;   /* ring wear from the record inside */
+                   background: radial-gradient(circle, transparent 40%, #ffffff12 41.5%, transparent 44%), linear-gradient(135deg, #ffffff17, transparent 45%); }
+  .sleeve .noart { width: 100%; height: 100%; display: grid; place-items: center; border-radius: 2px;
+                   background: radial-gradient(circle, transparent 0 17%, #111 17.5% 21%, transparent 21.5%), linear-gradient(160deg, #dcc290, #b18d55); }
+  .sleeve .noart img { width: 33%; height: 33%; border-radius: 50%; object-fit: cover; }
+  .sticker { position: absolute; top: -16px; left: -16px; width: 72px; height: 72px; border-radius: 50%; z-index: 1;
+             display: grid; place-items: center; background: var(--gold); color: var(--cocoa); transform: rotate(-11deg);
+             font: 900 1.2rem/1 Fraunces, serif; font-variation-settings: "SOFT" 100, "WONK" 1;
+             box-shadow: 0 4px 10px #0008, inset 0 0 0 3px #fff4, inset 0 0 0 6px var(--gold), inset 0 0 0 7px #2a1a1244; }
+  .sleeve-fig figcaption { max-width: min(90vw, 460px); text-align: center; }
+  .sl-t { margin: 0; font: 800 clamp(1.7rem, 7.5vw, 2.4rem)/1.05 Fraunces, serif; font-variation-settings: "SOFT" 100; text-wrap: balance; }
+  .sl-a { margin: 8px 0 0; font: 500 1.15rem/1.3 Jost, sans-serif; color: var(--cream-dim); }
+  .sl-al { margin: 4px 0 0; font: 400 1.1rem/1.3 Kalam, cursive; color: var(--gold); }
+  .sl-al:empty { display: none; }
+  @media (prefers-reduced-motion: reduce) { .vinyl { animation: none; transform: translateX(31%); } .disc { animation: none; } }
+  .art.record { border-radius: 50%; filter: none; display: grid; place-items: center;
+                background: radial-gradient(circle, transparent 0 33%, #0b0b0b 34% 37%, transparent 38%),
+                            repeating-radial-gradient(circle, #141414 0 1.2px, #222 1.2px 2.4px); box-shadow: 0 2px 6px #0008; }
+  .art.record img { width: 36%; height: 36%; border-radius: 50%; object-fit: cover; }
   .track { display: inline-flex; }
   .track span { flex: none; }
   .ticking .track span { padding-right: 3em; }
@@ -154,7 +199,7 @@
   ul { list-style: none; margin: 0; padding: 0; }
   .song { display: flex; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid #ffffff12; }
   li:first-child > .song, .song:first-child { border-top: 0; }
-  .song img, .song .art { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; background: #2f1f15; flex: none; }
+  .song > img, .song > .art { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; background: #2f1f15; flex: none; }
   .song .art { display: grid; place-items: center; font-size: 24px; }
   .song .meta { flex: 1; min-width: 0; }
   .song .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -197,17 +242,17 @@
   <section class="cabinet" aria-label="On air">
     <div class="faceplate">
       <i class="screw tl"></i><i class="screw tr"></i><i class="screw bl"></i><i class="screw br"></i>
+      <div class="glass" id="glass" role="button" tabindex="0" aria-label="Show the record sleeve">
+        <div class="display" id="display"><div class="vfd"><div class="idle">Warming up…</div></div></div>
+      </div>
       <div class="dial" aria-hidden="true">
         <div class="scale"><span>88</span><span>92</span><span>96</span><span>100</span><span>104</span><span>108</span></div>
         <div class="ticks"></div>
         <div class="needle" id="needle"></div>
       </div>
-      <div class="glass">
-        <div class="display" id="display"><div class="vfd"><div class="idle">Warming up…</div></div></div>
-      </div>
       <div class="controls">
         <div class="request-mod">
-          <div class="engrave label"><span class="lamp" id="lamp" aria-hidden="true"></span><span id="reqLabel">REQUESTED BY</span></div>
+          <div class="engrave label"><span class="lamp" id="lamp" aria-hidden="true"></span><span id="reqLabel">SPECIAL REQUEST</span></div>
           <div class="lcd" aria-live="polite">
             <div class="lcd-line name"><span class="track" id="lcdName"><span>SomaFM 70s</span></span></div>
             <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
@@ -216,6 +261,21 @@
       </div>
     </div>
   </section>
+
+  <dialog class="sleeve-box" id="sleeve" aria-label="Record sleeve">
+    <button class="sleeve-close" type="button" aria-label="Close">×</button>
+    <figure class="sleeve-fig">
+      <div class="sleeve-stage">
+        <div class="vinyl" aria-hidden="true"><div class="disc"><img src="/hen.png" alt=""></div></div>
+        <div class="sleeve"><img id="sleeveArt" alt=""><span class="sticker" id="sleeveYear" hidden></span></div>
+      </div>
+      <figcaption>
+        <p class="sl-t" id="sleeveTitle"></p>
+        <p class="sl-a" id="sleeveArtist"></p>
+        <p class="sl-al" id="sleeveAlbum"></p>
+      </figcaption>
+    </figure>
+  </dialog>
 
   <section class="jcard" id="nextBox" hidden aria-label="Coming up">
     <p class="jcard-h">Coming up</p>
@@ -272,9 +332,11 @@ function cleanTitle(t) {
     .replace(/\s*[(\[][^)\]]*(remaster|version|edit|mono|stereo|mix|single|live|from)[^)\]]*[)\]]/gi, "")
     .replace(/\s+-\s+.*(remaster|version|edit|mono|stereo).*$/i, "").trim();
 }
+// No cover anywhere (some SomaFM deep cuts aren't in any catalog): a plain record with the hen on its label.
+function record() { const r = el("div", "art record"), h = el("img"); h.alt = ""; h.src = "/hen.png"; r.append(h); return r; }
 function art(src) {
-  if (!src) return el("div", "art", "📻");
-  const img = el("img"); img.alt = ""; img.src = src; img.onerror = () => img.replaceWith(el("div", "art", "📻")); return img;
+  if (!src) return record();
+  const img = el("img"); img.alt = ""; img.src = src; img.onerror = () => img.replaceWith(record()); return img;
 }
 function songRow(s, extra, chipClass) {
   const li = el("li", "song"), box = el("div", "meta");
@@ -313,7 +375,6 @@ function lcd(np) {
   const req = np && !np.soma;
   const name = req ? (np.names || "The family") : "SomaFM 70s";
   const msg = req ? (shoutout(np.djLine, np) || "Turn it up.") : "Got a song in your head? Request it below.";
-  $("reqLabel").textContent = req ? "SPECIAL REQUEST" : "REQUESTED BY";
   const key = name + "|" + msg;
   if (key === lcdKey) return;   // unchanged: leave the scroll running where it is
   lcdKey = key;
@@ -343,8 +404,59 @@ function tune(key) {
   const pos = 6 + (h % 880) / 10;
   $("needle").style.left = `calc(12px + ${pos.toFixed(1)}% * .97)`;
 }
+// ---- record sleeve: tap the display for the cover, the year and the album ----
+let onAir = null;
+const sleeveInfo = new Map();
+function bigArt(u) {   // the same picture at full size from the same source, never stretched
+  return String(u || "").replace(/\/\d+x\d+bb\./, "/1000x1000bb.").replace(/\/\d+x\d+-(\d)/, "/1000x1000-$1");
+}
+async function releaseInfo(np) {
+  // Earliest matching release from Apple: the original album, not a later best-of.
+  const key = songKeyOf(np);
+  if (sleeveInfo.has(key)) return sleeveInfo.get(key);
+  let info = null;
+  try {
+    const r = await fetch("https://itunes.apple.com/search?media=music&entity=song&limit=25&country=US&term=" +
+                          encodeURIComponent(`${np.artist} ${cleanTitle(np.title)}`), { signal: AbortSignal.timeout(5000) });
+    const hits = (JSON.parse((await r.text()).trim()).results || [])
+      .filter((x) => x.releaseDate && songKeyOf({ artist: x.artistName, title: x.trackName }) === key)
+      .sort((a, b) => a.releaseDate.localeCompare(b.releaseDate));
+    if (hits.length) info = { year: hits[0].releaseDate.slice(0, 4), album: hits[0].collectionName || "",
+                              art: bigArt(String(hits[0].artworkUrl100 || "")) };
+  } catch {}
+  sleeveInfo.set(key, info);
+  return info;
+}
+function paperSleeve() { const d = el("div", "noart"), h = el("img"); h.alt = ""; h.src = "/hen.png"; d.append(h); return d; }
+function setSleeveArt(src, fallback) {
+  const box = document.querySelector(".sleeve");
+  const img = el("img"); img.id = "sleeveArt"; img.alt = "";
+  img.onerror = () => { if (fallback && img.src !== fallback) img.src = fallback; else img.replaceWith(paperSleeve()); };
+  if (src) img.src = src; else return box.querySelector("#sleeveArt, .noart").replaceWith(paperSleeve());
+  box.querySelector("#sleeveArt, .noart").replaceWith(img);
+}
+async function openSleeve() {
+  const np = onAir;
+  if (!np) return;
+  $("sleeveTitle").textContent = cleanTitle(np.title);
+  $("sleeveArtist").textContent = np.artist;
+  $("sleeveAlbum").textContent = "";
+  $("sleeveYear").hidden = true;
+  setSleeveArt(bigArt(np.artwork), np.artwork);
+  $("sleeve").showModal();
+  const info = await releaseInfo(np);
+  if (!info || onAir !== np || !$("sleeve").open) return;
+  $("sleeveYear").textContent = info.year; $("sleeveYear").hidden = false;
+  $("sleeveAlbum").textContent = info.album;
+  if (info.art && (!np.artwork || document.querySelector(".sleeve .noart"))) setSleeveArt(info.art);   // ours missing or broken
+}
+$("glass").onclick = openSleeve;
+$("glass").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSleeve(); } };
+$("sleeve").onclick = () => $("sleeve").close();   // tap anywhere to put it back
 function showNow(np) {
   const d = $("display");
+  onAir = np;
+  $("glass").setAttribute("aria-disabled", String(!np));
   if (!np) { $("lamp").classList.remove("on"); henSpin(false); lcd(null); const v = el("div", "vfd"); v.append(el("div", "idle", "Between songs")); d.replaceChildren(v); return; }
   $("lamp").classList.toggle("on", !np.soma);
   henSpin(!np.soma);
