@@ -324,3 +324,16 @@ def test_nonsense_numbers_are_refused_not_left_to_jam_the_console():
             eng.voice_break("http://ws:8040/breaks/id1.mp3", bad)
     run(eng, clock, 3)                         # still ticking
     assert eng.status()["source"] == "soma" and not math.isnan(mixer.level["SomaVol"])
+
+
+def test_status_lists_the_requests_that_actually_started():
+    # the Worker learns what played even if the studio was offline while it did
+    eng, clock, players, mixer = make()
+    eng.push(item("r1", song_s=20.0, voice_s=2.0))
+    eng.tick()
+    run(eng, clock, 5)
+    eng.push(item("r2", song_s=20.0, voice_s=2.0))
+    run(eng, clock, 25)
+    recent = eng.status()["recent"]
+    assert [r["id"] for r in recent[-2:]] == ["r1", "r2"]
+    assert recent[-1]["agoS"] < recent[-2]["agoS"]   # how long ago each started: a resent song can be told apart

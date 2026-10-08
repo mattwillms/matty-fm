@@ -790,7 +790,7 @@ new ResizeObserver(() => {
 document.fonts.ready.then(() => { if (screenKey !== null) { lcdKey = ""; showNow(onAir, true); } });
 function songKeyOf(t) {
   const n = (x) => String(x || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
-    .replace(/\((?:[^)]*(?:remaster|version|edit|mono|stereo|feat)[^)]*)\)/g, " ").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+    .replace(/\((?:[^)]*(?:remaster|version|edit|mono|stereo|feat)[^)]*)\)/g, " ").replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim();
   return n(t.artist) + "|" + n(t.title);
 }
 async function appleSearch(q) {
@@ -810,7 +810,7 @@ function normKey(x) {
   return String(x || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
     .replace(/\((?:[^)]*(?:remaster|version|edit|mono|stereo)[^)]*)\)/g, " ")
     .replace(/\s-\s.*(?:remaster|version|edit|mono|stereo).*$/, " ")
-    .replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+    .replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 80);   // letters of any script, as the Worker
 }
 function baseTitle(t) { return String(t || "").replace(/\s*[(\[][^)\]]*[)\]]/g, "").replace(/\s+-\s+.*$/, "").trim() || t; }
 let cachedKeys = new Set();

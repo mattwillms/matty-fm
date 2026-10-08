@@ -31,9 +31,10 @@ function norm(text: string): string {
     .toLowerCase()
     .replace(/\((?:[^)]*(?:remaster|version|edit|mono|stereo)[^)]*)\)/g, " ")
     .replace(/\s-\s.*(?:remaster|version|edit|mono|stereo).*$/, " ")
-    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/[^\p{L}\p{N} ]+/gu, " ")   // letters of any script: an all-Japanese title is not "" (was: every one collided)
     .replace(/\s+/g, " ")
-    .trim();
+    .trim()
+    .slice(0, 80);   // a key is also the studio's cache file name: keep it short
 }
 
 export function songKey(artist: string, title: string): string {
@@ -46,8 +47,11 @@ export function namesPhrase(names: string[]): string {
   return `${names.slice(0, -1).join(", ")} and ${names[names.length - 1]}`;
 }
 
-export function clean(text: string, max: number): string {
-  return String(text ?? "").replace(/\s+/g, " ").trim().slice(0, max);
+/** Guest text: control and invisible format characters (NUL, zero-width, right-to-left overrides)
+ *  removed, whitespace collapsed, capped. A string that was only invisible characters comes back "". */
+export function clean(text: unknown, max: number): string {
+  const t = typeof text === "string" || typeof text === "number" ? String(text) : "";
+  return t.replace(/[\p{Cc}\p{Cf}]/gu, "").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
 const ART_HOSTS = [".mzstatic.com", ".dzcdn.net"];
@@ -66,9 +70,30 @@ export function safeArtwork(url: unknown): string {
 // Mirror of is_offensive() in studio/mattyfm/djline.py. Change both together.
 const DENY_STEMS = ["fuck", "shit", "cunt", "bitch", "whore", "slut", "retard", "nigg", "fag", "pussy"];
 const LOOKALIKE: Record<string, string> = { "!": "i", "1": "i", "|": "i", "3": "e", "0": "o", "@": "a", $: "s", "5": "s", "4": "a", "*": "u" };
+// Cyrillic and Greek letters that look like Latin ones ("ѕhіt" must read as "shit")
+const CONFUSABLE: Record<string, string> = {
+  "а": "a", "е": "e", "о": "o", "р": "p", "с": "c", "у": "y", "х": "x", "і": "i", "ј": "j", "ѕ": "s", "к": "k", "м": "m", "т": "t", "н": "h",
+  "α": "a", "ε": "e", "ι": "i", "κ": "k", "ν": "v", "ο": "o", "ρ": "p", "τ": "t", "υ": "u", "χ": "x",
+};
+// A rude stem counts with one of these after it (or nothing), and nothing or a real word (3+ letters)
+// before it: "bullshit", "fucking", "shithead" are caught; "Fagan", "snigger", "Scunthorpe",
+// "Matsushita" and "Pussycat" are names and words. Mirrors ENDINGS in djline.py.
+const ENDINGS = new Set(["", "s", "es", "ed", "er", "ers", "ing", "in", "ins", "y", "ty", "head", "heads", "face", "faces",
+  "hole", "holes", "bag", "bags", "wad", "wads", "ass", "stain", "show", "storm", "tard", "tards", "o", "z"]);
+
+function rude(word: string): boolean {
+  for (const stem of DENY_STEMS) {
+    for (let i = word.indexOf(stem); i !== -1; i = word.indexOf(stem, i + 1)) {
+      const before = word.slice(0, i), after = word.slice(i + stem.length);
+      if (ENDINGS.has(after) && (before === "" || before.length >= 3)) return true;
+    }
+  }
+  return false;
+}
 
 export function isOffensive(text: string): boolean {
-  const folded = String(text ?? "").normalize("NFKC").normalize("NFKD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  const folded = [...String(text ?? "").normalize("NFKC").toLowerCase()].map((c) => CONFUSABLE[c] ?? c).join("")
+    .normalize("NFKD").replace(/[̀-ͯ]/g, "");
   const words: string[] = [];
   let run = "";
   for (const raw of folded.split(/\s+/)) {
@@ -84,7 +109,7 @@ export function isOffensive(text: string): boolean {
     words.push(token.replace(/\./g, ""));
   }
   if (run) words.push(run);
-  return words.some((w) => DENY_STEMS.some((s) => w.includes(s)));
+  return words.some(rude);
 }
 
 /** Guest-typed text shown on every guest's phone: replaced when offensive (the owner still sees it). */

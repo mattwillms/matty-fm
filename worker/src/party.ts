@@ -6,7 +6,13 @@ import type { Track } from "./search";
 const WAITING = "('pending','preparing','ready','queued')";
 const LEASE_MS = 120_000;
 const OFFLINE_MS = 60_000;
-const PURGE_AFTER_MS = 3 * 24 * 3600_000;
+// Names and messages are wiped after the party: Tuesday 2026-10-13 noon UTC, a fixed date, so
+// the wipe can't land mid-party (it used to be "3 days after the first request", i.e. Sunday).
+const PURGE_AT = Date.UTC(2026, 9, 13, 12);
+const PURGE_AFTER_MS = 3 * 24 * 3600_000;   // only once that date has passed (code reused for another party)
+const COMMAND_TTL_MS = 20_000;   // a command the studio didn't pick up by then is dropped, not fired late
+const MAX_WAITING_PER_IP = 40;   // the whole family shares the home Wi-Fi: generous, but a ceiling on floods
+const APPLE_HOSTS = ["music.apple.com"];
 const MAX_WAITING_PER_DEVICE = 2;
 const QUEUED_GRACE_MS = 15_000;
 
@@ -16,12 +22,26 @@ export type Beat = {
   source: string; current: string; remaining: number; queued: number;
   pushed: string[]; working: string[]; want: number; ack: number[]; error: string;
   wantNext?: boolean;   // the studio is ready to push a song right now
-  soma?: { artist: string; title: string; since: number; artwork?: string } | null;   // SomaFM's current song (its public feed)
+  recent?: { id: string; agoS: number }[];   // requests the Pi actually started, and how long ago (it may have played them while the studio was offline)
+  // SomaFM's current song (its public feed), with the studio's Apple lookup for the guests' record sleeve
+  soma?: { artist: string; title: string; since: number; artwork?: string; year?: string; album?: string; apple?: string } | null;
 };
 export type Result = {
   id: string; status: "ready" | "failed"; file?: string; durationS?: number; confidence?: number;
   djLine?: string; tone?: string; voice?: string; error?: string; matchNote?: string;
+  year?: string; albumName?: string; appleUrl?: string; artworkUrl?: string;   // release info looked up by the studio
 };
+
+/** Only Apple's own https links go on guests' phones. */
+function appleLink(url: unknown): string {
+  try {
+    const u = new URL(String(url ?? ""));
+    return u.protocol === "https:" && APPLE_HOSTS.includes(u.hostname) ? u.href : "";
+  } catch {
+    return "";
+  }
+}
+const year = (y: unknown) => (/^(19|20)\d\d$/.test(String(y ?? "")) ? String(y) : "");
 
 export class Party extends DurableObject<Env> {
   sql: SqlStorage;
@@ -45,9 +65,10 @@ export class Party extends DurableObject<Env> {
       CREATE TABLE IF NOT EXISTS commands(
         id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, done INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL);`);
-    for (const col of ["queued_at INTEGER DEFAULT 0", "match_note TEXT"]) {
+    for (const [table, col] of [["items", "queued_at INTEGER DEFAULT 0"], ["items", "match_note TEXT"], ["items", "year TEXT"],
+                                ["items", "apple_url TEXT"], ["requesters", "ip TEXT"], ["commands", "target TEXT"]]) {
       try {
-        this.sql.exec(`ALTER TABLE items ADD COLUMN ${col}`);
+        this.sql.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`);
       } catch {
         // column already exists
       }
@@ -75,8 +96,17 @@ export class Party extends DurableObject<Env> {
       breakEveryMin: Number(this.setting("breakEveryMin", "10")),
     };
   }
-  private command(type: "skip" | "clear" | "break" | `pad${number}`): void {
-    this.sql.exec("INSERT INTO commands(type,created_at) VALUES(?,?)", type, Date.now());
+  private command(type: "skip" | "clear" | "break" | `pad${number}`, target: string | null = null): void {
+    this.sql.exec("INSERT INTO commands(type,created_at,target) VALUES(?,?,?)", type, Date.now(), target);
+  }
+  /** A skip names the song it was meant for: by the time the studio sees it, that song may be gone. */
+  private skip(): void {
+    const playing = this.one("SELECT id FROM items WHERE status='playing' LIMIT 1");
+    this.command("skip", playing ? String(playing.id) : null);
+  }
+  /** Ranks 1, 2, 3… in the current order: run when a gap between neighbours gets too small to halve. */
+  private renumber(): void {
+    this.ordered().forEach((w, i) => this.sql.exec("UPDATE items SET rank=? WHERE id=?", i + 1, w.id));
   }
   private newId(): string {
     const n = Number(this.setting("seq", "0")) + 1;
@@ -103,7 +133,8 @@ export class Party extends DurableObject<Env> {
     const names = [...new Set(this.requesters(String(i.id)).map((r) => displayText(String(r.name), "a guest")))];
     const hidden = displayText(`${i.title} ${i.artist}`, "") === "";
     return { id: String(i.id), title: hidden ? "A request" : String(i.title),
-             artist: hidden ? "" : String(i.artist), artwork: String(i.artwork ?? ""), names: namesPhrase(names) };
+             artist: hidden ? "" : String(i.artist), artwork: hidden ? "" : String(i.artwork ?? ""), names: namesPhrase(names),
+             year: hidden ? "" : year(i.year), album: hidden ? "" : String(i.album ?? ""), apple: hidden ? "" : appleLink(i.apple_url) };
   }
   private studioItem(i: Row) {
     return {
@@ -115,7 +146,7 @@ export class Party extends DurableObject<Env> {
   }
 
   // ---------- guests ----------
-  async submit(device: string, s: SubmitIn, asAdmin = false) {
+  async submit(device: string, s: SubmitIn, asAdmin = false, ip = "") {
     if (!asAdmin && !this.flags().accepting) return { ok: false, error: "Requests are closed for tonight." };
     if (!asAdmin && this.one("SELECT 1 AS m FROM muted WHERE device=?", device))
       return { ok: false, error: "Requests are paused for this phone." };
@@ -127,26 +158,42 @@ export class Party extends DurableObject<Env> {
         WHERE r.device=? AND i.status IN ${WAITING}`, device)?.n ?? 0);
       if (n >= MAX_WAITING_PER_DEVICE)
         return { ok: false, error: "You have 2 songs waiting. Once one plays, add another!" };
+      const fromIp = ip ? Number(this.one(`SELECT COUNT(DISTINCT r.item_id) AS n FROM requesters r JOIN items i ON i.id=r.item_id
+        WHERE r.ip=? AND i.status IN ${WAITING}`, ip)?.n ?? 0) : 0;
+      if (fromIp >= MAX_WAITING_PER_IP)
+        return { ok: false, error: "The line is full right now. Try again after a few songs." };
     }
     const key = songKey(artist, title);
     const now = Date.now();
+    if (this.one("SELECT 1 AS p FROM items WHERE song_key=? AND status='playing'", key))
+      return { ok: false, error: "That one is playing right now! Pick another?" };
     const dup = this.one(`SELECT id,status FROM items WHERE song_key=? AND status IN ${WAITING} ORDER BY rank LIMIT 1`, key);
     let id: string;
     if (dup) {
       id = String(dup.id);
-      if (dup.status === "ready") this.sql.exec("UPDATE items SET status='pending' WHERE id=?", id);
+      if (this.one("SELECT 1 AS m FROM requesters WHERE item_id=? AND device=?", id, device))   // asked twice: one slot
+        return { ok: true, id, position: this.display().findIndex((i) => i.id === id) + 1 };
+      // still being prepared: once more, so the DJ names everyone. Already ready: just join it
+      // (re-preparing a ready song on every join kept popular songs off the air).
       if (dup.status === "preparing") this.sql.exec("UPDATE items SET redo=1 WHERE id=?", id);
     } else {
       id = this.newId();
       const t = s.track;
+      let rank = rankForNew(this.ordered(), device);
+      if (this.one("SELECT 1 AS x FROM items WHERE rank=? AND status IN " + WAITING, rank)) {   // the gap ran out
+        this.renumber();
+        rank = rankForNew(this.ordered(), device);
+      }
+      const ms = Number(t?.durationMs);
       this.sql.exec(`INSERT INTO items(id,song_key,title,artist,album,duration_ms,artwork,explicit,free_text,status,rank,created_at)
-        VALUES(?,?,?,?,?,?,?,?,?,'pending',?,?)`, id, key, title, artist, clean(t.album ?? "", 200),
-        Number(t.durationMs) || null, safeArtwork(t.artwork), t.explicit ? 1 : 0, s.freeText ? 1 : 0,
-        rankForNew(this.ordered(), device), now);
+        VALUES(?,?,?,?,?,?,?,?,?,'pending',?,?)`, id, key, title, artist, clean(t?.album ?? "", 200),
+        Number.isFinite(ms) && ms > 0 && ms < 3_600_000 ? Math.round(ms) : null, safeArtwork(t?.artwork),
+        t?.explicit === true ? 1 : 0, s.freeText === true ? 1 : 0, rank, now);
     }
-    this.sql.exec("INSERT INTO requesters(item_id,device,name,message,created_at) VALUES(?,?,?,?,?)",
-      id, device, name, message, now);
-    if ((await this.ctx.storage.getAlarm()) === null) await this.ctx.storage.setAlarm(now + PURGE_AFTER_MS);
+    this.sql.exec("INSERT INTO requesters(item_id,device,name,message,created_at,ip) VALUES(?,?,?,?,?,?)",
+      id, device, name, message, now, ip);
+    if ((await this.ctx.storage.getAlarm()) === null)
+      await this.ctx.storage.setAlarm(now < PURGE_AT ? PURGE_AT : now + PURGE_AFTER_MS);
     return { ok: true, id, position: this.display().findIndex((i) => i.id === id) + 1 };
   }
 
@@ -156,7 +203,8 @@ export class Party extends DurableObject<Env> {
     if (playing) return { ...this.pub(playing), djLine: String(playing.dj_line ?? "") };
     if (h.soma && h.source !== "requests")
       return { id: "soma", title: String(h.soma.title), artist: String(h.soma.artist),
-               artwork: safeArtwork((h.soma as { artwork?: string }).artwork), names: "", soma: true };
+               artwork: safeArtwork(h.soma.artwork), names: "", soma: true,
+               year: year(h.soma.year), album: clean(h.soma.album ?? "", 200), apple: appleLink(h.soma.apple) };
     return null;
   }
 
@@ -167,6 +215,7 @@ export class Party extends DurableObject<Env> {
     return {
       nowPlaying: this.nowPlaying(),
       upNext: waiting.slice(0, 6).map((i) => this.pub(i)),
+      waitingCount: waiting.length,
       mine: mine.map((i) => ({ ...this.pub(i), status: String(i.status),
         position: waiting.findIndex((w) => w.id === i.id) + 1 || null })),
       accepting: this.flags().accepting,
@@ -179,17 +228,74 @@ export class Party extends DurableObject<Env> {
     const now = Date.now();
     this.set("health", JSON.stringify({ ...b, at: now }));
     for (const c of b.ack ?? []) this.sql.exec("UPDATE commands SET done=1 WHERE id=?", c);
-    for (const id of b.pushed ?? [])
-      this.sql.exec("UPDATE items SET status='queued', queued_at=? WHERE id=? AND status IN ('ready','queued')", now, id);
     for (const id of b.working ?? []) this.sql.exec("UPDATE items SET lease_until=? WHERE id=? AND status='preparing'", now + LEASE_MS, id);
+    this.sql.exec("UPDATE items SET status='pending', lease_until=0 WHERE status='preparing' AND lease_until<?", now);
+    // "silence": the studio couldn't reach the Pi, so this beat says nothing about what's playing.
+    // Change no song's state and hand nothing out (that marked the on-air song played and handed a
+    // second song out); preparation carries on.
+    const unknown = b.source === "silence";
+    if (!unknown) this.followStation(b, now);
+    const jobs = [];
+    for (const i of this.all(`SELECT * FROM items WHERE status='pending' ORDER BY rank LIMIT ?`, Math.max(0, b.want ?? 0))) {
+      this.sql.exec("UPDATE items SET status='preparing', lease_until=?, redo=0 WHERE id=?", now + LEASE_MS, i.id);
+      jobs.push(this.studioItem(i));
+    }
+    const f = this.flags();
+    // Commands the studio missed while offline are dropped, not fired all at once on its return;
+    // a skip meant for a song that's no longer on air is dropped too.
+    this.sql.exec("UPDATE commands SET done=1 WHERE done=0 AND created_at<?", now - COMMAND_TTL_MS);
+    if (!unknown)
+      for (const c of this.all("SELECT id, target FROM commands WHERE done=0 AND type='skip' AND target IS NOT NULL"))
+        if (!(b.source === "requests" && b.current === c.target)) this.sql.exec("UPDATE commands SET done=1 WHERE id=?", c.id);
+    const commands = unknown ? [] : this.all("SELECT id,type FROM commands WHERE done=0 ORDER BY id")
+      .map((c) => ({ id: Number(c.id), type: String(c.type) }));
+    // Hand out the next song only when the studio will push it now, never alongside a clear (the
+    // studio clears and pushes nothing that beat), and mark it queued at once so a delete, move or
+    // duplicate in the next few seconds sees it as "in the console". Asking again while one is
+    // already handed out gets that same one (the push didn't land), never a second.
+    let next: Row | undefined;
+    if (b.wantNext && !unknown && !f.somaOnly && !f.stopAfterCurrent && !commands.some((c) => c.type === "clear")) {
+      next = this.one("SELECT * FROM items WHERE status='queued' AND id<>? ORDER BY rank LIMIT 1", b.current ?? "");
+      if (!next) {
+        next = this.one("SELECT * FROM items WHERE status='ready' ORDER BY rank LIMIT 1");
+        if (next) {   // first in line by rank too, so ▲▼ act on the order the screen shows
+          const first = Number(this.one(`SELECT MIN(rank) AS r FROM items WHERE status IN ${WAITING}`)?.r ?? 1);
+          this.sql.exec("UPDATE items SET status='queued', queued_at=?, rank=MIN(rank, ?) WHERE id=?", now, first - 1, next.id);
+        }
+      }
+    }
+    return {
+      commands,
+      settings: { somaOnly: f.somaOnly, stopAfterCurrent: f.stopAfterCurrent, breakEveryMin: f.breakEveryMin },
+      next: next ? this.studioItem(next) : null,
+      jobs,
+    };
+  }
 
+  /** Bring song states in line with what the console reports it is doing. */
+  private followStation(b: Beat, now: number): void {
+    // Songs the Pi started since they were handed out are played, even if the studio never saw them
+    // (it was offline): otherwise the grace rule below would hand them out and they'd play twice.
+    for (const r of Array.isArray(b.recent) ? b.recent : []) {
+      const started = now - Number(r?.agoS) * 1000;
+      if (!Number.isFinite(started) || typeof r?.id !== "string" || r.id === b.current) continue;
+      this.sql.exec(`UPDATE items SET status='played', played_at=? WHERE id=? AND status IN ('queued','ready','playing')
+        AND queued_at>0 AND queued_at<=?`, now, r.id, started);
+    }
+    for (const id of b.pushed ?? []) {
+      // a song the admin moved or cleared out of the console after it was handed out stays out,
+      // even if the studio pushed it in the meantime (the clear empties the console anyway)
+      const it = this.one("SELECT status, queued_at FROM items WHERE id=?", id);
+      if (it?.status === "ready" && this.one("SELECT 1 AS c FROM commands WHERE type='clear' AND created_at>=?", Number(it.queued_at ?? 0)))
+        continue;
+      this.sql.exec("UPDATE items SET status='queued', queued_at=? WHERE id=? AND status IN ('ready','queued')", now, id);
+    }
     if (b.source === "requests" && b.current) {
       this.sql.exec("UPDATE items SET status='played', played_at=? WHERE status='playing' AND id<>?", now, b.current);
       this.sql.exec("UPDATE items SET status='playing' WHERE id=? AND status IN ('queued','ready')", b.current);
     } else {
       this.sql.exec("UPDATE items SET status='played', played_at=? WHERE status='playing'", now);
     }
-    this.sql.exec("UPDATE items SET status='pending', lease_until=0 WHERE status='preparing' AND lease_until<?", now);
 
     // The station holds nothing, yet an item is marked queued and was not just pushed:
     // the station restarted, a push failed, or a clear dropped it. Put it back in line.
@@ -199,30 +305,16 @@ export class Party extends DurableObject<Env> {
           this.sql.exec("UPDATE items SET status='ready' WHERE id=?", q.id);
       }
     }
-
-    const jobs = [];
-    for (const i of this.all(`SELECT * FROM items WHERE status='pending' ORDER BY rank LIMIT ?`, Math.max(0, b.want ?? 0))) {
-      this.sql.exec("UPDATE items SET status='preparing', lease_until=?, redo=0 WHERE id=?", now + LEASE_MS, i.id);
-      jobs.push(this.studioItem(i));
-    }
-    const f = this.flags();
-    // Hand out the next song only when the studio will push it now, and mark it queued
-    // immediately so a delete, move or duplicate in the next few seconds sees it as "in the station".
-    const next = !b.wantNext || f.somaOnly || f.stopAfterCurrent
-      ? undefined
-      : this.one("SELECT * FROM items WHERE status='ready' ORDER BY rank LIMIT 1");
-    if (next) this.sql.exec("UPDATE items SET status='queued', queued_at=? WHERE id=?", now, next.id);
-    return {
-      commands: this.all("SELECT id,type FROM commands WHERE done=0 ORDER BY id")
-        .map((c) => ({ id: Number(c.id), type: String(c.type) })),
-      settings: { somaOnly: f.somaOnly, stopAfterCurrent: f.stopAfterCurrent, breakEveryMin: f.breakEveryMin },
-      next: next ? this.studioItem(next) : null,
-      jobs,
-    };
   }
 
   async result(r: Result) {
+    if (!r || (r.status !== "ready" && r.status !== "failed")) return { ok: false };
     const item = this.one("SELECT status,redo FROM items WHERE id=?", r.id);
+    if (item && r.status === "failed" && (item.status === "queued" || item.status === "ready")) {
+      // the studio couldn't push it (file unreadable): fail it rather than hand it out forever
+      this.sql.exec("UPDATE items SET status='failed', error=? WHERE id=?", clean(r.error ?? "Song file unreadable", 300), r.id);
+      return { ok: true };
+    }
     if (!item || item.status !== "preparing") return { ok: false };
     if (r.status === "ready" && item.redo) {
       this.sql.exec("UPDATE items SET status='pending', redo=0, lease_until=0 WHERE id=?", r.id);
@@ -232,6 +324,11 @@ export class Party extends DurableObject<Env> {
       voice=?, error=?, match_note=?, lease_until=0 WHERE id=?`, r.status, r.file ?? null, r.durationS ?? null,
       r.confidence ?? null, r.djLine ?? null, r.tone ?? null, r.voice ?? null, r.error ?? null,
       r.matchNote ?? null, r.id);
+    if (r.status === "ready") {   // the studio's Apple lookup: for every phone's record sleeve
+      this.sql.exec(`UPDATE items SET year=?, apple_url=?, album=CASE WHEN COALESCE(album,'')='' THEN ? ELSE album END,
+        artwork=CASE WHEN COALESCE(artwork,'')='' THEN ? ELSE artwork END WHERE id=?`,
+        year(r.year), appleLink(r.appleUrl), clean(r.albumName ?? "", 200), safeArtwork(r.artworkUrl), r.id);
+    }
     return { ok: true };
   }
 
@@ -252,6 +349,7 @@ export class Party extends DurableObject<Env> {
       nowPlaying: this.nowPlaying(),
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
+      serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
       settings: this.flags(),
       items: items.map((i) => ({
         id: String(i.id), title: String(i.title), artist: String(i.artist), status: String(i.status),
@@ -269,24 +367,26 @@ export class Party extends DurableObject<Env> {
     const status = a.id ? String(this.one("SELECT status FROM items WHERE id=?", a.id)?.status ?? "") : "";
     switch (a.action) {
       case "skip":
-        this.command("skip");
+        this.skip();
         return { ok: true };
       case "break":
         this.command("break");
         return { ok: true };
       case "pad": {   // a sound pad, 1 to 5: played on the console's fx channel
-        const n = Number(a.pad);
+        const n = typeof a.pad === "number" ? a.pad : NaN;
         if (!Number.isInteger(n) || n < 1 || n > 5) return { ok: false, error: "no such pad" };
         this.command(`pad${n}`);
         return { ok: true };
       }
       case "delete":
+        if (!status) return { ok: false, error: "no such request" };
+        if (status === "playing") this.skip();   // before the status changes: the skip names this song
         this.sql.exec("UPDATE items SET status='deleted' WHERE id=?", a.id!);
         if (status === "queued") this.command("clear");
-        if (status === "playing") this.command("skip");
         return { ok: true };
       case "move": {
         const pairs = swapRanks(this.ordered(), a.id!, a.dir === -1 ? -1 : 1);
+        if (!pairs.length) return { ok: false, error: "can't move that one" };
         for (const [id, rank] of pairs) {
           this.sql.exec("UPDATE items SET rank=? WHERE id=?", rank, id);
           if (this.one("SELECT 1 AS q FROM items WHERE id=? AND status='queued'", id)) {
@@ -299,9 +399,18 @@ export class Party extends DurableObject<Env> {
       case "resend": {
         // A played song's files still exist: back to ready at the end of the line.
         // A failed one goes back to pending so the studio tries again.
+        // If the song is already waiting (a guest asked again), its requesters join that copy.
+        const old = this.one("SELECT song_key FROM items WHERE id=?", a.id!);
+        if (!old) return { ok: false, error: "no such request" };
+        const waitingCopy = this.one(`SELECT id FROM items WHERE song_key=? AND status IN ${WAITING} AND id<>?`, old.song_key, a.id!);
+        if (waitingCopy) {
+          this.sql.exec(`INSERT INTO requesters(item_id,device,name,message,created_at,ip)
+            SELECT ?,device,name,message,created_at,ip FROM requesters WHERE item_id=?`, waitingCopy.id, a.id!);
+          return { ok: true, merged: String(waitingCopy.id) };
+        }
         const last = Number(this.one(`SELECT MAX(rank) AS r FROM items WHERE status IN ${WAITING}`)?.r ?? 0);
         this.sql.exec(`UPDATE items SET status=CASE WHEN file IS NOT NULL AND status='played' THEN 'ready' ELSE 'pending' END,
-          rank=?, played_at=NULL, error=NULL WHERE id=? AND status IN ('played','failed','deleted')`, last + 1, a.id!);
+          rank=?, played_at=NULL, error=NULL, queued_at=0 WHERE id=? AND status IN ('played','failed','deleted')`, last + 1, a.id!);
         return { ok: true };
       }
       case "retry":
@@ -309,21 +418,27 @@ export class Party extends DurableObject<Env> {
         return { ok: true };
       case "add":
         return this.submit("admin", { track: a.track!, name: a.name ?? "", message: a.message ?? "" }, true);
-      case "mute":
-        this.sql.exec("INSERT OR IGNORE INTO muted(device) VALUES(?)", a.device!);
-        this.sql.exec(`UPDATE items SET status='deleted' WHERE status IN ('pending','preparing','ready')
-          AND id IN (SELECT item_id FROM requesters GROUP BY item_id HAVING COUNT(*)=1 AND MAX(device)=?)`, a.device!);
+      case "mute": {
+        if (typeof a.device !== "string" || !a.device) return { ok: false, error: "no such phone" };
+        this.sql.exec("INSERT OR IGNORE INTO muted(device) VALUES(?)", a.device);
+        const solo = `SELECT item_id FROM requesters GROUP BY item_id HAVING COUNT(*)=1 AND MAX(device)=?`;
+        const inConsole = this.one(`SELECT 1 AS q FROM items WHERE status='queued' AND id IN (${solo})`, a.device);
+        this.sql.exec(`UPDATE items SET status='deleted' WHERE status IN ('pending','preparing','ready','queued')
+          AND id IN (${solo})`, a.device);
+        if (inConsole) this.command("clear");   // its song was already handed to the console
         return { ok: true };
+      }
       case "unmute":
         this.sql.exec("DELETE FROM muted WHERE device=?", a.device!);
         return { ok: true };
       case "settings":
-        for (const [k, v] of Object.entries(a.settings ?? {})) {
-          if (["accepting", "stopAfterCurrent", "somaOnly"].includes(k)) this.set(k, v ? "1" : "0");
+        for (const [k, v] of Object.entries(a.settings ?? {})) {   // real true/false only: "false" is not true
+          if (["accepting", "stopAfterCurrent", "somaOnly"].includes(k) && typeof v === "boolean") this.set(k, v ? "1" : "0");
         }
-        const every = Number(a.settings?.breakEveryMin);
-        if (Number.isFinite(every)) this.set("breakEveryMin", String(Math.min(30, Math.max(5, Math.round(every / 5) * 5))));
-        if (a.settings?.somaOnly || a.settings?.stopAfterCurrent) {
+        const every = a.settings?.breakEveryMin;
+        if (typeof every === "number" && Number.isFinite(every))
+          this.set("breakEveryMin", String(Math.min(30, Math.max(5, Math.round(every / 5) * 5))));
+        if (a.settings?.somaOnly === true || a.settings?.stopAfterCurrent === true) {
           this.command("clear");
           this.sql.exec("UPDATE items SET status='ready' WHERE status='queued'");
         }
@@ -332,7 +447,7 @@ export class Party extends DurableObject<Env> {
     return { ok: false, error: "unknown action" };
   }
 
-  // Names and messages are personal data: wipe them three days after the first request.
+  // Names and messages are personal data: wiped after the party (PURGE_AT).
   async alarm() {
     this.sql.exec("DELETE FROM requesters");
     this.sql.exec("UPDATE items SET dj_line=NULL");

@@ -7,7 +7,7 @@ export { Party };
 // Bump whenever party.ts changes. A deployed Durable Object kept running its first
 // version all evening (deploys did not restart it), so each queue-code change gets a
 // fresh instance. Queue state resets on a bump: never bump on party day.
-const QUEUE_VERSION = 11;
+const QUEUE_VERSION = 12;
 
 const enc = new TextEncoder();
 
@@ -59,15 +59,42 @@ export default {
     }
     if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
     const party = env.PARTY.getByName(`orrfm-v${QUEUE_VERSION}`);
-    const body = async () => (req.method === "POST" ? await req.json<any>() : {});
+    try {
+      return await route(req, env, ctx, url, path, party);
+    } catch (e) {
+      if (e instanceof BadRequest) return json({ ok: false, error: e.message }, 400);
+      throw e;
+    }
+  },
+} satisfies ExportedHandler<Env>;
+
+class BadRequest extends Error {}
+
+/** A POST body must be a JSON object of sensible size; anything else is a 400, not a crash. */
+async function body(req: Request): Promise<any> {
+  if (req.method !== "POST") return {};
+  const text = await req.text();
+  if (text.length > 64_000) throw new BadRequest("too large");
+  let v: unknown;
+  try {
+    v = JSON.parse(text || "{}");
+  } catch {
+    throw new BadRequest("not JSON");
+  }
+  if (!v || typeof v !== "object" || Array.isArray(v)) throw new BadRequest("expected a JSON object");
+  return v;
+}
+
+async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, path: string,
+                     party: DurableObjectStub<Party>): Promise<Response> {
 
     if (path.startsWith("/api/studio/")) {
       if (!same(req.headers.get("authorization")?.replace(/^Bearer /, "") ?? null, env.STUDIO_SECRET))
         return json({ error: "unauthorized" }, 401);
-      if (path === "/api/studio/beat") return json(await party.beat(await body()));
-      if (path === "/api/studio/result") return json(await party.result(await body()));
+      if (path === "/api/studio/beat") return json(await party.beat(await body(req)));
+      if (path === "/api/studio/result") return json(await party.result(await body(req)));
       if (path === "/api/studio/tts") {
-        const { text } = await body();
+        const { text } = await body(req);
         const audio: unknown = await env.AI.run("@cf/deepgram/aura-2-en", { text: String(text).slice(0, 1000), speaker: "orion", encoding: "mp3" });
         // Docs say a stream; the generated types say string (base64). Accept either.
         const bytes = typeof audio === "string" ? Uint8Array.from(atob(audio), (c) => c.charCodeAt(0)) : (audio as ReadableStream);
@@ -80,7 +107,7 @@ export default {
       if (!same(req.headers.get("x-admin-token"), env.ADMIN_TOKEN)) return json({ error: "unauthorized" }, 401);
       if (path === "/api/admin/state") return json(await party.adminState());
       if (path === "/api/admin/search") return json(await cachedSearch(url.searchParams.get("q") ?? "", ctx));
-      if (path === "/api/admin/action") return json(await party.adminAction(await body()));
+      if (path === "/api/admin/action") return json(await party.adminAction(await body(req)));
       return json({ error: "not found" }, 404);
     }
 
@@ -99,11 +126,14 @@ export default {
       return json({ keys: Array.isArray(h.cached) ? h.cached : [] }, 200, { ...extra, "cache-control": "max-age=60" });
     }
     if (path === "/api/request" && req.method === "POST") {
+      // A request needs the phone id the page handed out when it loaded: dropping the cookie
+      // no longer makes a fresh phone (that dodged the 2-song limit and Mute).
+      if (dev.cookie) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
       const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-      if (!(await env.SUBMIT_LIMIT.limit({ key: ip })).success)
+      // per phone (one person can't lock out the house, which shares one address), plus a loose house-wide ceiling
+      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
         return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
-      return json(await party.submit(dev.id, await body()), 200, extra);
+      return json(await party.submit(dev.id, await body(req), false, ip), 200, extra);
     }
     return json({ error: "not found" }, 404, extra);
-  },
-} satisfies ExportedHandler<Env>;
+}

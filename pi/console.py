@@ -120,6 +120,7 @@ class Engine:
         self.transition_until = 0.0
         self.backup: list = []
         self.backup_i = 0
+        self.recent: list[tuple[str, float]] = []   # (id, start time) of the last requests that started, newest last
         self.soma_down_since: float | None = None
         self.soma_up_since: float | None = None
 
@@ -221,7 +222,8 @@ class Engine:
             if ch in DECKS and it:
                 remaining = max(0.0, it.get("songS", 0) - (self.clock() - self.started_at.get(ch, self.clock())))
             return {"source": source, "current": it["id"] if it and not it.get("backup") else "",
-                    "remaining": round(remaining, 1), "queued": 1 if self.queued else 0}
+                    "remaining": round(remaining, 1), "queued": 1 if self.queued else 0,
+                    "recent": [{"id": i, "agoS": round(self.clock() - t, 1)} for i, t in self.recent]}
 
     # ----- transitions -----
     def resolve(self, url: str) -> str:
@@ -296,6 +298,11 @@ class Engine:
                 self.players.play(ch, url)
                 self.started_at[ch] = now
                 self.pending_play = None
+                it = self.on_air[1]
+                if self.on_air[0] == ch and it and not it.get("backup"):
+                    # reported in every status: if the studio missed this (it was offline), the
+                    # Worker still learns the song played and won't hand it out again
+                    self.recent = (self.recent + [(it["id"], now)])[-8:]
             if self.pending_dj and now >= self.pending_dj[1]:
                 self.players.play("dj", self.pending_dj[0])
                 self.pending_dj = None
