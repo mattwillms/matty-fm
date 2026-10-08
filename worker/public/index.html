@@ -646,7 +646,12 @@ $("q").addEventListener("input", () => {
       const [apple, worker] = await Promise.all([appleSearch(q), api("/api/search?q=" + encodeURIComponent(q))]);
       results = mergeResults(apple, worker.results || []);
     } catch (e) { if (e.message !== "gate") toast("Search didn't go through. Try again.", true); return; }
-    if (!results.length) { $("results").replaceChildren(el("li", "empty", "No matches. Try other words, or type it in.")); return; }
+    if (!results.length) {
+      const li = el("li", "empty"), b = el("button", "link", `Request “${q}” anyway`);
+      b.type = "button"; b.onclick = () => typeIn(q);
+      li.append("Not in the music catalogs, but the DJ can still find it. ", b);
+      $("results").replaceChildren(li); return;
+    }
     $("results").replaceChildren(...results.map((t) => {
       const b = el("button", "pick"); b.type = "button";
       const chip = t.cached ? ["Ready now", "up"] : t.original ? ["Original", "up"] : t.cover ? ["Cover", ""] : t.explicit ? ["Explicit", "bad"] : ["", ""];
@@ -661,11 +666,24 @@ function choose(t, free) {
   try { $("name").value = localStorage.getItem("mfm_name") || ""; } catch {}
   $("form").scrollIntoView({ behavior: "smooth", block: "start" });
 }
-$("freeBtn").onclick = () => choose({ title: "", artist: "", durationMs: null }, true);
+$("freeBtn").onclick = () => typeIn($("q").value.trim());
+// The typed-in form, filled from the search box: "Artist - Song" and "Song by Artist" split; otherwise the guest adds the artist.
+function typeIn(q) {
+  choose({ title: "", artist: "", durationMs: null }, true);
+  const dash = q.split(/\s+[-–—]\s+/), by = q.split(/\s+by\s+/i);
+  const [title, artist] = dash.length === 2 ? [dash[1], dash[0]] : by.length === 2 ? [by[0], by[1]] : [q, ""];
+  $("ft").value = title; $("fa").value = artist;
+  if (title && !artist) setTimeout(() => $("fa").focus({ preventScroll: true }), 350);   // after the scroll settles
+}
 $("cancel").onclick = () => { $("form").hidden = true; $("find").hidden = false; };
 $("send").onclick = () => busy($("send"), "Sending…", async () => {
   const track = { ...chosen }, free = !$("freeFields").hidden;
-  if (free) { track.title = $("ft").value; track.artist = $("fa").value; }
+  if (free) {
+    track.artist = $("fa").value.trim();
+    const t = $("ft").value.trim(), lead = track.artist.toLowerCase();
+    // "Paul Carrack Foregone Conclusion" with artist "Paul Carrack" -> title "Foregone Conclusion"
+    track.title = lead && t.toLowerCase().startsWith(lead + " ") ? t.slice(lead.length).replace(/^[\s\-–—:]+/, "") : t;
+  }
   try {
     const r = await api("/api/request", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ track, name: $("name").value, message: $("msg").value, freeText: free }) });
