@@ -33,6 +33,7 @@ def write_backup_index(media) -> None:
 
 def main() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
+    logging.getLogger("httpx").setLevel(logging.WARNING)   # it logs full request URLs at INFO
     cfg = config.load()
     api = WorkerAPI(cfg.worker_url, cfg.studio_secret)
     station = PiLink(cfg.pi_url, cfg.pi_token)

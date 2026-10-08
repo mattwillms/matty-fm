@@ -22,7 +22,7 @@ def test_iso_duration():
 def test_search_returns_candidates_with_real_durations(tmp_path):
     def handler(r):
         if r.url.path.endswith("/search"):
-            assert r.url.params["videoCategoryId"] == "10" and r.url.params["key"] == "k"
+            assert r.url.params["videoCategoryId"] == "10" and r.headers["x-goog-api-key"] == "k"
             return httpx.Response(200, json={"items": [
                 {"id": {"videoId": "a"}, "snippet": {"title": "September &amp; more", "channelTitle": "EWF - Topic"}},
                 {"id": {"videoId": "b"}, "snippet": {"title": "September (Live)", "channelTitle": "Fan"}}]})
@@ -83,3 +83,40 @@ def test_apify_total_failure_raises_with_reasons(tmp_path):
     dl = sources.ApifyDownload("tok", client(lambda r: httpx.Response(200, json=[{"error": "blocked"}])))
     with pytest.raises(SongNotFound, match="blocked"):
         dl("abc", tmp_path / "x.mp3")
+
+
+def test_keys_never_appear_in_urls_or_error_text(tmp_path):
+    seen = []
+
+    def handler(r):
+        seen.append(r)
+        if "googleapis" in r.url.host:
+            return httpx.Response(500)
+        return httpx.Response(500)
+
+    yt = sources.YouTubeSearch("SECRETKEY", client(handler), tmp_path / "s.json")
+    with pytest.raises(Exception) as e1:
+        yt("q")
+    dl = sources.ApifyDownload("SECRETTOKEN", client(handler))
+    with pytest.raises(SongNotFound) as e2:
+        dl("abc", tmp_path / "x.mp3")
+    for r in seen:
+        assert "SECRET" not in str(r.url)
+    assert any(r.headers.get("x-goog-api-key") == "SECRETKEY" for r in seen)
+    assert any(r.headers.get("authorization") == "Bearer SECRETTOKEN" for r in seen)
+    assert "SECRET" not in str(e1.value) and "SECRET" not in str(e2.value)
+
+
+def test_only_apify_storage_links_are_downloaded(tmp_path):
+    fetched = []
+
+    def handler(r):
+        if "/acts/" in r.url.path:
+            return httpx.Response(200, json=[{"savedFile": {"url": "http://192.168.86.1/admin"}},])
+        fetched.append(str(r.url))
+        return httpx.Response(200, content=b"x")
+
+    dl = sources.ApifyDownload("tok", client(handler))
+    with pytest.raises(SongNotFound):
+        dl("abc", tmp_path / "x.mp3")
+    assert fetched == []

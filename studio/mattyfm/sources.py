@@ -32,6 +32,15 @@ def iso_seconds(iso: str) -> int:
     return h * 3600 + mi * 60 + s
 
 
+def safe_link(url: str) -> bool:
+    """Only fetch finished files from Apify's own storage over https (never an arbitrary or LAN URL)."""
+    try:
+        u = httpx.URL(url)
+    except Exception:
+        return False
+    return u.scheme == "https" and (u.host == "api.apify.com" or u.host.endswith(".apify.com"))
+
+
 class YouTubeSearch:
     def __init__(self, key: str, http: httpx.Client, cache_file: Path):
         self.key, self.http, self.cache_file = key, http, cache_file
@@ -40,19 +49,21 @@ class YouTubeSearch:
     def __call__(self, query: str) -> list[Candidate]:
         if query in self.cache:
             return [Candidate(**c) for c in self.cache[query]]
-        r = self.http.get(f"{API}/search", timeout=10, params={
-            "q": query, "part": "snippet", "type": "video", "videoCategoryId": "10",
-            "maxResults": 8, "key": self.key})
+        hdr = {"x-goog-api-key": self.key}   # a header, never the URL: URLs end up in logs
+        r = self.http.get(f"{API}/search", timeout=10, headers=hdr, params={
+            "q": query, "part": "snippet", "type": "video", "videoCategoryId": "10", "maxResults": 8})
         if r.status_code == 403 and "quota" in r.text.lower():
             raise SongNotFound("YouTube Data API daily search quota is used up")
-        r.raise_for_status()
+        if r.status_code != 200:
+            raise SongNotFound(f"YouTube search failed (HTTP {r.status_code})")
         items = r.json().get("items", [])
         if not items:
             return []
         ids = [i["id"]["videoId"] for i in items]
-        d = self.http.get(f"{API}/videos", timeout=10, params={
-            "id": ",".join(ids), "part": "contentDetails", "key": self.key})
-        d.raise_for_status()
+        d = self.http.get(f"{API}/videos", timeout=10, headers=hdr,
+                          params={"id": ",".join(ids), "part": "contentDetails"})
+        if d.status_code != 200:
+            raise SongNotFound(f"YouTube video lookup failed (HTTP {d.status_code})")
         lengths = {v["id"]: iso_seconds(v["contentDetails"]["duration"]) for v in d.json().get("items", [])}
         cands = [Candidate(id=i["id"]["videoId"], title=html.unescape(i["snippet"]["title"]),
                            channel=html.unescape(i["snippet"]["channelTitle"]),
@@ -69,8 +80,10 @@ class ApifyDownload:
 
     def _run(self, actor: str, body: dict) -> list:
         r = self.http.post(f"{APIFY}/{actor}/run-sync-get-dataset-items", timeout=200,
-                           params={"token": self.token, "timeout": 170}, json=body)
-        r.raise_for_status()
+                           headers={"authorization": f"Bearer {self.token}"},   # never in the URL
+                           params={"timeout": 170}, json=body)
+        if r.status_code not in (200, 201):
+            raise httpx.HTTPStatusError(f"HTTP {r.status_code}", request=r.request, response=r)
         return r.json() if isinstance(r.json(), list) else []
 
     def __call__(self, video_id: str, dest: Path) -> None:
@@ -88,6 +101,9 @@ class ApifyDownload:
             try:
                 items = self._run(actor, body)
                 link = file_url(items[0]) if items else None
+                if link and not safe_link(link):
+                    log.warning("apify %s returned a non-Apify link for %s; ignored", actor, video_id)
+                    link = None
                 if not link:
                     reasons.append(f"{actor.split('~')[0]}: {(items[0].get('error') if items else 'no result')}"[:160])
                     log.warning("apify %s gave no file for %s: %s", actor, video_id, reasons[-1])
@@ -99,7 +115,8 @@ class ApifyDownload:
                 tmp.rename(dest)
                 log.info("apify %s downloaded %s (%d bytes)", actor.split("~")[0], video_id, len(f.content))
                 return
-            except httpx.HTTPError as e:
-                reasons.append(f"{actor.split('~')[0]}: {type(e).__name__}: {e}"[:160])
+            except httpx.HTTPError as e:   # str(e) can contain URLs: report only the type and status
+                status = getattr(getattr(e, "response", None), "status_code", "")
+                reasons.append(f"{actor.split('~')[0]}: {type(e).__name__} {status}".strip())
                 log.warning("apify %s failed for %s: %s", actor, video_id, reasons[-1])
         raise SongNotFound("Download failed: " + " | ".join(reasons))
