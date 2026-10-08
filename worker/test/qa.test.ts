@@ -536,7 +536,7 @@ describe("QA round", () => {
     expect((await p.adminState()).jokes[0]).toEqual(expect.objectContaining({ name: "Uncle Ray", status: "played" }));
   });
 
-  it("jokes: a declined one tells the guest; slurs, empty text, muted phones and a third waiting joke are refused", async () => {
+  it("jokes: a declined one tells the guest; slurs, empty text, muted phones and a second waiting joke are refused", async () => {
     const p = stub("jokes-refused");
     const { id } = await p.submitJoke("me", { name: "Ann", text: "Knock knock. Who's there? Lettuce." });
     await p.beat({ ...beat, wantJokes: 1 });
@@ -546,7 +546,7 @@ describe("QA round", () => {
     expect((await p.submitJoke("me", { name: "", text: "A real joke here" })).ok).toBe(false);
     expect((await p.submitJoke("me", { name: "Ann", text: "you fucking idiot" })).ok).toBe(false);
     expect((await p.submitJoke("me", { name: "Ann", text: "Joke one, a long enough one." })).ok).toBe(true);
-    expect((await p.submitJoke("me", { name: "Ann", text: "Joke two, a long enough one." })).ok).toBe(true);
+    expect((await p.submitJoke("me", { name: "Ann", text: "Joke two, a long enough one." })).ok).toBe(false);   // one regular waiting at a time
     expect((await p.submitJoke("me", { name: "Ann", text: "Joke three, a long enough one." })).ok).toBe(false);
     await p.adminAction({ action: "mute", device: "troll" });
     expect((await p.submitJoke("troll", { name: "T", text: "A real joke here" })).ok).toBe(false);
