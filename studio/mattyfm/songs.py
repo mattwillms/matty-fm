@@ -57,6 +57,18 @@ def song_key(artist: str, title: str) -> str:
     return f"{_key_part(artist)}|{_key_part(title)}"
 
 
+def base_title(title: str) -> str:
+    """The song without version tags: '(Live From …)', '[Remastered]', ' - 2004 Remaster'."""
+    t = re.sub(r"\s*[\(\[][^)\]]*[\)\]]", "", title)
+    t = re.sub(r"\s+-\s+.*$", "", t)
+    return t.strip() or title
+
+
+def base_key(artist: str, title: str) -> str:
+    """Mirror of baseKey() in worker/src/queue.ts."""
+    return song_key(artist, base_title(title))
+
+
 def score(c: Candidate, title: str, artist: str, duration_s: float | None) -> float:
     s = 0.0
     if c.duration > MAX_SECONDS:
@@ -138,14 +150,19 @@ def get_song(item: dict, cache_dir: Path,
     cache_dir.mkdir(parents=True, exist_ok=True)
     key = item["songKey"]
     path, meta = cache_dir / f"{key}.mp3", cache_dir / f"{key}.json"
-    if path.exists() and meta.exists():
-        m = json.loads(meta.read_text())
-        return SongFile(path, float(m["confidence"]), m["video_id"])
+    # A tagged version ("Live From …", "Remastered") plays the cached original if there is one.
+    for k in dict.fromkeys((key, base_key(item["artist"], item["title"]))):
+        hit_path, hit_meta = cache_dir / f"{k}.mp3", cache_dir / f"{k}.json"
+        if hit_path.exists() and hit_meta.exists():
+            m = json.loads(hit_meta.read_text())
+            if k != key:
+                log.info("cache: %s plays the cached %s", key, k)
+            return SongFile(hit_path, float(m["confidence"]), m["video_id"])
     if search is None or download is None:
         raise SongNotFound("Not cached, and no song source is configured (APIFY_TOKEN / YOUTUBE_API_KEY)")
     duration_s = item["durationMs"] / 1000 if item.get("durationMs") else None
     try:
-        cands = search(f'"{item["artist"]} - {item["title"]}"')
+        cands = search(f'{item["artist"]} {base_title(item["title"])}')
     except subprocess.SubprocessError as e:
         raise SongNotFound(f"YouTube search failed: {e}") from e
     options = ranked(cands, item["title"], item["artist"], duration_s)

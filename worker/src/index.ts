@@ -93,6 +93,11 @@ export default {
       return json(await cachedSearch(q, ctx), 200, extra);
     }
     if (path === "/api/state") return json(await party.guestState(dev.id), 200, extra);
+    if (path === "/api/cached") {
+      // Song keys the studio already has on disk (sent with each check-in): they play instantly.
+      const h = (await party.adminState()).health as { cached?: string[] };
+      return json({ keys: Array.isArray(h.cached) ? h.cached : [] }, 200, { ...extra, "cache-control": "max-age=60" });
+    }
     if (path === "/api/request" && req.method === "POST") {
       const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
       if (!(await env.SUBMIT_LIMIT.limit({ key: ip })).success)

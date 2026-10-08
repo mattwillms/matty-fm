@@ -128,7 +128,8 @@ def main() -> None:
                 body = {**status, "pushed": pushed, "working": sorted(working),
                         "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error,
                         "wantNext": feed.wants_next(status), "soma": soma_np.get(),
-                        "lastDj": dict(last_dj) or None}
+                        "lastDj": dict(last_dj) or None,
+                        "cached": sorted(p.stem for p in (cfg.media_dir / "cache").glob("*.mp3"))}
             reply = api.beat(body)
             pushed = []
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]

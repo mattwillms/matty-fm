@@ -53,8 +53,8 @@
   .ticks::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--cream-dim) 0 2px, transparent 2px 50px); height: 12px; }
   .needle { position: absolute; top: 4px; bottom: 4px; width: 3px; border-radius: 2px; background: var(--orange);
             box-shadow: 0 0 8px var(--orange); left: 50%; transition: left 1.1s cubic-bezier(.3, .7, .2, 1); }
-  .display { margin-top: 12px; border-radius: 8px; background: var(--glass); padding: 12px 14px;
-             box-shadow: inset 0 2px 8px #000; display: flex; gap: 12px; align-items: center; min-height: 82px; }
+  .glass { margin-top: 12px; border-radius: 8px; background: var(--glass); box-shadow: inset 0 2px 8px #000; padding: 12px 14px; }
+  .display { display: flex; gap: 12px; align-items: center; min-height: 58px; }
   .display img, .display .art { width: 58px; height: 58px; border-radius: 4px; object-fit: cover; flex: none; filter: saturate(.85); }
   .display .art { display: grid; place-items: center; font-size: 28px; background: #16201d; }
   .vfd { min-width: 0; color: var(--teal); text-shadow: 0 0 6px #6fe3c866; }
@@ -62,6 +62,17 @@
   .vfd .a, .vfd .s { font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
+
+  /* coming up: the receiver's preset row, behind the same glass */
+  .presets { margin-top: 12px; padding-top: 10px; border-top: 1px dashed #6fe3c840; }
+  .presets-h { margin: 0 0 6px; font-size: .8rem; color: #6fe3c899; }
+  .presets ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .presets li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: baseline; color: #6fe3c8cc; }
+  .presets .n { display: grid; place-items: center; height: 20px; border-radius: 4px; font-size: .75rem; font-weight: 700;
+                color: var(--glass); background: #6fe3c8b3; box-shadow: 0 0 6px #6fe3c840; }
+  .presets .line { min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .92rem; }
+  .presets .line b { color: var(--teal); font-weight: 700; }
+  .presets .more { color: #6fe3c880; font-size: .82rem; padding-left: 32px; }
 
   /* ---- panels ---- */
   h2 { font-family: Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 48;
@@ -137,7 +148,13 @@
       <div class="ticks"></div>
       <div class="needle" id="needle"></div>
     </div>
-    <div class="display" id="display"><div class="vfd"><div class="idle">Warming up…</div></div></div>
+    <div class="glass">
+      <div class="display" id="display"><div class="vfd"><div class="idle">Warming up…</div></div></div>
+      <div class="presets" id="nextBox" hidden>
+        <p class="presets-h">Coming up</p>
+        <ol id="next"></ol>
+      </div>
+    </div>
   </section>
 
   <section class="panel" id="find">
@@ -163,7 +180,6 @@
   </section>
 
   <section class="panel" id="mineBox" hidden><h2>Your requests</h2><ul id="mine"></ul></section>
-  <section class="panel" id="nextBox" hidden><h2>Coming up</h2><ul id="next"></ul></section>
 
   <p class="fine">Names and messages are deleted three days after the party.</p>
 </main>
@@ -236,10 +252,26 @@ async function appleSearch(q) {
       artwork: String(x.artworkUrl100 || "").replace("100x100", "200x200"), source: "itunes" }));
   } catch { return []; }
 }
+// Mirror of norm()/songKey()/baseKey() in worker/src/queue.ts and songs.py.
+function normKey(x) {
+  return String(x || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
+    .replace(/\((?:[^)]*(?:remaster|version|edit|mono|stereo)[^)]*)\)/g, " ")
+    .replace(/\s-\s.*(?:remaster|version|edit|mono|stereo).*$/, " ")
+    .replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+}
+function baseTitle(t) { return String(t || "").replace(/\s*[(\[][^)\]]*[)\]]/g, "").replace(/\s+-\s+.*$/, "").trim() || t; }
+let cachedKeys = new Set();
+function isCached(t) {
+  return cachedKeys.has(normKey(t.artist) + "|" + normKey(t.title)) || cachedKeys.has(normKey(t.artist) + "|" + normKey(baseTitle(t.title)));
+}
+async function loadCached() {
+  try { cachedKeys = new Set((await api("/api/cached")).keys || []); } catch {}
+}
 function mergeResults(a, b) {
   const seen = new Set(), out = [];
   for (const t of [...a, ...b]) { const k = songKeyOf(t); if (!seen.has(k)) { seen.add(k); out.push(t); } }
-  return out.slice(0, 12);
+  // songs already on the station's shelf play right away: list them first
+  return out.map((t, i) => ({ t, i, c: isCached(t) })).sort((x, y) => (y.c - x.c) || (x.i - y.i)).map((x) => ({ ...x.t, cached: x.c })).slice(0, 12);
 }
 async function api(path, opts) {
   const sep = path.includes("?") ? "&" : "?";
@@ -271,7 +303,13 @@ async function refresh() {
     $("onbreak").hidden = !s.djOnBreak;
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;
     showNow(s.nowPlaying);
-    $("nextBox").hidden = !s.upNext.length; $("next").replaceChildren(...s.upNext.map((x) => songRow(x)));
+    $("nextBox").hidden = !s.upNext.length;
+    $("next").replaceChildren(...s.upNext.slice(0, 3).map((x, i) => {
+      const li = el("li"), line = el("div", "line");
+      line.append(el("b", null, cleanTitle(x.title)), document.createTextNode(`, ${x.artist}` + (x.names ? `, for ${x.names}` : "")));
+      li.append(el("span", "n", String(i + 1)), line);
+      return li;
+    }), ...(s.upNext.length > 3 ? [el("li", "more", `and ${s.upNext.length - 3} more`)] : []));
     $("mineBox").hidden = !s.mine.length;
     $("mine").replaceChildren(...s.mine.map((m) => {
       const [label, cls] = badge(m);
@@ -300,7 +338,8 @@ $("q").addEventListener("input", () => {
     } catch (e) { if (e.message !== "gate") toast("Search didn't go through. Try again.", true); return; }
     if (!results.length) { $("results").replaceChildren(el("li", "empty", "No matches. Try other words, or type it in.")); return; }
     $("results").replaceChildren(...results.map((t) => {
-      const b = el("button", "pick"); b.type = "button"; b.append(songRow(t, t.explicit ? "Explicit" : "", "bad"));
+      const b = el("button", "pick"); b.type = "button";
+      b.append(songRow(t, t.cached ? "Ready now" : t.explicit ? "Explicit" : "", t.cached ? "up" : "bad"));
       b.onclick = () => choose(t, false); const li = el("li"); li.append(b); return li;
     }));
   }, 400);
@@ -334,6 +373,7 @@ function schedule(ms) {
 }
 schedule(15000);
 refresh();
+loadCached(); setInterval(loadCached, 5 * 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
 </script>
 </body>

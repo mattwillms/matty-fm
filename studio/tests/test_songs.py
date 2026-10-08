@@ -121,3 +121,31 @@ def test_primary_downloader_tries_every_candidate_before_the_slow_fallback(tmp_p
     item = {"songKey": "furacao|mimosa", "title": "Mimosa", "artist": "Furacao", "durationMs": 140000}
     got = songs.get_song(item, tmp_path, search=lambda q: cands, download=[primary, fallback], tries=2)
     assert order == [("primary", "blocked"), ("primary", "ok")] and got.video_id == "ok"
+
+
+def test_base_key_drops_version_tags():
+    assert songs.base_key("Tears For Fears", "Everybody Wants To Rule The World (Live From Franklin, TN)") == \
+        "tears for fears|everybody wants to rule the world"
+    assert songs.base_key("Journey", "Don't Stop Believin' - 2024 Remaster") == "journey|don t stop believin"
+
+
+def test_a_tagged_version_uses_the_cached_original(tmp_path):
+    (tmp_path / "tears for fears|everybody wants to rule the world.mp3").write_bytes(b"ID3")
+    (tmp_path / "tears for fears|everybody wants to rule the world.json").write_text('{"confidence": 80, "video_id": "v"}')
+    item = {"songKey": "tears for fears|everybody wants to rule the world live from franklin tn",
+            "title": "Everybody Wants To Rule The World (Live From Franklin, TN)", "artist": "Tears For Fears", "durationMs": 300000}
+    got = songs.get_song(item, tmp_path, search=lambda q: (_ for _ in ()).throw(AssertionError("no search")), download=None)
+    assert got.path.name.startswith("tears for fears|everybody wants")
+
+
+def test_youtube_query_has_no_quotes_or_version_tags(tmp_path):
+    seen = []
+
+    def search(q):
+        seen.append(q)
+        return [c("Everybody Wants To Rule The World", channel="Tears For Fears - Topic", duration=251, id="ok")]
+
+    item = {"songKey": "tears for fears|x", "title": "Everybody Wants To Rule The World (Live From Franklin, TN)",
+            "artist": "Tears For Fears", "durationMs": None}
+    songs.get_song(item, tmp_path, search=search, download=lambda v, d: d.write_bytes(b"ID3"))
+    assert seen == ["Tears For Fears Everybody Wants To Rule The World"]
