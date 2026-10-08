@@ -93,8 +93,9 @@
   .glass:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   .glass::after { content: ""; position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none;
                   background: linear-gradient(165deg, #ffffff14 0 22%, transparent 22%); }
-  .display { display: flex; gap: 14px; align-items: center; min-height: 92px; }
-  .display > img, .display > .art { width: 92px; height: 92px; border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
+  /* the art is exactly as tall as the title and artist lines together: (2.2rem + 1.6rem) × line-height 1.15 */
+  .display { --art: calc((2.2rem + 1.6rem) * 1.15); display: flex; gap: 12px; align-items: center; min-height: var(--art); }
+  .display > img, .display > .art { width: var(--art); height: var(--art); border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
   .display .art { display: grid; place-items: center; font-size: 42px; background: #16201d; }
   /* LED dot matrix, near-square dots, drawn narrow: each line is laid out 25% wider and squeezed
      to 80%, so it still fills its screen while the letters come out slim, as on a real display */
@@ -139,18 +140,22 @@
   /* ---- record sleeve lightbox: tap the screen to pull the record ---- */
   dialog.sleeve-box { border: 0; padding: 24px 16px; margin: 0; width: 100%; height: 100%; max-width: none; max-height: none;
                       background: transparent; color: var(--cream); overflow-x: hidden; }
-  dialog.sleeve-box::backdrop { background: radial-gradient(circle at 50% 38%, #4a2e1ef0, #170d08f7 72%); backdrop-filter: blur(5px); }
+  /* no backdrop blur: fading a full-screen blur in dropped frames on phones; a darker solid ground instead */
+  dialog.sleeve-box::backdrop { background: radial-gradient(circle at 50% 38%, #3d2518, #120a06 72%); }   /* solid: no page clutter behind the buttons */
   .sleeve-close { position: fixed; top: 14px; right: 14px; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
                   display: grid; place-items: center; background: #0007; color: var(--cream); cursor: pointer; }
   .sleeve-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }   /* drawn, not a glyph: a font's × sits off-centre */
   /* fade in on open, out on close (the .closing class waits for the fade before closing) */
-  dialog.sleeve-box[open] { animation: sleeve-in .38s ease-out both; }
-  dialog.sleeve-box[open]::backdrop { animation: fade .38s ease-out both; }
+  /* in order: ground and sleeve fade in, then the record slides out, then the price sticker lands.
+     Only opacity and transform move, and the scale is on the sleeve, not the full-screen dialog. */
+  dialog.sleeve-box[open] { animation: fade .32s ease-out both; }
+  dialog.sleeve-box[open] .sleeve-fig { animation: sleeve-in .32s ease-out both; }
+  dialog.sleeve-box[open]::backdrop { animation: fade .32s ease-out both; }
   dialog.sleeve-box.closing { animation: sleeve-out .24s ease-in both; }
   dialog.sleeve-box.closing::backdrop { animation: fade .24s ease-in reverse both; }
   @keyframes fade { from { opacity: 0; } }
   @keyframes sleeve-in { from { opacity: 0; transform: scale(.96); } }
-  @keyframes sleeve-out { to { opacity: 0; transform: scale(.97); } }
+  @keyframes sleeve-out { to { opacity: 0; } }
   .listen { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 20px -8px 0; }
   .listen-btn { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 11px; border-radius: 999px;
                 font: 500 .86rem Jost, sans-serif; color: var(--cream); text-decoration: none; background: #0005; white-space: nowrap;
@@ -161,13 +166,13 @@
   .sleeve-close:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   .sleeve-fig { margin: 0; min-height: 100%; display: grid; place-content: center; justify-items: center; gap: 26px; }
   .sleeve-stage { --w: min(66vw, 360px, 50vh); position: relative; width: var(--w); height: var(--w); margin-right: calc(var(--w) * .3); }
-  .vinyl { position: absolute; inset: 3%; border-radius: 50%; box-shadow: 0 8px 22px #000b;
-           animation: pull .9s .15s cubic-bezier(.2, .7, .2, 1) both; }
+  .vinyl { position: absolute; inset: 3%; border-radius: 50%; box-shadow: 0 8px 22px #000b; will-change: transform;
+           animation: pull .8s .3s cubic-bezier(.2, .7, .2, 1) both; }   /* starts as the fade finishes */
   .vinyl::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;   /* the shine stays put while the disc turns */
                   background: conic-gradient(from 20deg, transparent 0 6%, #ffffff1f 12%, transparent 20% 50%, #ffffff1f 62%, transparent 70%); }
   .disc { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center;
           background: repeating-radial-gradient(circle, #121212 0 1.4px, #1f1f1f 1.4px 2.8px);
-          animation: spin 6s linear infinite; }
+          animation: spin 6s linear infinite; will-change: transform; }
   .disc img { width: 48%; height: 48%; border-radius: 50%; object-fit: cover; }
   @keyframes pull { from { transform: translateX(0); } to { transform: translateX(31%); } }
   @keyframes spin { to { transform: rotate(1turn); } }
@@ -183,9 +188,11 @@
   .sl-t { margin: 0; font: 800 clamp(1.7rem, 7.5vw, 2.4rem)/1.05 Fraunces, serif; font-variation-settings: "SOFT" 100; text-wrap: balance; }
   .sl-a { margin: 8px 0 0; font: 500 1.15rem/1.3 Jost, sans-serif; color: var(--cream-dim); }
   .sl-al { margin: 4px 0 0; font: 400 1.1rem/1.3 Kalam, cursive; color: var(--gold); }
-  .sl-al:empty { display: none; }
-  @media (prefers-reduced-motion: reduce) { .vinyl { animation: none; transform: translateX(31%); } .disc { animation: none; }
-    dialog.sleeve-box[open], dialog.sleeve-box.closing { animation-name: fade; } }
+  .sl-al { min-height: 1.3em; }   /* the album line's room is kept even before Apple answers: nothing jumps */
+  .sticker.landed { animation: land .35s .9s cubic-bezier(.3, 1.5, .5, 1) both; }   /* after the record is out */
+  .sticker.late { animation: land .35s cubic-bezier(.3, 1.5, .5, 1) both; }
+  .sl-al.late { animation: fade .3s ease-out both; }
+  @keyframes land { from { opacity: 0; transform: rotate(-11deg) scale(.5); } }
   .track { display: inline-flex; }
   .track span { flex: none; }
   .ticking .track span { padding-right: 3em; }
@@ -276,8 +283,9 @@
            box-shadow: 0 8px 24px #0009; transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: var(--bad); color: #fff; }
 
-  @media (prefers-reduced-motion: reduce) { .ticking .track { animation: none; } .lcd-line { white-space: normal; }
-    .needle, .lamp { transition: none; } .lamp.on { animation: none; } button { transition: none; } .chip.prep, .chip.flash { animation: none; } }
+  /* No prefers-reduced-motion switches here, on purpose: iPhones with Reduce Motion on lost the
+     scrolling text (the only way to read long titles), the lamp's pulse (brightness, not motion) and
+     every tap toy. Nothing on this page moves unless it carries information or was tapped. */
 </style>
 </head>
 <body>
@@ -426,7 +434,6 @@ function setLine(id, text, always, speed = SCROLL_PX_S, holdMs = 0) {
   track.getAnimations().forEach((a) => a.cancel());
   const one = el("span", null, text);
   track.replaceChildren(one);
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
   if (always || one.scrollWidth > line.clientWidth) {
     line.classList.add("ticking");
     track.append(el("span", null, text));   // second copy: the strip slides one copy's width, then repeats seamlessly
@@ -457,7 +464,7 @@ const TURN_MS = 10000;
 let spin = null;
 function henSpin(on) {
   const hen = document.querySelector(".hen");
-  if (!hen || matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if (!hen) return;
   if (on) {
     if (spin && spin.playState === "running" && spin.effect.getTiming().iterations === Infinity) return;
     if (spin && spin.playState === "running") { spin.effect.updateTiming({ iterations: Infinity }); return; }  // back on before it stopped
@@ -474,7 +481,6 @@ function henSpin(on) {
 const TAP_RESET_MS = 2500, BREAK_COOLDOWN_MS = 5 * 60 * 1000;
 const needle = { f: 0.5, rot: 0, broken: false, pendingF: null };   // f: 0..1 along the scale
 let taps = 0, lastTap = 0, breakReadyAt = 0;
-const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 function dialPx(f) { const w = $("needle").parentElement.clientWidth; return 12 + f * (w - 24) - 1.5; }
 function needleAt(x, y = 0, r = 0) { return `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${r.toFixed(2)}deg)`; }
 function placeNeedle() { $("needle").style.transform = needleAt(dialPx(needle.f), 0, needle.rot); }
@@ -492,7 +498,7 @@ function swing(f, wobble = 0, tilt = 0) {
   freezeNeedle();
   const n = $("needle"), x0 = dialPx(needle.f), x1 = dialPx(f), r0 = needle.rot;
   needle.f = f; needle.rot = tilt;
-  if (calm() || !wobble) {
+  if (!wobble) {
     n.animate([{ transform: needleAt(x0, 0, r0) }, { transform: needleAt(x1, 0, tilt) }],
               { duration: 1100, easing: "cubic-bezier(.3, .7, .2, 1)" });
     return placeNeedle();
@@ -562,7 +568,7 @@ $("needle").parentElement.addEventListener("click", () => {
   if (now - lastTap > TAP_RESET_MS) taps = 0;
   taps += 1; lastTap = now;
   let f; do { f = .06 + Math.random() * .88; } while (Math.abs(f - needle.f) < .22);   // somewhere clearly else
-  const level = calm() ? 1 : Math.min(taps, now < breakReadyAt ? 3 : 4);
+  const level = Math.min(taps, now < breakReadyAt ? 3 : 4);
   if (level === 4) { taps = 0; breakReadyAt = now + BREAK_COOLDOWN_MS; breakNeedle(f); }
   else if (level === 3) swing(f, 2, (Math.random() < .5 ? -1 : 1) * (3 + Math.random() * 3));
   else if (level === 2) swing(f, 1);
@@ -617,7 +623,7 @@ function eggRain() {
   }
 }
 document.querySelector(".hen").addEventListener("click", () => {
-  if (calm() || hen.wild) return;
+  if (hen.wild) return;
   const now = Date.now();
   if (now - hen.last > TAP_RESET_MS) hen.taps = 0;
   hen.taps += 1; hen.last = now;
@@ -655,6 +661,12 @@ async function releaseInfo(np) {
   sleeveInfo.set(key, info);
   return info;
 }
+// Apple's trackViewUrl ends "&uo=4", which sends iPhones to the iTunes Store app; app=music opens
+// the song in the Music app instead (and the web player anywhere else).
+function musicLink(u) {
+  try { const url = new URL(u); url.searchParams.delete("uo"); url.searchParams.set("app", "music"); return url.toString(); }
+  catch { return u; }
+}
 function setSleeveArt(src, fallback) {
   const box = document.querySelector(".sleeve");
   const img = el("img"); img.id = "sleeveArt"; img.alt = "";
@@ -663,27 +675,44 @@ function setSleeveArt(src, fallback) {
   box.querySelector("#sleeveArt, .noart").replaceWith(img);
 }
 let sleeveFor = null;   // the song whose sleeve is open: on air, or one of this phone's requests
+function decoded(src) {   // resolves when the picture is ready to paint (or failed): no half-loaded cover on screen
+  if (!src) return Promise.resolve(false);
+  const img = new Image(); img.src = src;
+  return img.decode().then(() => true, () => false);
+}
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 async function openSleeve(np = onAir) {
-  if (!np) return;
+  if (!np || sleeveFor === np && $("sleeve").open) return;
   sleeveFor = np;
+  // Ask for everything first, give it up to 450 ms, then open with whatever is ready: a complete
+  // first frame. Anything slower fades in later without moving the rest.
+  const infoP = releaseInfo(np), big = bigArt(np.artwork);
+  const bigP = decoded(big);
+  let info = null, bigReady = false;
+  await Promise.race([Promise.all([infoP.then((i) => { info = i; }), bigP.then((ok) => { bigReady = ok; })]), wait(450)]);
+  if (sleeveFor !== np) return;
   $("sleeveTitle").textContent = cleanTitle(np.title);
   $("sleeveArtist").textContent = np.artist;
-  $("sleeveAlbum").textContent = "";
-  $("sleeveYear").hidden = true;
-  setSleeveArt(bigArt(np.artwork), np.artwork);
+  $("sleeveAlbum").textContent = info?.album || ""; $("sleeveAlbum").classList.remove("late");
+  $("sleeveYear").textContent = info?.year || ""; $("sleeveYear").hidden = !info?.year;
+  $("sleeveYear").className = "sticker landed";
+  setSleeveArt(bigReady ? big : np.artwork || (info?.art ?? ""), np.artwork);
+  if (!bigReady && np.artwork) bigP.then((ok) => { if (ok && sleeveFor === np) $("sleeveArt").src = big; });   // same picture, sharper
   // Searches until Apple answers; Spotify and YouTube stay searches (exact links need their APIs).
   const q = encodeURIComponent(`${np.artist} ${cleanTitle(np.title)}`);
   $("toApple").href = `https://music.apple.com/us/search?term=${q}`;
   $("toSpotify").href = `https://open.spotify.com/search/${q}`;
   $("toYoutube").href = `https://www.youtube.com/results?search_query=${q}`;
+  if (info?.apple) $("toApple").href = musicLink(info.apple);
   $("sleeve").classList.remove("closing");
-  $("sleeve").showModal();
-  const info = await releaseInfo(np);
-  if (!info || sleeveFor !== np || !$("sleeve").open) return;
-  $("sleeveYear").textContent = info.year; $("sleeveYear").hidden = false;
-  $("sleeveAlbum").textContent = info.album;
-  if (info.apple) $("toApple").href = info.apple;
-  if (info.art && (!np.artwork || document.querySelector(".sleeve .noart"))) setSleeveArt(info.art);   // ours missing or broken
+  if (!$("sleeve").open) $("sleeve").showModal();
+  if (info) return;
+  const late = await infoP;   // the lookup was slow: fill in, fading, without shifting anything
+  if (!late || sleeveFor !== np || !$("sleeve").open) return;
+  if (late.year) { $("sleeveYear").textContent = late.year; $("sleeveYear").hidden = false; $("sleeveYear").className = "sticker late"; }
+  if (late.album) { $("sleeveAlbum").textContent = late.album; $("sleeveAlbum").classList.add("late"); }
+  if (late.apple) $("toApple").href = musicLink(late.apple);
+  if (late.art && (!np.artwork || document.querySelector(".sleeve .noart"))) setSleeveArt(late.art);   // ours missing or broken
 }
 $("glass").onclick = () => openSleeve();
 $("glass").onkeydown = (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); openSleeve(); } };
@@ -718,7 +747,6 @@ for (const screw of document.querySelectorAll(".screw")) {
     const speed = 500 + Math.random() * 900;            // launch speed, degrees per second
     const to = from + (Math.random() < 0.5 ? -1 : 1) * speed * seconds / 2;   // steady friction: half of speed × time
     slit.style.setProperty("--r", `${to}deg`);
-    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     slit.animate([{ transform: `rotate(${from}deg)` }, { transform: `rotate(${to}deg)` }],
                  { duration: seconds * 1000, easing: "cubic-bezier(.5, 1, .89, 1)" });   // ease-out quad = constant deceleration
   });
