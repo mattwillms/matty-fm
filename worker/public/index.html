@@ -533,9 +533,9 @@ $("needle").parentElement.addEventListener("click", () => {
 });
 // The hen: tap and she rocks this way and that, a little more each time, always springing back
 // upright. The HEN_TAPS-th tap in a row sends her into a wild spin and it rains eggs; then she
-// only rocks for BREAK_COOLDOWN_MS. Tap motion goes on the picture inside the badge, the request
+// only rocks for HEN_COOLDOWN_MS. Tap motion goes on the picture inside the badge, the request
 // spin on the badge itself: the two add up, so either can run without disturbing the other.
-const HEN_TAPS = 5;
+const HEN_TAPS = 5, HEN_COOLDOWN_MS = 10 * 1000;   // eggs are fun: only a short rest between spins
 const hen = { taps: 0, last: 0, readyAt: 0, wild: false, dir: 1 };
 function henTilt(img) { const m = new DOMMatrix(getComputedStyle(img).transform); return Math.atan2(m.b, m.a) * 180 / Math.PI; }
 function henRock(amp) {
@@ -584,7 +584,7 @@ document.querySelector(".hen").addEventListener("click", () => {
   const now = Date.now();
   if (now - hen.last > TAP_RESET_MS) hen.taps = 0;
   hen.taps += 1; hen.last = now;
-  if (hen.taps >= HEN_TAPS && now >= hen.readyAt) { hen.taps = 0; hen.readyAt = now + BREAK_COOLDOWN_MS; henWild(); return; }
+  if (hen.taps >= HEN_TAPS && now >= hen.readyAt) { hen.taps = 0; hen.readyAt = now + HEN_COOLDOWN_MS; henWild(); return; }
   hen.dir = -hen.dir;   // this way, then that way
   henRock(hen.dir * Math.min(26, 2 + 6 * hen.taps));
 });
