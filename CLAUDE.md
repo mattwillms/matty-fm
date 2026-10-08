@@ -11,6 +11,8 @@ Version 0.1.0 (semver = big.small.bug).
 - Tests: `.venv/bin/pytest studio/tests -q` · `cd worker && npx vitest run`
 - Units: `systemctl --user {start,status} mattyfm-icecast mattyfm-station mattyfm-studio`
 
+- Pi receiver: `scp -r pi mattyfm: && ssh mattyfm 'sudo bash pi/setup.sh http://192.168.86.44:8040/radio'`; logs `ssh mattyfm journalctl -u mattyfm-pi -f`
+
 ## Rules
 - Secrets only in `~/.config/mattyfm/env` and Worker secrets. Never commit them.
 - Never rebind `reqs` in radio.liq (wrapped sources lose push/skip).
@@ -24,6 +26,7 @@ Version 0.1.0 (semver = big.small.bug).
 - The Liquidsoap image's entrypoint is `liquidsoap`: run checks as `docker run --rm --entrypoint sh … -c 'liquidsoap --check …'`, never `… liquidsoap --check` (the extra word is parsed as a script and the check is meaningless).
 - Port 8000 on this workstation belongs to another project's uvicorn; MattyFM uses 8040 (firewalld rich rule allows 192.168.86.0/24).
 - `nc` is not installed; talk to Liquidsoap telnet with Python (`mattyfm.station.Station`).
+- Pi crossfade timing comes from the station's ICY title read by `mpg123 -R` (`@I ICY-META: StreamTitle='MATTYFM:…'`). Push→fade measured at ~7 s, skip→fade back ~9 s.
 - Pi: Model B Rev 1 (rev 0003, 256 MB), IP 192.168.86.31, `ssh mattyfm`. Logitech G PRO X DAC = ALSA card `X`, 44.1 kHz OK. Two mpg123 decodes ≈ 12% CPU.
 - ElevenLabs free tier cannot use library voices or Voice Design via API (402/403).
 - SomaFM returns 200 to curl from this machine; a 403 seen from a subagent sandbox was not a block.

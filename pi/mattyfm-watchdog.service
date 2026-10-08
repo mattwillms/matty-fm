@@ -1,0 +1,6 @@
+[Unit]
+Description=MattyFM receiver watchdog
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/mattyfm-watchdog

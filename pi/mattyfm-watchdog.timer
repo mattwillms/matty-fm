@@ -1,0 +1,10 @@
+[Unit]
+Description=Check the MattyFM receiver every 15 s
+
+[Timer]
+OnBootSec=90
+OnUnitActiveSec=15
+AccuracySec=1
+
+[Install]
+WantedBy=timers.target
