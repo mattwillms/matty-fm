@@ -192,11 +192,30 @@ def test_voice_break_dips_soma_under_the_dj_and_restores_it():
     assert eng.status()["source"] == "soma"
 
 
-def test_voice_break_refused_during_a_transition_or_request():
+def test_voice_break_over_a_request_dips_the_song():
     eng, clock, players, mixer = make()
-    eng.push(item("r1"))
+    eng.push(item("r1", voice_s=2.0))
     eng.tick()
-    assert eng.voice_break("http://ws:8040/breaks/x.mp3", 2.0) is False
+    run(eng, clock, 10)                      # transition over, song at full
+    assert mixer.level["DeckAVol"] == 100
+    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 3.0) is True
+    run(eng, clock, 0.6)
+    assert ("dj", "http://ws:8040/breaks/id1.mp3") in players.started
+    assert mixer.level["DeckAVol"] == console.DUCK_PCT
+    run(eng, clock, 3.0 + console.RESTORE_S + 0.2)
+    assert mixer.level["DeckAVol"] == 100
+
+
+def test_voice_break_during_a_transition_waits_for_it_to_finish():
+    eng, clock, players, mixer = make()
+    eng.push(item("r1", voice_s=4.0))
+    eng.tick()
+    run(eng, clock, 0.6)                     # mid-transition: DJ intro is talking
+    assert eng.voice_break("http://ws:8040/breaks/id2.mp3", 2.0) is True
+    run(eng, clock, 1.0)
+    assert ("dj", "http://ws:8040/breaks/id2.mp3") not in players.started
+    run(eng, clock, 5.0)                     # transition done -> bumper plays
+    assert ("dj", "http://ws:8040/breaks/id2.mp3") in players.started
 
 
 def test_skip_with_nothing_queued_plays_the_skip_bumper():

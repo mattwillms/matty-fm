@@ -104,6 +104,7 @@ class Engine:
         self.started_at: dict[str, float] = {}
         self.pending_dj: tuple[str, float] | None = None
         self.pending_play: tuple[str, str, float] | None = None
+        self.pending_break: tuple[str, float] | None = None
         self.pending_stop: list[tuple[str, float]] = []
         self.transition_until = 0.0
         self.backup: list = []
@@ -142,14 +143,15 @@ class Engine:
                 self._to_soma(PLAIN_FADE_S)
 
     def voice_break(self, url: str, voice_s: float) -> bool:
-        """DJ over SomaFM (or a backup song): dip, talk, restore. Refused during a transition
-        or a request — those already have a DJ."""
+        """DJ over whatever is on air (SomaFM, a request, a backup song): dip, talk, restore.
+        During a transition it waits until the transition is done."""
         with self.lock:
             now = self.clock()
+            if now < self.transition_until:
+                self.pending_break = (url, voice_s)
+                self.log(f"voice break waits for the transition ({self.transition_until - now:.1f}s)")
+                return True
             ch, it = self.on_air
-            if now < self.transition_until or (ch in DECKS and it and not it.get("backup")):
-                self.log("voice break refused: busy")
-                return False
             control = CONTROLS[ch]
             level = self.mixer.level[control]
             back_at = now + DUCK_S + voice_s
@@ -255,6 +257,11 @@ class Engine:
                     if self.on_air[0] != ch:
                         self.players.stop(ch)
             if now < self.transition_until:
+                return
+            if self.pending_break:
+                url, secs = self.pending_break
+                self.pending_break = None
+                self.voice_break(url, secs)
                 return
             ch, it = self.on_air
             if ch == "soma":
