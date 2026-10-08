@@ -77,8 +77,9 @@
   .display img, .display .art { width: 58px; height: 58px; border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
   .display .art { display: grid; place-items: center; font-size: 28px; background: #16201d; }
   .vfd { min-width: 0; color: var(--teal); text-shadow: 0 0 6px #6fe3c899, 0 0 1px #b8fff0; font-family: VT323, monospace; }
-  .vfd .t { font-size: 1.65rem; line-height: 1; overflow-wrap: anywhere; }
-  .vfd .a, .vfd .s { font-size: 1.3rem; line-height: 1.05; overflow-wrap: anywhere; }
+  .vfd .t { font-size: 1.65rem; line-height: 1.05; }
+  .vfd .a { font-size: 1.3rem; line-height: 1.1; }
+  .vfd .t, .vfd .a { white-space: nowrap; overflow: hidden; }   /* a VFD never wraps: it scrolls */
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
   .controls { margin-top: 10px; }
@@ -208,7 +209,7 @@
         <div class="request-mod">
           <div class="engrave label"><span class="lamp" id="lamp" aria-hidden="true"></span><span id="reqLabel">REQUESTED BY</span></div>
           <div class="lcd" aria-live="polite">
-            <div class="lcd-line name"><span class="track" id="lcdName"><span>SomaFM</span></span></div>
+            <div class="lcd-line name"><span class="track" id="lcdName"><span>SomaFM 70s</span></span></div>
             <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
           </div>
         </div>
@@ -310,7 +311,7 @@ function setLine(id, text, always) {
 }
 function lcd(np) {
   const req = np && !np.soma;
-  const name = req ? (np.names || "The family") : "SomaFM";
+  const name = req ? (np.names || "The family") : "SomaFM 70s";
   const msg = req ? (shoutout(np.djLine, np) || "Turn it up.") : "Got a song in your head? Request it below.";
   $("reqLabel").textContent = req ? "SPECIAL REQUEST" : "REQUESTED BY";
   const key = name + "|" + msg;
@@ -348,9 +349,13 @@ function showNow(np) {
   $("lamp").classList.toggle("on", !np.soma);
   henSpin(!np.soma);
   const v = el("div", "vfd");
-  v.append(el("div", "t", cleanTitle(np.title)), el("div", "a", np.artist), ...(np.soma ? [el("div", "s", "SomaFM, 70s")] : []));
+  const tl = el("div", "t"), al = el("div", "a");
+  tl.append(Object.assign(el("span", "track"), { id: "vfdTitle" })); al.append(Object.assign(el("span", "track"), { id: "vfdArtist" }));
+  v.append(tl, al);
   lcd(np);
   d.replaceChildren(art(np.artwork), v);
+  setLine("vfdTitle", cleanTitle(np.title), false);   // scrolls only if it doesn't fit
+  setLine("vfdArtist", np.artist, false);
   const key = `${np.title}|${np.artist}`;
   if (key !== lastNow) { lastNow = key; tune(key); }
 }
@@ -386,11 +391,33 @@ function isCached(t) {
 async function loadCached() {
   try { cachedKeys = new Set((await api("/api/cached")).keys || []); } catch {}
 }
+// Cover and tribute acts (Garth Brooks, for one, isn't on Apple Music: only tributes are).
+const COVER_ARTIST = /\b(tribute|karaoke|covers?|in the style of|made famous by|sound-?alikes?|lullaby|piano versions?)\b/i;
+function originalArtist(a) {
+  return String(a || "")
+    .replace(/^(?:the\s+)?(?:ultimate\s+|a\s+)?tribute\s+to\s+/i, "")
+    .replace(/\s*[-–(\[]?\s*(?:tribute(?:\s+band)?|karaoke(?:\s+version)?|covers?|in the style of.*|made famous by.*|sound-?alikes?)\s*[)\]]?\s*$/i, "")
+    .trim();
+}
+function withOriginals(list) {
+  const out = [], keys = new Set(list.filter((t) => !COVER_ARTIST.test(t.artist)).map((t) => (t.artist + "|" + cleanTitle(t.title)).toLowerCase()));
+  for (const t of list) {
+    if (!COVER_ARTIST.test(t.artist)) { out.push(t); continue; }
+    const orig = originalArtist(t.artist), key = (orig + "|" + cleanTitle(t.title)).toLowerCase();
+    if (orig && orig.toLowerCase() !== t.artist.toLowerCase() && !keys.has(key)) {
+      keys.add(key);   // the real recording: the studio finds it on YouTube by artist and title
+      out.push({ title: cleanTitle(t.title), artist: orig, album: "", durationMs: null, explicit: false, artwork: "", source: "original", original: true });
+    }
+    out.push({ ...t, cover: true });
+  }
+  return out.sort((a, b) => (b.original ? 1 : 0) - (a.original ? 1 : 0) || (a.cover ? 1 : 0) - (b.cover ? 1 : 0));
+}
 function mergeResults(a, b) {
   const seen = new Set(), out = [];
   for (const t of [...a, ...b]) { const k = songKeyOf(t); if (!seen.has(k)) { seen.add(k); out.push(t); } }
   // songs already on the station's shelf play right away: list them first
-  return out.map((t, i) => ({ t, i, c: isCached(t) })).sort((x, y) => (y.c - x.c) || (x.i - y.i)).map((x) => ({ ...x.t, cached: x.c })).slice(0, 12);
+  return withOriginals(out).map((t, i) => ({ t, i, c: isCached(t) })).sort((x, y) => (y.c - x.c) || (x.i - y.i))
+    .map((x) => ({ ...x.t, cached: x.c })).slice(0, 12);
 }
 async function api(path, opts) {
   const sep = path.includes("?") ? "&" : "?";
@@ -457,7 +484,8 @@ $("q").addEventListener("input", () => {
     if (!results.length) { $("results").replaceChildren(el("li", "empty", "No matches. Try other words, or type it in.")); return; }
     $("results").replaceChildren(...results.map((t) => {
       const b = el("button", "pick"); b.type = "button";
-      b.append(songRow(t, t.cached ? "Ready now" : t.explicit ? "Explicit" : "", t.cached ? "up" : "bad"));
+      const chip = t.cached ? ["Ready now", "up"] : t.original ? ["Original", "up"] : t.cover ? ["Cover", ""] : t.explicit ? ["Explicit", "bad"] : ["", ""];
+      b.append(songRow(t, chip[0], chip[1]));
       b.onclick = () => choose(t, false); const li = el("li"); li.append(b); return li;
     }));
   }, 400);

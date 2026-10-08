@@ -333,6 +333,27 @@ async function appleSearch(term) {
       durationMs: x.trackTimeMillis || null, explicit: x.trackExplicitness === "explicit", artwork: String(x.artworkUrl100 || "").replace("100x100", "200x200"), source: "itunes" }));
   } catch { return []; }
 }
+// Cover and tribute acts (Garth Brooks, for one, isn't on Apple Music: only tributes are).
+const COVER_ARTIST = /\b(tribute|karaoke|covers?|in the style of|made famous by|sound-?alikes?|lullaby|piano versions?)\b/i;
+function originalArtist(a) {
+  return String(a || "")
+    .replace(/^(?:the\s+)?(?:ultimate\s+|a\s+)?tribute\s+to\s+/i, "")
+    .replace(/\s*[-–(\[]?\s*(?:tribute(?:\s+band)?|karaoke(?:\s+version)?|covers?|in the style of.*|made famous by.*|sound-?alikes?)\s*[)\]]?\s*$/i, "")
+    .trim();
+}
+function withOriginals(list) {
+  const out = [], keys = new Set(list.filter((t) => !COVER_ARTIST.test(t.artist)).map((t) => (t.artist + "|" + cleanTitle(t.title)).toLowerCase()));
+  for (const t of list) {
+    if (!COVER_ARTIST.test(t.artist)) { out.push(t); continue; }
+    const orig = originalArtist(t.artist), key = (orig + "|" + cleanTitle(t.title)).toLowerCase();
+    if (orig && orig.toLowerCase() !== t.artist.toLowerCase() && !keys.has(key)) {
+      keys.add(key);   // the real recording: the studio finds it on YouTube by artist and title
+      out.push({ title: cleanTitle(t.title), artist: orig, album: "", durationMs: null, explicit: false, artwork: "", source: "original", original: true });
+    }
+    out.push({ ...t, cover: true });
+  }
+  return out.sort((a, b) => (b.original ? 1 : 0) - (a.original ? 1 : 0) || (a.cover ? 1 : 0) - (b.cover ? 1 : 0));
+}
 function updateAdd() {
   $("addBtn").disabled = !picked;
   $("addBtn").textContent = picked ? `Add ${cleanTitle(picked.title)} to the queue` : "Pick a song first";
@@ -345,10 +366,11 @@ $("aq").addEventListener("input", () => {
     const [apple, worker] = await Promise.all([appleSearch(text), call("/api/admin/search?q=" + encodeURIComponent(text)).catch(() => ({ results: [] }))]);
     const seen = new Set(), results = [];
     for (const t of [...apple, ...(worker.results || [])]) { const k = (t.artist + "|" + cleanTitle(t.title)).toLowerCase(); if (!seen.has(k)) { seen.add(k); results.push(t); } }
-    $("aresults").replaceChildren(...(results.length ? results.slice(0, 6).map((t) => {
+    $("aresults").replaceChildren(...(results.length ? withOriginals(results).slice(0, 6).map((t) => {
       const b = el("button", "result"); b.setAttribute("aria-pressed", "false");
       const m = el("div"); m.append(el("div", "t", cleanTitle(t.title)), el("div", "a", t.artist));
-      b.append(m, ...(t.explicit ? [el("span", "tag", "Explicit")] : []));
+      const tag = t.original ? ["Original", "tag ok"] : t.cover ? ["Cover", "tag"] : t.explicit ? ["Explicit", "tag"] : null;
+      b.append(m, ...(tag ? [el("span", tag[1], tag[0])] : []));
       b.onclick = () => { picked = t; for (const x of $("aresults").children) x.setAttribute("aria-pressed", String(x === b)); updateAdd(); };
       return b;
     }) : [el("div", "empty", "No matches.")]));
