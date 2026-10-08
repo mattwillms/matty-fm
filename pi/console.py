@@ -54,6 +54,7 @@ DUCK_ATTACK_S = 0.1     # ...and be fully down this fast
 DUCK_HOLD_S = 0.2       # after the last word of a phrase, hold this long...
 DUCK_RELEASE_S = 0.5    # ...then back up over this
 DUCK_MERGE_S = 0.9      # a breath shorter than this keeps the music down (no pumping)
+FIRST_FADE_S = 0.4      # the first dip of a break: the music fades down over about half a beat, then he talks
 DEAD_AFTER_S = 1.0      # a deck that stopped this long after starting is treated as ended
 TICK_S = 0.1
 SOMA_STALL_S = 4.0
@@ -214,14 +215,17 @@ class Engine:
             level = self.mixer.level[control]
             self.ramps = [r for r in self.ramps if r[0] != control]
             phrases = self._phrases(speech, voice_s)
-            if phrases:   # duck with the speech itself: the voice starts now, the music follows his words
-                lvl = level
-                for start, end in phrases:
-                    self.ramps.append((control, lvl, DUCK_PCT, now + max(0.0, start - DUCK_LEAD_S), DUCK_ATTACK_S))
-                    self.ramps.append((control, DUCK_PCT, 100, now + end + DUCK_HOLD_S, DUCK_RELEASE_S))
-                    lvl = 100
-                self.pending_dj = (url, now)
-                self.transition_until = now + phrases[-1][1] + DUCK_HOLD_S + DUCK_RELEASE_S
+            if phrases:   # duck with the speech itself: the music follows his words
+                # the first dip is a smooth fade, finished as his first word lands (the clip waits for it)
+                delay = max(0.0, FIRST_FADE_S - phrases[0][0])
+                t = now + delay
+                self.ramps.append((control, level, DUCK_PCT, t + phrases[0][0] - FIRST_FADE_S, FIRST_FADE_S))
+                for i, (start, end) in enumerate(phrases):
+                    if i:
+                        self.ramps.append((control, 100, DUCK_PCT, t + max(0.0, start - DUCK_LEAD_S), DUCK_ATTACK_S))
+                    self.ramps.append((control, DUCK_PCT, 100, t + end + DUCK_HOLD_S, DUCK_RELEASE_S))
+                self.pending_dj = (url, t)
+                self.transition_until = t + phrases[-1][1] + DUCK_HOLD_S + DUCK_RELEASE_S
             else:   # no speech map: dip over the whole clip, as before
                 back_at = now + DUCK_S + voice_s
                 self.ramps.append((control, level, DUCK_PCT, now, DUCK_S))

@@ -111,6 +111,11 @@ def prepare(item: dict, deps: Deps) -> dict:
         try:
             seconds, voice_s = mix.prepare_files(song.path, raw_voice, media / "ready" / f"{rid}.mp3",
                                                  media / "voice" / f"{rid}.mp3", deps.cfg.sample_rate)
+            try:
+                if mix.lengthen_pauses(media / "voice" / f"{rid}.mp3"):   # +0.5 s on a pause, as for bumpers
+                    voice_s = mix.duration(media / "voice" / f"{rid}.mp3")
+            except Exception:
+                log.warning("%s pause stretch failed; using the voice as made", rid)
         except Exception:   # a voice reply that looked like audio but won't decode: the generic clip, not no song
             if engine == "generic" or not is_audio(song.path):
                 raise

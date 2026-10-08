@@ -375,7 +375,7 @@ def test_the_music_ducks_exactly_with_the_speech_like_an_auto_ducker():
         levels[round(clock.t - t0, 2)] = mixer.level["SomaVol"]
     at = lambda t: levels[min(levels, key=lambda k: abs(k - t))]
     assert ("dj", "http://ws:8040/breaks/id1.mp3") in players.started
-    assert at(0.2) == 100                                # silence before he speaks: no early dip
+    assert 100 > at(0.2) > console.DUCK_PCT             # the first dip fades in smoothly ahead of his first word
     assert at(0.42) == console.DUCK_PCT                  # down as the first word lands
     assert at(1.9) == console.DUCK_PCT
     assert at(2.9) == 100                                # his pause: back up
@@ -400,3 +400,25 @@ def test_odd_gaps_are_ignored_not_fatal():
     assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 4.0, speech=[["x", 2], [3.0, 99], None, [2.5, 1.0]]) is True
     run(eng, clock, 2.0)   # nothing usable: the plain dip over the whole clip
     assert mixer.level["SomaVol"] == console.DUCK_PCT
+
+
+def test_the_first_dip_fades_down_before_he_talks():
+    # the user: "the first interrupt should take half a beat to fade down smoothly before talking"
+    eng, clock, players, mixer = make()
+    run(eng, clock, 1)
+    t0 = clock.t
+    eng.voice_break("http://ws:8040/breaks/id1.mp3", 5.0, speech=[[0.0, 2.0], [3.5, 4.8]])
+    levels, dj_at = {}, None
+    while clock.t < t0 + 6.0:
+        clock.t += 0.02
+        eng.tick()
+        levels[round(clock.t - t0, 2)] = mixer.level["SomaVol"]
+        if dj_at is None and any(ch == "dj" for ch, _ in players.started):
+            dj_at = round(clock.t - t0, 2)
+    at = lambda t: levels[min(levels, key=lambda k: abs(k - t))]
+    assert 100 > at(0.2) > console.DUCK_PCT                      # fading, not a jump
+    assert abs(dj_at - console.FIRST_FADE_S) < 0.05              # he starts once the music is down
+    assert at(console.FIRST_FADE_S + 0.02) == console.DUCK_PCT
+    d = console.FIRST_FADE_S                                     # everything after moves with him
+    assert at(d + 2.0 + console.DUCK_HOLD_S + console.DUCK_RELEASE_S + 0.1) == 100
+    assert at(d + 3.52) == console.DUCK_PCT

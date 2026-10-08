@@ -53,3 +53,21 @@ def test_speech_segments_follow_the_voice(tmp_path):
     assert len(seg) == 2
     assert abs(seg[0][0] - 0.5) < 0.1 and abs(seg[0][1] - 2.0) < 0.1
     assert abs(seg[1][0] - 3.4) < 0.1 and abs(seg[1][1] - 4.4) < 0.1
+
+
+def test_intended_pauses_get_half_a_second_longer_breaths_dont(tmp_path):
+    import subprocess
+    v = tmp_path / "v.mp3"
+    parts = [("sine=f=300:d=1.0", 0), ("anullsrc=r=44100:cl=mono:d=0.4", 0), ("sine=f=300:d=1.0", 0),
+             ("anullsrc=r=44100:cl=mono:d=1.2", 0), ("sine=f=300:d=1.0", 0)]
+    args = sum((["-f", "lavfi", "-i", p] for p, _ in parts), [])
+    subprocess.run(["ffmpeg", "-v", "error", "-y", *args, "-filter_complex",
+                    "".join(f"[{i}]" for i in range(5)) + "concat=n=5:v=0:a=1", str(v)], check=True)
+    before = mix.speech_segments(v)
+    assert mix.lengthen_pauses(v, extra_s=0.5) == 1                      # one pause stretched, the breath left
+    after = mix.speech_segments(v)
+    gap = lambda segs: [round(b[0] - a[1], 1) for a, b in zip(segs, segs[1:])]
+    assert len(gap(before)) == len(gap(after))
+    assert abs(gap(after)[-1] - gap(before)[-1] - 0.5) < 0.1
+    assert abs(mix.decoded_duration(v) - 5.1) < 0.1
+    assert mix.lengthen_pauses(v, extra_s=0.5, min_s=9) == 0             # nothing that long: file untouched

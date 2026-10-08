@@ -59,6 +59,38 @@ def speech_segments(path: Path) -> list[tuple[float, float]]:
     return talk
 
 
+def lengthen_pauses(path: Path, extra_s: float = 0.5, min_s: float = 0.9) -> int:
+    """Each pause in a voice (an inner silence of min_s or more, not a breath) gets extra_s longer,
+    in place: the voice model decides pause lengths, and the music needs a little more room to come
+    up in them. Returns how many pauses were stretched (0: the file is untouched)."""
+    err = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path), "-af",
+                          f"silencedetect=noise=-35dB:d={min_s}", "-f", "null", "-"], stdin=subprocess.DEVNULL,
+                         capture_output=True, text=True, check=True, timeout=30).stderr
+    total = decoded_duration(path)
+    starts = [float(x) for x in re.findall(r"silence_start: (-?[\d.]+)", err)]
+    ends = [float(x) for x in re.findall(r"silence_end: (-?[\d.]+)", err)]
+    cuts = [round((a + b) / 2, 3) for a, b in zip(starts, ends) if a > 0.05 and b < total - 0.05]
+    if not cuts:
+        return 0
+    info = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a:0", "-show_entries", "stream=sample_rate,channels",
+                           "-of", "csv=p=0", str(path)], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                          check=True, timeout=30).stdout.strip().split(",")
+    rate, layout = info[0], "stereo" if info[1].strip() == "2" else "mono"
+    edges, parts, labels = [0.0, *cuts, None], [], []
+    for i in range(len(edges) - 1):
+        end = f":end={edges[i + 1]}" if edges[i + 1] is not None else ""
+        parts.append(f"[0:a]atrim=start={edges[i]}{end},asetpts=PTS-STARTPTS[p{i}]")
+        labels.append(f"[p{i}]")
+        if edges[i + 1] is not None:
+            parts.append(f"anullsrc=r={rate}:cl={layout},atrim=end={extra_s}[q{i}]")
+            labels.append(f"[q{i}]")
+    graph = ";".join(parts) + ";" + "".join(labels) + f"concat=n={len(labels)}:v=0:a=1[out]"
+    tmp = path.with_name(path.stem + ".pauses.mp3")
+    _ffmpeg("-i", str(path), "-filter_complex", graph, "-map", "[out]", "-c:a", "libmp3lame", "-b:a", "192k", str(tmp))
+    tmp.replace(path)
+    return len(cuts)
+
+
 def decoded_duration(path: Path) -> float:
     """Seconds of audio that actually decode: what a truncated download really holds."""
     out = subprocess.run(["ffmpeg", "-v", "error", "-nostats", "-i", str(path), "-map", "0:a:0", "-f", "null",

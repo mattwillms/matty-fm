@@ -85,8 +85,9 @@ def main() -> None:
                         f"[1:a]aformat=channel_layouts=stereo,adelay={lead_ms}:all=1[v];"
                         "[f][v]amix=inputs=2:normalize=0:duration=longest,loudnorm=I=-14:TP=-1.5",
                         "-ar", str(cfg.sample_rate), "-c:a", "libmp3lame", "-b:a", "192k", str(dest)], check=True)
+        mix.lengthen_pauses(dest)   # +0.5 s on each pause: room for the music to come up
         seconds = mix.duration(dest)
-        index.append({"file": dest.name, "kind": kind, "seconds": round(seconds, 2), "text": line})
+        index.append({"file": dest.name, "kind": kind, "seconds": round(seconds, 2), "text": line, "pausesStretched": True})
         print(f"{name}: {seconds:.1f}s via {engine} — {line}")
     (out / "index.json").write_text(json.dumps(index, indent=1))
     for f in work.iterdir():

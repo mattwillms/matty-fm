@@ -67,6 +67,11 @@ def main() -> None:
                                    assets=cfg.media_dir / "assets", names=deps.names)
                 seconds = mix.prepare_voice(raw, out, cfg.sample_rate)
                 raw.unlink(missing_ok=True)
+                try:
+                    if mix.lengthen_pauses(out):   # +0.5 s on his pause: room for the music to come up
+                        seconds = mix.duration(out)
+                except Exception:
+                    log.warning("pause stretch failed for %s; playing it as made", out.name)
                 url, text, path = f"breaks/{out.name}", line.script, out
                 log.info("break back-announce via %s (%.1fs): %s", engine, seconds, text)
             else:
