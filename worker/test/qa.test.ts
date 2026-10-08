@@ -368,4 +368,13 @@ describe("QA round", () => {
     const r2 = await p.beat({ ...on, ack: r1.commands.map((c) => c.id) });
     expect(r2.commands.filter((c) => c.type === "skip")).toHaveLength(0);   // still fading out: no second skip
   });
+  it("replaying the DJ read names the song on air, and only that song", async () => {
+    const p = stub("replay");
+    const id = await readyItem(p, "Super Trouper");
+    expect((await p.adminAction({ action: "replay", id })).ok).toBe(false);   // not on air yet
+    await p.beat({ ...beat, source: "requests", current: id, remaining: 150 });
+    expect((await p.adminAction({ action: "replay", id })).ok).toBe(true);
+    const r = await p.beat({ ...beat, source: "requests", current: id, remaining: 140 });
+    expect(r.commands.filter((c) => c.type === "replay")).toEqual([expect.objectContaining({ target: id })]);
+  });
 });

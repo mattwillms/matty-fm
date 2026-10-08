@@ -153,6 +153,13 @@ def main() -> None:
                         station.fx(f"breaks/pad-{pad[1]}.mp3")
                     except Exception as e:
                         log.warning("pad %s failed: %s", pad[1], e)
+            for c in reply["commands"]:
+                if c["type"] == "replay":   # the admin's Replay on the DJ read
+                    try:
+                        played = feed.replay_dj(station, cfg.media_dir, c.get("target"), mix.duration)
+                        log.info("command: replay DJ read of %s: %s", c.get("target"), "on air" if played else "declined")
+                    except Exception as e:
+                        log.warning("replay of %s failed: %s", c.get("target"), e)
             if any(c["type"] == "break" for c in reply["commands"]):
                 log.info("command: play a bumper now")
                 start_break(random.choice(["id", "goof"]), soma_only=False)

@@ -42,6 +42,7 @@
   .np-a { color: var(--muted); }
   .np-s { color: var(--faint); font-size: .92rem; }
   .quote { margin-top: 12px; background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: .95rem; }
+  .quote .replay { display: flex; margin-top: 8px; }
   .quote b { display: block; color: var(--faint); font-weight: 500; font-size: .85rem; margin-bottom: 2px; }
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
   .timer { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 12px;
@@ -239,7 +240,7 @@ async function call(path, body) {
   if (fromLink) { try { localStorage.setItem("mfm_t", token); } catch {} }   // a typo in the link never replaces a good token
   return r.json();
 }
-const DONE = { skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
+const DONE = { replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
   mute: "Phone muted", unmute: "Phone unmuted", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
@@ -286,7 +287,12 @@ function renderNow() {
     const extra = [];
     if (playing && !np.soma) {
       for (const r of playing.requesters) if (r.message) extra.push(quote(`${r.name} wrote`, r.message));
-      extra.push(quote(`DJ read (${playing.tone || "funny"} voice)`, playing.djLine || "No DJ line recorded."));
+      const dj = quote(`DJ read (${playing.tone || "funny"} voice)`, playing.djLine || "No DJ line recorded.");
+      if (playing.djLine) {   // say it again over the PA; the music dips as for a break
+        const again = btn("sm ghost replay", "↻ Replay", (e) => act({ action: "replay", id: playing.id }, e), "Play this DJ read again on the speakers");
+        dj.append(again);
+      }
+      extra.push(dj);
     } else if (state.health.lastDj) {
       const serverNow = state.serverNow ? state.serverNow + (Date.now() - state.loadedAt) : Date.now();   // not the phone's clock
       const d = state.health.lastDj, mins = Math.max(0, Math.round((serverNow - d.at) / 60000));

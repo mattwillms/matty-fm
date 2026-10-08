@@ -1,5 +1,8 @@
 """Decide what to tell Liquidsoap on each beat. Pure, so it is easy to test."""
 
+import re
+from pathlib import Path
+
 def wants_next(status: dict) -> bool:
     """The console holds one queued song: hand the next over as soon as there is room,
     so a skip or a song's end can go straight into it."""
@@ -32,3 +35,15 @@ def decide(status: dict, reply: dict) -> list[tuple]:
     if nxt and wants_next(status):
         actions.append(("push", nxt))
     return actions
+
+
+def replay_dj(station, media, rid, duration) -> bool:
+    """The admin's Replay: the song's DJ read again, over whatever is on air (the console dips
+    the music, as for a break). False when the id is odd, the voice file is gone, or the
+    console declines (e.g. too near the song's end)."""
+    if not isinstance(rid, str) or not re.fullmatch(r"r\d+", rid):   # it becomes a file path
+        return False
+    path = Path(media) / "voice" / f"{rid}.mp3"
+    if not path.exists():
+        return False
+    return bool(station.voice(f"voice/{rid}.mp3", duration(path), soma_only=False))

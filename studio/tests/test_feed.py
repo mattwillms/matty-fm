@@ -62,3 +62,30 @@ def test_an_unreachable_station_reads_as_silence_with_the_reason():
     status, error = station_status(DeadPi())
     assert status == {"source": "silence", "current": "", "remaining": -1.0, "queued": 0}
     assert "no route to host" in error
+
+
+class FakeStation:
+    def __init__(self, accept=True):
+        self.calls, self.accept = [], accept
+
+    def voice(self, url, voice_s, soma_only=False):
+        self.calls.append((url, round(voice_s, 1), soma_only))
+        return self.accept
+
+
+def test_replay_plays_the_song_s_dj_voice_again_over_whatever_is_on_air(tmp_path):
+    from mattyfm import feed
+    (tmp_path / "voice").mkdir()
+    (tmp_path / "voice" / "r12.mp3").write_bytes(b"ID3")
+    st = FakeStation()
+    assert feed.replay_dj(st, tmp_path, "r12", duration=lambda p: 6.4) is True
+    assert st.calls == [("voice/r12.mp3", 6.4, False)]
+
+
+def test_replay_refuses_odd_ids_and_missing_voices(tmp_path):
+    from mattyfm import feed
+    st = FakeStation()
+    for bad in ("../ready/r1", "r1/../../x", "", "r 1", None):
+        assert feed.replay_dj(st, tmp_path, bad, duration=lambda p: 5.0) is False
+    assert feed.replay_dj(st, tmp_path, "r99", duration=lambda p: 5.0) is False   # no voice file
+    assert st.calls == []

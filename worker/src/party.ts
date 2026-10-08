@@ -95,7 +95,7 @@ export class Party extends DurableObject<Env> {
       breakEveryMin: Number(this.setting("breakEveryMin", "10")),
     };
   }
-  private command(type: "skip" | "clear" | "break" | `pad${number}`, target: string | null = null): void {
+  private command(type: "skip" | "clear" | "break" | "replay" | `pad${number}`, target: string | null = null): void {
     this.sql.exec("INSERT INTO commands(type,created_at,target) VALUES(?,?,?)", type, Date.now(), target);
   }
   /** A skip names the song it was meant for: by the time the studio sees it, that song may be gone. */
@@ -249,8 +249,8 @@ export class Party extends DurableObject<Env> {
     if (!unknown)
       for (const c of this.all("SELECT id, target FROM commands WHERE done=0 AND type='skip' AND target IS NOT NULL"))
         if (!(b.source === "requests" && b.current === c.target)) this.sql.exec("UPDATE commands SET done=1 WHERE id=?", c.id);
-    const commands = unknown ? [] : this.all("SELECT id,type FROM commands WHERE done=0 ORDER BY id")
-      .map((c) => ({ id: Number(c.id), type: String(c.type) }));
+    const commands = unknown ? [] : this.all("SELECT id,type,target FROM commands WHERE done=0 ORDER BY id")
+      .map((c) => ({ id: Number(c.id), type: String(c.type), ...(c.target ? { target: String(c.target) } : {}) }));
     // Hand out the next song only when the studio will push it now, never alongside a clear (the
     // studio clears and pushes nothing that beat), and mark it queued at once so a delete, move or
     // duplicate in the next few seconds sees it as "in the console". Asking again while one is
@@ -385,6 +385,10 @@ export class Party extends DurableObject<Env> {
         this.command(`pad${n}`);
         return { ok: true };
       }
+      case "replay":   // the DJ read of the song on air, over the PA again
+        if (status !== "playing") return { ok: false, error: "Only the song on air can be replayed." };
+        this.command("replay", a.id!);
+        return { ok: true };
       case "delete":
         if (!status) return { ok: false, error: "no such request" };
         if (status === "playing") this.skip();   // before the status changes: the skip names this song
