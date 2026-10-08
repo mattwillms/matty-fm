@@ -75,8 +75,10 @@ class YouTubeSearch:
 
 
 class ApifyDownload:
-    def __init__(self, token: str, http: httpx.Client):
-        self.token, self.http = token, http
+    """`only`: restrict to one actor ("thenetaji" or "lurkapi"); default tries both in order."""
+
+    def __init__(self, token: str, http: httpx.Client, only: str | None = None):
+        self.token, self.http, self.only = token, http, only
 
     def _run(self, actor: str, body: dict) -> list:
         r = self.http.post(f"{APIFY}/{actor}/run-sync-get-dataset-items", timeout=200,
@@ -96,6 +98,8 @@ class ApifyDownload:
              {"videoUrls": [url], "audioFormat": "mp3", "audioBitrate": "192k", "maxVideosPerUrl": 1},
              lambda it: it.get("audioFileUrl")),
         ]
+        if self.only:
+            attempts = [a for a in attempts if a[0].startswith(self.only)]
         reasons = []
         for actor, body, file_url in attempts:
             try:

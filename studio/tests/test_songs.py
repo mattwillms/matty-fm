@@ -101,3 +101,23 @@ def test_all_downloads_failing_reports_youtube_reason(tmp_path):
     item = {"songKey": "a|b", "title": "B", "artist": "A", "durationMs": None}
     with pytest.raises(SongNotFound, match="Video unavailable"):
         songs.get_song(item, tmp_path, search=lambda q: [c("B", id="x"), c("B", id="y")], download=broken)
+
+
+def test_primary_downloader_tries_every_candidate_before_the_slow_fallback(tmp_path):
+    cands = [c("Mimosa", channel="X - Topic", duration=140, id="blocked"),
+             c("Mimosa 2000", channel="Y", duration=140, id="ok")]
+    order = []
+
+    def primary(vid, dest):
+        order.append(("primary", vid))
+        if vid == "blocked":
+            raise SongNotFound("blocked")
+        dest.write_bytes(b"ID3")
+
+    def fallback(vid, dest):
+        order.append(("fallback", vid))
+        dest.write_bytes(b"ID3")
+
+    item = {"songKey": "furacao|mimosa", "title": "Mimosa", "artist": "Furacao", "durationMs": 140000}
+    got = songs.get_song(item, tmp_path, search=lambda q: cands, download=[primary, fallback], tries=2)
+    assert order == [("primary", "blocked"), ("primary", "ok")] and got.video_id == "ok"

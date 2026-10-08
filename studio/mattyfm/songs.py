@@ -133,7 +133,8 @@ def yt_download(video_id: str, dest: Path) -> None:
 
 def get_song(item: dict, cache_dir: Path,
              search: Callable[[str], list[Candidate]] | None = yt_search,
-             download: Callable[[str, Path], None] | None = yt_download, tries: int = MAX_TRIES) -> SongFile:
+             download: Callable[[str, Path], None] | list | None = yt_download,
+             tries: int = MAX_TRIES) -> SongFile:
     cache_dir.mkdir(parents=True, exist_ok=True)
     key = item["songKey"]
     path, meta = cache_dir / f"{key}.mp3", cache_dir / f"{key}.json"
@@ -151,9 +152,12 @@ def get_song(item: dict, cache_dir: Path,
     if not options:
         raise SongNotFound(f"No usable match for {item['artist']} - {item['title']}")
     reasons = []
-    for best, confidence in options[:tries]:
+    downloaders = download if isinstance(download, (list, tuple)) else [download]
+    # every candidate with the fast downloader first; slower fallbacks only after that
+    attempts = [(dl, best, conf) for dl in downloaders for best, conf in options[:tries]]
+    for dl, best, confidence in attempts:
         try:
-            download(best.id, path)
+            dl(best.id, path)
         except (subprocess.SubprocessError, SongNotFound) as e:   # blocked, unavailable: try the next
             reasons.append(f"{best.id}: {_reason(e) if isinstance(e, subprocess.SubprocessError) else e}")
             log.warning("download %s failed: %s", best.id, reasons[-1])
