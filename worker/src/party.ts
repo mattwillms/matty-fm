@@ -3,6 +3,7 @@ import { DurableObject } from "cloudflare:workers";
 import { clean, displayText, isOffensive, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, visible, type Waiting } from "./queue";
 import type { Track } from "./search";
 
+const HEAVY_ROWS = 500;   // rows one query may read before it is logged
 const WAITING = "('pending','preparing','ready','queued')";
 const LEASE_MS = 120_000;
 const OFFLINE_MS = 60_000;
@@ -101,7 +102,10 @@ export class Party extends DurableObject<Env> {
 
   // ---------- helpers ----------
   private all(q: string, ...b: SqlStorageValue[]): Row[] {
-    return this.sql.exec(q, ...b).toArray() as Row[];
+    const c = this.sql.exec(q, ...b), rows = c.toArray() as Row[];
+    // every row a query looks at is billed: a scan this big means a missing index (Workers Logs keeps it)
+    if (c.rowsRead > HEAVY_ROWS) console.log(`heavy query: ${c.rowsRead} rows read: ${q.replace(/\s+/g, " ").slice(0, 120)}`);
+    return rows;
   }
   private one(q: string, ...b: SqlStorageValue[]): Row | undefined {
     return this.all(q, ...b)[0];
@@ -554,7 +558,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "indexes-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "indexes-2",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, created_at"),
               ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL AND +status<>'deleted' ORDER BY ended_at DESC LIMIT 10")]
