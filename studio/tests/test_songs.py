@@ -149,3 +149,11 @@ def test_youtube_query_has_no_quotes_or_version_tags(tmp_path):
             "artist": "Tears For Fears", "durationMs": None}
     songs.get_song(item, tmp_path, search=search, download=lambda v, d: d.write_bytes(b"ID3"))
     assert seen == ["Tears For Fears Everybody Wants To Rule The World"]
+
+
+def test_tribute_and_sound_alike_uploads_are_penalised():
+    original = c("Garth Brooks - Friends in Low Places (Official Audio)", channel="Some Uploader", duration=258)
+    tribute = c("Garth Brooks - Friends in Low Places (Tribute) (Official Audio)", channel="Some Uploader", duration=258)
+    styled = c("Garth Brooks - Friends in Low Places (In the Style of) (Official Audio)", channel="Some Uploader", duration=258)
+    for bad in (tribute, styled):
+        assert songs.score(bad, "Friends in Low Places", "Garth Brooks", 258) < songs.score(original, "Friends in Low Places", "Garth Brooks", 258) - 20

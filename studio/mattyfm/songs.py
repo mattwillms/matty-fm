@@ -14,7 +14,8 @@ CONFIDENT = 50.0
 MAX_TRIES = 3
 MAX_SECONDS = 600
 PENALTY_WORDS = ("live", "remix", "karaoke", "cover", "extended", "sped up", "slowed",
-                 "8d", "instrumental", "nightcore", "reverb", "acoustic", "demo")
+                 "8d", "instrumental", "nightcore", "reverb", "acoustic", "demo",
+                 "tribute", "in the style of", "made famous", "sound alike", "soundalike")
 
 
 log = logging.getLogger("mattyfm.songs")
