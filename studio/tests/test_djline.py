@@ -220,3 +220,17 @@ def test_backannounce_keeps_one_pause_cue_and_drops_other_tags():
 
 def test_backannounce_prompt_invites_an_occasional_pause():
     assert "[pause]" in djline.BACKANNOUNCE_SYSTEM
+
+
+def test_the_dj_has_a_sassier_voice_and_may_use_one_delivery_cue():
+    for prompt in (djline.SYSTEM, djline.BACKANNOUNCE_SYSTEM):
+        assert "TARS" in prompt and "never mean" in prompt.lower()
+    reply = json.dumps({"ok": True, "tone": "funny", "script": "[smug] Bob says hi. [whispers] [laughs] Here's Earth, Wind and Fire with September."})
+    line = djline.write_line(item(), FakeClient(reply))
+    assert line.script.startswith("[smug]") and "whispers" not in line.script and "laughs" not in line.script
+    assert djline.display(line.script) == "Bob says hi. Here's Earth, Wind and Fire with September."
+
+
+def test_shout_out_text_for_screens_has_no_cues(tmp_path, monkeypatch):
+    from mattyfm import prepare
+    assert prepare.screen_text("[smug] Bob says hi. [long pause] Here's ABBA with SOS.") == "Bob says hi. Here's ABBA with SOS."

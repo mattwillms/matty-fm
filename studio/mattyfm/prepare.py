@@ -61,6 +61,11 @@ def check_match(song, item: dict) -> tuple[float, str]:
     return confidence, f"{title}{source}; {length}"
 
 
+def screen_text(script: str) -> str:
+    """The DJ line as guests and the admin read it: the voice cues ([smug], [long pause]) left out."""
+    return djline.display(script)
+
+
 def is_audio(path: Path, expected_s: float | None = None) -> bool:
     """Audio that decodes for over 20 s and, given the catalog length, at least 3/4 of it: a
     truncated download keeps its full-length header, so the header alone would pass it."""
@@ -128,5 +133,5 @@ def prepare(item: dict, deps: Deps) -> dict:
     extra = {k2: info[k1] for k1, k2 in (("year", "year"), ("apple", "appleUrl"), ("album", "albumName"),
                                           ("artwork", "artworkUrl")) if info.get(k1)}
     return {**extra, "id": item["id"], "status": "ready", "file": f"{item['id']}.mp3", "durationS": seconds,
-            "confidence": confidence, "matchNote": note, "djLine": line.script, "tone": line.tone, "voice": engine,
+            "confidence": confidence, "matchNote": note, "djLine": screen_text(line.script), "tone": line.tone, "voice": engine,
             "voiceS": voice_s}

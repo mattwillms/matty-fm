@@ -125,6 +125,11 @@ SYSTEM = f"""You are the DJ of {STATION}, a pretend 1970s FM radio station playi
 a family reunion. Write what the DJ says over the crossfade into a requested song.
 
 Rules:
+- Your voice: a dry, quick-witted shock jock, in the spirit of TARS from Interstellar \
+with the humor setting nudged up 10%. Deadpan one-liners and playful jabs. Confident, a \
+little smug, never mean.
+- You may open with one delivery cue the voice will perform, one of: [smug], \
+[playful], [mischievous], [deadpan], [excited]. No other bracketed directions.
 - Short: one or two sentences, 8 to 25 words. Spoken English only. No emoji, no \
 stage directions, no quotation marks.
 - Name who requested it (up to three names, then "and friends") and paraphrase \
@@ -235,12 +240,12 @@ def write_line(item: dict, client) -> DJLine:
     raw = data.get("script")
     if not isinstance(raw, str):   # null or missing: never voice "None"
         return template(item)
-    script = speech_text(raw)
+    script = pause_cues(speech_text(raw))   # at most one pause and one delivery cue; nothing else in brackets
     title = _safe(item["title"])
     song = song_phrase(item)
     if script and song and not _names_song(script, item):   # the rule: always end by naming the song
         script = f"{script.rstrip()}{'' if script.rstrip()[-1:] in '.!?' else '.'} Here's {song}."
-    if not script or is_offensive(script) or len(script) > 400:
+    if not script or is_offensive(display(script)) or len(script) > 400:
         return template(item)
     tone = "sweet" if data.get("tone") == "sweet" else "funny"
     return DJLine(True, tone, script, False)
@@ -251,6 +256,11 @@ reunion. Write a short line said over the start of a new song on the station's m
 
 Rules:
 - One or two sentences, 8 to 22 words. Spoken English only. No emoji, no quotation marks.
+- Your voice: a dry, quick-witted shock jock, in the spirit of TARS from Interstellar \
+with the humor setting nudged up 10%. Deadpan one-liners and playful jabs. Confident, a \
+little smug, never mean.
+- You may open with one delivery cue the voice will perform, one of: [smug], \
+[playful], [mischievous], [deadpan], [excited]. No other bracketed directions.
 - If a previous song is given, you may back-announce it ("That was ...").
 - Mention {STATION}.
 - Always end with the new song's artist and title, like: "...here's America with Ventura Highway."
@@ -288,15 +298,22 @@ def backannounce(prev: dict | None, cur: dict, client) -> DJLine:
 PAUSE = "[long pause]"   # measured: ElevenLabs v4 gives ~1.7 s for this, ~1.1 s for [pause] (too short to swell into)
 
 
+DELIVERY = ("[smug]", "[playful]", "[mischievous]", "[deadpan]", "[excited]")
+
+
 def pause_cues(script: str) -> str:
-    """At most one [pause] (the voice model performs it; the console swells the music into it);
-    any other bracketed direction ([whispers], [laughs]) is dropped."""
-    kept = []
+    """At most one pause (performed by the voice model; the music comes up in it) and one delivery
+    cue from DELIVERY; any other bracketed direction ([whispers], [laughs]) is dropped."""
+    kept = set()
 
     def keep(m):
-        if m[0].lower() in ("[pause]", "[long pause]", "[short pause]") and not kept:
-            kept.append(1)
+        tag = m[0].lower()
+        if tag in ("[pause]", "[long pause]", "[short pause]") and "pause" not in kept:
+            kept.add("pause")
             return f" {PAUSE} "
+        if tag in DELIVERY and "delivery" not in kept:
+            kept.add("delivery")
+            return f" {tag} "
         return " "
     return " ".join(re.sub(r"\[[^\]]*\]", keep, script).split())
 
