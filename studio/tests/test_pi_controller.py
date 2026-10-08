@@ -56,3 +56,18 @@ def test_soma_health_is_recent_bytes():
     h.saw_bytes(now=100.0)
     assert h.up(now=103.0) is True
     assert h.up(now=105.0) is False
+
+
+def test_fade_seconds_come_from_the_title():
+    assert pi.fade_from_title("MATTYFM:r3 fade=3.25 ABBA - SOS") == 3.25
+    assert pi.fade_from_title("MATTYFM:r3 ABBA - SOS") == pi.DEFAULT_DOWN_S
+    assert pi.fade_from_title("MATTYFM:r3 fade=99 X - Y") == pi.MAX_DOWN_S
+
+
+def test_level_follows_its_own_schedule():
+    # up fast, down slow: each control ramps on its own clock
+    assert pi.level_at(0.0, start=0, end=100, dur=0.5) == 0
+    assert pi.level_at(0.25, start=0, end=100, dur=0.5) == 50
+    assert pi.level_at(1.0, start=0, end=100, dur=0.5) == 100
+    assert pi.level_at(1.0, start=100, end=0, dur=4.0) == 75
+    assert pi.level_at(9.0, start=100, end=0, dur=4.0) == 0

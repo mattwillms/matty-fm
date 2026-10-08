@@ -4,6 +4,11 @@ import { searchAll } from "./search";
 
 export { Party };
 
+// Bump whenever party.ts changes. A deployed Durable Object kept running its first
+// version all evening (deploys did not restart it), so each queue-code change gets a
+// fresh instance. Queue state resets on a bump: never bump on party day.
+const QUEUE_VERSION = 3;
+
 const enc = new TextEncoder();
 
 function same(given: string | null, secret: string): boolean {
@@ -41,7 +46,7 @@ export default {
     const url = new URL(req.url);
     const path = url.pathname;
     if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
-    const party = env.PARTY.getByName("party");
+    const party = env.PARTY.getByName(`orrfm-v${QUEUE_VERSION}`);
     const body = async () => (req.method === "POST" ? await req.json<any>() : {});
 
     if (path.startsWith("/api/studio/")) {

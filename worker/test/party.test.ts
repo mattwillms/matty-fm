@@ -122,4 +122,11 @@ describe("party", () => {
     expect(r.commands.map((c) => c.type)).toContain("clear");
     expect((await p.adminState()).items.find((i) => i.id === id)?.status).toBe("ready");
   });
+
+  it("shows SomaFM's song as now playing when no request is on air", async () => {
+    const p = stub("soma");
+    await p.beat({ ...beat, source: "backup", soma: { artist: "Dane Donohue", title: "Woman", since: 1 } });
+    const np = (await p.guestState("d1")).nowPlaying;
+    expect(np).toMatchObject({ title: "Woman", artist: "Dane Donohue", soma: true });
+  });
 });

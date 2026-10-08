@@ -34,10 +34,23 @@ radio = mksafe(radio)
 # The Pi reads the ICY title in-band, so it switches exactly when the audio does.
 def mark(m) =
   mid = m["mattyfm_id"]
-  if mid != "" then [("title", "MATTYFM:#{mid} #{m['artist']} - #{m['title']}"), ("artist", "")]
+  fsec = m["fade"]
+  if mid != "" then [("title", "MATTYFM:#{mid} fade=#{fsec} #{m['artist']} - #{m['title']}"), ("artist", "")]
   else [("title", "IDLE"), ("artist", "")] end
 end
 radio = metadata.map(mark, radio)
+
+# OUTRO: 6 s before a request ends with nothing queued after it, tell the Pi to
+# start crossfading back to SomaFM under the song's last seconds (instead of
+# letting the backup playlist start at full volume first).
+radio = insert_metadata(radio)
+def outro(_, m) =
+  if list.length(reqs.queue()) == 0 then
+    log.important(label="mattyfm", "outro: #{m['mattyfm_id']} ends with nothing queued")
+    radio.insert_metadata([("title", "OUTRO"), ("artist", "")])
+  end
+end
+reqs.on_position(position=6., remaining=true, synchronous=false, outro)
 
 def status(_) =
   src = if reqs.is_ready() then "requests"

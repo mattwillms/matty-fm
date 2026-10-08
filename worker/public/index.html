@@ -24,7 +24,8 @@
   ul { list-style:none; margin:0; padding:0; }
   .song { display:flex; gap:12px; align-items:center; padding:8px 0; border-bottom:1px solid #563519; }
   .song:last-child { border-bottom:0; }
-  .song img { width:52px; height:52px; border-radius:8px; object-fit:cover; background:#563519; flex:none; }
+  .song img, .song .art { width:52px; height:52px; border-radius:8px; object-fit:cover; background:#563519; flex:none; }
+  .song .art { display:grid; place-items:center; font-size:26px; }
   .song .t { font-weight:700; } .song .a, .small { color:var(--muted); font-size:.92rem; }
   .pick { width:100%; text-align:left; background:none; color:inherit; font:inherit; padding:0; border-radius:0; }
   .row { display:flex; gap:10px; margin-top:10px; } .row > * { flex:1; }
@@ -104,7 +105,8 @@ let chosen = null, timer = null;
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function songRow(s, extra) {
   const li = el("li", "song");
-  const img = el("img"); img.alt = ""; if (s.artwork) img.src = s.artwork; li.append(img);
+  if (s.artwork) { const img = el("img"); img.alt = ""; img.src = s.artwork; img.onerror = () => img.replaceWith(el("div", "art", "📻")); li.append(img); }
+  else li.append(el("div", "art", "📻"));
   const box = el("div"); box.append(el("div", "t", s.title), el("div", "a", s.artist));
   if (s.names) box.append(el("div", "small", "for " + s.names));
   if (extra) box.append(el("div", "small", extra));
@@ -125,7 +127,7 @@ async function refresh() {
     const s = await api("/api/state");
     $("onbreak").hidden = !s.djOnBreak;
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;
-    $("now").hidden = !s.nowPlaying; $("nowList").replaceChildren(...(s.nowPlaying ? [songRow(s.nowPlaying)] : []));
+    $("now").hidden = !s.nowPlaying; $("nowList").replaceChildren(...(s.nowPlaying ? [songRow(s.nowPlaying, s.nowPlaying.soma ? "SomaFM · Left Coast 70s" : "")] : []));
     $("nextBox").hidden = !s.upNext.length; $("next").replaceChildren(...s.upNext.map((x) => songRow(x)));
     $("mineBox").hidden = !s.mine.length;
     $("mine").replaceChildren(...s.mine.map((m) => songRow(m, (STATUS[m.status] || m.status) + (m.position ? " · #" + m.position + " in line" : ""))));

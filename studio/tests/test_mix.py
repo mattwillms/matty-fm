@@ -27,32 +27,25 @@ def parts(tmp_path):
     return tmp_path
 
 
-def test_premix_keeps_song_length(parts):
+def test_song_is_whole_and_starts_mid_script(parts):
     out = parts / "out.mp3"
-    seconds = mix.premix(parts / "song.mp3", parts / "voice.mp3", parts / "sting.mp3", out, 44100)
-    assert abs(seconds - 60) < 1.5
+    seconds = mix.premix(parts / "song.mp3", parts / "voice.mp3", None, out, 44100)
+    start = mix.song_start(5.0)
+    assert abs(start - (mix.VOICE_AT + 2.5)) < 0.01
+    assert abs(seconds - (60 + start)) < 1.5
 
 
-def test_song_is_ducked_under_voice(parts):
+def band(parts, out, f):
+    dest = parts / f"b{f}.wav"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(out), "-af", f"bandpass=f={f}:w=60", str(dest)], check=True)
+    return dest
+
+
+def test_voice_first_then_song_fades_up_by_the_end_of_the_script(parts):
     out = parts / "out.mp3"
     mix.premix(parts / "song.mp3", parts / "voice.mp3", None, out, 44100)
-    # 220 Hz band only: under the voice it must be much quieter than later.
-    filt = parts / "low.wav"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(out), "-af", "lowpass=f=300", str(filt)], check=True)
-    assert mean_db(filt, mix.LEAD_IN_S + 1.5, 2) < mean_db(filt, 30, 2) - 6
-
-
-def test_rejects_short_output(parts):
-    tone(parts / "tiny.mp3", 220, 5)
-    with pytest.raises(ValueError):
-        mix.premix(parts / "tiny.mp3", parts / "voice.mp3", None, parts / "o.mp3", 44100)
-
-
-def test_music_leads_in_before_the_voice(parts):
-    # The Pi crossfades into the request over the first seconds: only music there,
-    # so the jingle and voice start after the fade, at full level.
-    out = parts / "out.mp3"
-    mix.premix(parts / "song.mp3", parts / "voice.mp3", parts / "sting.mp3", out, 44100)
-    voice_band = parts / "vb.wav"
-    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(out), "-af", "bandpass=f=880:w=80", str(voice_band)], check=True)
-    assert mean_db(voice_band, 0.2, 2.5) < mean_db(voice_band, mix.LEAD_IN_S + 3.0, 2.0) - 15
+    song, voice = band(parts, out, 220), band(parts, out, 880)
+    assert mean_db(voice, 0.7, 1.5) > -30                      # voice at full from ~0.5 s
+    assert mean_db(song, 0.5, 2.0) < -45                       # no song under the first half
+    assert mean_db(song, 6.0, 2.0) > mean_db(song, 3.2, 0.5) + 6   # song rising through the second half
+    assert mean_db(song, 30, 2) - mean_db(song, 5.4, 0.3) < 3  # near full volume as the script ends

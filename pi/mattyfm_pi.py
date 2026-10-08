@@ -29,8 +29,11 @@ import threading
 import time
 import urllib.request
 
-FADE_S = 2.0
-FADE_STEPS = 20
+STATION_UP_S = 0.5      # into a request: the DJ voice is at full level almost at once
+DEFAULT_DOWN_S = 2.5    # outgoing audio fades under the first half of the script
+MAX_DOWN_S = 8.0
+BACK_TO_SOMA_S = 5.0    # OUTRO: SomaFM rises under the request's last seconds
+STEP_S = 0.1
 SOMA_STALL_S = 4.0
 CHUNK = 4096
 PIPE_BYTES = 4096            # tiny pipe: titles stay in step with what is audible
@@ -74,6 +77,26 @@ def icy_events(stream, metaint: int, chunk: int = CHUNK):
             title = parse_title(meta)
             if title is not None:
                 yield ("title", title)
+
+
+FADE_IN_TITLE = re.compile(r"\bfade=([0-9.]+)")
+
+
+def fade_from_title(title: str) -> float:
+    m = FADE_IN_TITLE.search(title)
+    if not m:
+        return DEFAULT_DOWN_S
+    try:
+        return min(max(float(m.group(1)), 0.2), MAX_DOWN_S)
+    except ValueError:
+        return DEFAULT_DOWN_S
+
+
+def level_at(t: float, start: int, end: int, dur: float) -> int:
+    """Linear ramp from start to end over dur seconds, evaluated at elapsed time t."""
+    if dur <= 0 or t >= dur:
+        return end
+    return round(start + (end - start) * max(t, 0) / dur)
 
 
 def decide_mode(title: str, soma_up: bool) -> str:
@@ -140,15 +163,20 @@ class Mixer:
         self._send(f"sset {control} {pct}%")
         self.level[control] = pct
 
-    def crossfade(self, to: str) -> None:
+    def crossfade(self, to: str, up_s: float, down_s: float) -> None:
+        """Bring `to` up over up_s and the other down over down_s, each on its own clock."""
         up, down = ("StationVol", "SomaVol") if to == "station" else ("SomaVol", "StationVol")
         with self.lock:
+            a0, b0 = self.level[up], self.level[down]
             t0 = time.monotonic()
-            for a, b in zip(ramp(self.level[up], 100, FADE_STEPS), ramp(self.level[down], 0, FADE_STEPS)):
-                self.set(up, a)
-                self.set(down, b)
-                time.sleep(FADE_S / FADE_STEPS)
-            log(f"fade to {to} done in {time.monotonic() - t0:.2f}s")
+            while True:
+                t = time.monotonic() - t0
+                self.set(up, level_at(t, a0, 100, up_s))
+                self.set(down, level_at(t, b0, 0, down_s))
+                if t >= max(up_s, down_s):
+                    break
+                time.sleep(STEP_S)
+            log(f"fade to {to} done in {time.monotonic() - t0:.2f}s (up {up_s:.1f}s, down {down_s:.1f}s)")
 
 
 class Decoder:
@@ -192,7 +220,11 @@ class Receiver:
                 return
             log(f"mode {self.mode} -> {want} ({why}; title={self.title!r}, soma_up={self.soma.up()})")
             self.mode = want
-        self.mixer.crossfade(want)
+            title = self.title
+        if want == "station":
+            self.mixer.crossfade("station", up_s=STATION_UP_S, down_s=fade_from_title(title))
+        else:
+            self.mixer.crossfade("soma", up_s=BACK_TO_SOMA_S, down_s=BACK_TO_SOMA_S)
 
     def open(self, url: str, icy: bool):
         headers = {"User-Agent": USER_AGENT}

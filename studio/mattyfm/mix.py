@@ -6,9 +6,18 @@ import subprocess
 from pathlib import Path
 
 SONG_LUFS, VOICE_LUFS, TRUE_PEAK = -16, -14, -1.5
-# Seconds of music alone at the start: the Pi crossfades SomaFM into the request
-# over this, so the jingle and voice begin after the fade, at full level.
-LEAD_IN_S = 4.0
+# The DJ talks over the transition: the voice starts VOICE_AT seconds in at full
+# level while the Pi fades SomaFM (or the last song) down under the first half of
+# the script; the new song starts at the script's midpoint and fades up to full
+# volume as the script ends.
+VOICE_AT = 0.5
+
+
+def song_start(voice_s: float) -> float:
+    """Where the song begins in the mix: the midpoint of the script."""
+    return VOICE_AT + voice_s / 2
+
+
 VOICE_CHAIN = ("highpass=f=80,equalizer=f=3000:t=q:w=1:g=3,"
                "acompressor=threshold=-18dB:ratio=4:attack=5:release=100:makeup=2")
 
@@ -41,32 +50,27 @@ def _normalize(src: Path, dest: Path, target: int, rate: int, pre: str = "") -> 
 
 
 def premix(song: Path, voice: Path, sting: Path | None, dest: Path, rate: int) -> float:
+    """Voice from VOICE_AT; song from the script's midpoint, fading up to full by its end.
+
+    `sting` is accepted for bumpers but not used on song transitions.
+    """
     work = dest.with_suffix(".work")
     work.mkdir(exist_ok=True)
     song_n, voice_n = work / "song.wav", work / "voice.wav"
     _normalize(song, song_n, SONG_LUFS, rate)
     _normalize(voice, voice_n, VOICE_LUFS, rate, pre=VOICE_CHAIN)
-    total = duration(song_n)
-    if total < 20:
-        raise ValueError(f"Song too short ({total:.1f}s)")
-
+    if duration(song_n) < 20:
+        raise ValueError(f"Song too short ({duration(song_n):.1f}s)")
+    voice_s = duration(voice_n)
+    start = song_start(voice_s)
+    fade = VOICE_AT + voice_s - start            # second half of the script
     fmt = f"aformat=sample_fmts=fltp:sample_rates={rate}:channel_layouts=stereo"
-    inputs = ["-i", str(song_n), "-i", str(voice_n)]
-    voice_at = LEAD_IN_S + 0.5
-    if sting:
-        inputs += ["-i", str(sting)]
-        voice_at = LEAD_IN_S + duration(sting) + 0.2
-    lead_ms = int(LEAD_IN_S * 1000)
-    talk = (f"[1:a]{fmt},adelay={int(voice_at * 1000)}:all=1,apad=whole_dur={total}[v];"
-            + (f"[2:a]{fmt},adelay={lead_ms}:all=1,apad=whole_dur={total}[st];[v][st]amix=inputs=2:normalize=0:duration=first,"
-               if sting else "[v]anull,")
-            + "asplit[talk][key];")
-    graph = (talk + f"[0:a]{fmt}[song];"
-             "[song][key]sidechaincompress=threshold=0.02:ratio=12:attack=30:release=700[ducked];"
-             "[ducked][talk]amix=inputs=2:normalize=0:duration=first,alimiter=limit=0.95[out]")
+    graph = (f"[1:a]{fmt},adelay={int(VOICE_AT * 1000)}:all=1[v];"
+             f"[0:a]{fmt},adelay={int(start * 1000)}:all=1,afade=t=in:st={start:.3f}:d={fade:.3f}[s];"
+             "[s][v]amix=inputs=2:normalize=0:duration=longest,alimiter=limit=0.95[out]")
     tmp = dest.with_name(dest.stem + ".tmp.mp3")
-    _ffmpeg(*inputs, "-filter_complex", graph, "-map", "[out]", "-ar", str(rate),
-            "-c:a", "libmp3lame", "-b:a", "192k", str(tmp))
+    _ffmpeg("-i", str(song_n), "-i", str(voice_n), "-filter_complex", graph, "-map", "[out]",
+            "-ar", str(rate), "-c:a", "libmp3lame", "-b:a", "192k", str(tmp))
     tmp.rename(dest)
     for f in work.iterdir():
         f.unlink()

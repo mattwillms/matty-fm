@@ -16,6 +16,7 @@ export type Beat = {
   source: string; current: string; remaining: number; queued: number;
   pushed: string[]; working: string[]; want: number; ack: number[]; error: string;
   wantNext?: boolean;   // the studio is ready to push a song right now
+  soma?: { artist: string; title: string; since: number; artwork?: string } | null;   // SomaFM's current song (its public feed)
 };
 export type Result = {
   id: string; status: "ready" | "failed"; file?: string; durationS?: number; confidence?: number;
@@ -151,8 +152,13 @@ export class Party extends DurableObject<Env> {
     const waiting = this.display();
     const mine = this.all(`SELECT DISTINCT i.* FROM items i JOIN requesters r ON r.item_id=i.id
       WHERE r.device=? ORDER BY i.created_at DESC LIMIT 6`, device);
+    const h = this.health() as unknown as Beat & { at: number };
+    const soma = !playing && h.soma && h.source !== "requests"
+      ? { id: "soma", title: String(h.soma.title), artist: String(h.soma.artist),
+          artwork: safeArtwork((h.soma as { artwork?: string }).artwork), names: "", soma: true }
+      : null;
     return {
-      nowPlaying: playing ? this.pub(playing) : null,
+      nowPlaying: playing ? this.pub(playing) : soma,
       upNext: waiting.slice(0, 6).map((i) => this.pub(i)),
       mine: mine.map((i) => ({ ...this.pub(i), status: String(i.status),
         position: waiting.findIndex((w) => w.id === i.id) + 1 || null })),

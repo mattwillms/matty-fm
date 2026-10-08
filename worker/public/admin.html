@@ -88,11 +88,16 @@ function pill(text, cls) { return el("span", "pill " + cls, text); }
 function render() {
   const h = state.health, age = h.ageS;
   const studio = age == null ? pill("Studio: never seen", "bad") : age > 60 ? pill(`Studio: silent ${age}s`, "bad") : pill("Studio: OK", "ok");
-  const src = { requests: ["Playing requests", "ok"], soma: ["Playing SomaFM", "ok"], backup: ["BACKUP playlist (internet?)", "warn"], silence: ["SILENCE", "bad"] }[h.source] || ["Source: ?", "warn"];
-  $("health").replaceChildren(studio, pill(src[0], src[1]), ...(h.error ? [pill("Last error: " + h.error, "warn")] : []));
+  const src = { requests: ["Playing requests", "ok"], soma: ["Station idle", "ok"], backup: ["Station idle (backup ready)", "ok"], silence: ["SILENCE", "bad"] }[h.source] || ["Source: ?", "warn"];
+  const playing = state.items.find((i) => i.status === "playing");
+  $("skip").disabled = !playing;
+  $("skip").title = playing ? "Skip the request that is playing" : "Nothing to skip — no request is playing";
+  const onAir = playing ? `On air: ${playing.title} — ${playing.artist} (request)`
+    : h.soma ? `On air: ${h.soma.title} — ${h.soma.artist} (SomaFM)` : "On air: SomaFM";
+  $("health").replaceChildren(pill(onAir, "ok"), studio, pill(src[0], src[1]), ...(h.error ? [pill("Last error: " + h.error, "warn")] : []));
   const s = state.settings;
   const sw = (id, on, onText, offText) => { $(id).textContent = on ? onText : offText; $(id).className = on ? "on" : ""; $(id).onclick = (e) => act({ action: "settings", settings: { [id]: !on } }, e); };
-  sw("accepting", !s.accepting, "Requests CLOSED (tap to open)", "Last call (close requests)");
+  sw("accepting", !s.accepting, "Requests closed — tap to reopen", "Close requests");
   sw("stopAfterCurrent", s.stopAfterCurrent, "Stopping after current (tap to resume)", "Stop after current");
   sw("somaOnly", s.somaOnly, "SomaFM only — requests paused (tap to resume)", "SomaFM only — pause requests");
   $("items").replaceChildren(...state.items.map((it) => {

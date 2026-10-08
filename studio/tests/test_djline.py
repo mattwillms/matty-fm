@@ -108,3 +108,15 @@ def test_station_name_is_one_setting():
     assert djline.STATION == "OrrFM"
     assert "OrrFM" in djline.SYSTEM and "MattyFM" not in djline.SYSTEM
     assert "OrrFM" in djline.template(item()).script
+
+
+def test_prompt_rules_short_no_assumed_relationships_ends_with_artist_and_song():
+    sys_prompt = djline.SYSTEM.lower()
+    assert "grandparent" in sys_prompt and "never assume" in sys_prompt
+    assert "end with the artist and the song" in sys_prompt
+    assert "8 to 25 words" in sys_prompt
+
+
+def test_template_ends_with_artist_and_song():
+    script = djline.template(item()).script
+    assert script.endswith("Earth, Wind & Fire with September.")

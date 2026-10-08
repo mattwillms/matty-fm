@@ -36,8 +36,10 @@ class Station:
     def status(self) -> dict:
         return json.loads(self.command("status"))
 
-    def push(self, path: str, item_id: str, title: str, artist: str) -> str:
-        meta = f'mattyfm_id="{_clean(item_id)}",title="{_clean(title)}",artist="{_clean(artist)}"'
+    def push(self, path: str, item_id: str, title: str, artist: str, fade: float = 2.0) -> str:
+        """`fade`: seconds the Pi takes to bring the outgoing audio down (half the DJ script)."""
+        meta = (f'mattyfm_id="{_clean(item_id)}",title="{_clean(title)}",artist="{_clean(artist)}",'
+                f'fade="{fade:.2f}"')
         return self.command(f"reqs.push annotate:{meta}:{path}")
 
     def skip(self) -> None:

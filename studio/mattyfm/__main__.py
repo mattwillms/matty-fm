@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 import anthropic
 import httpx
 
-from . import config, feed, prepare, tts
+from . import config, feed, mix, prepare, somafm, tts
 from .station import Station
 from .worker_api import WorkerAPI
 
@@ -24,6 +24,7 @@ def main() -> None:
     station = Station(cfg.telnet_host, cfg.telnet_port)
     deps = prepare.Deps(cfg=cfg, claude=anthropic.Anthropic(max_retries=1), http=httpx.Client(),
                         aura=api.tts, names=tts.load_names(cfg.repo / "studio" / "names.toml"))
+    soma_np = somafm.NowPlaying(httpx.Client())
     pool = ThreadPoolExecutor(WORKERS)
     working: set[str] = set()
     lock = threading.Lock()
@@ -61,7 +62,7 @@ def main() -> None:
             with lock:
                 body = {**status, "pushed": pushed, "working": sorted(working),
                         "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error,
-                        "wantNext": feed.wants_next(status)}
+                        "wantNext": feed.wants_next(status), "soma": soma_np.get()}
             reply = api.beat(body)
             pushed = []
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]
@@ -84,8 +85,10 @@ def main() -> None:
                     station.clear()
                 elif action[0] == "push":
                     item = action[1]
+                    voice = cfg.media_dir / "voice" / f"{item['id']}.mp3"
+                    fade = mix.song_start(mix.duration(voice)) if voice.exists() else 2.0
                     station.push(f"{cfg.station_media_dir}/ready/{item['id']}.mp3",
-                                 item["id"], item["title"], item["artist"])
+                                 item["id"], item["title"], item["artist"], fade=fade)
                     pushed.append(item["id"])
                     log.info("pushed %s: %s - %s (station was source=%s remaining=%.0fs)", item["id"],
                              item["artist"], item["title"], status["source"], status["remaining"])

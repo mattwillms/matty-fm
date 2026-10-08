@@ -41,7 +41,7 @@ def test_status_parses_json(liq):
 def test_push_annotates_and_strips_quotes(liq):
     liq.push("/media/ready/r1.mp3", "r1", 'Say "Hi"', "Band\nName")
     assert FakeLiq.log[-1] == (
-        'reqs.push annotate:mattyfm_id="r1",title="Say \'Hi\'",artist="Band Name":/media/ready/r1.mp3'
+        'reqs.push annotate:mattyfm_id="r1",title="Say \'Hi\'",artist="Band Name",fade="2.00":/media/ready/r1.mp3'
     )
 
 
@@ -57,6 +57,11 @@ def test_push_cannot_escape_the_annotation(liq):
     liq.push("/media/ready/r2.mp3", "r2", 'Evil\\', 'x",title="y:http://bad/x.mp3\r\nreqs.skip')
     sent = FakeLiq.log[-1]
     assert "\\" not in sent
-    assert sent.count('"') == 6
+    assert sent.count('"') == 8
     assert sent.endswith(":/media/ready/r2.mp3")
     assert "reqs.skip" not in FakeLiq.log[:-1] or FakeLiq.log.count("reqs.skip") == 0
+
+
+def test_push_carries_the_fade_seconds(liq):
+    liq.push("/media/ready/r3.mp3", "r3", "SOS", "ABBA", fade=3.25)
+    assert ',fade="3.25"' in FakeLiq.log[-1] and FakeLiq.log[-1].endswith(":/media/ready/r3.mp3")
