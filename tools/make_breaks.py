@@ -2,7 +2,8 @@
 sound effect (ElevenLabs sound generation) with the DJ voice over its tail.
 
 Writes media/breaks/<kind>-<n>.mp3 and media/breaks/index.json. Re-run to replace.
-Usage: .venv/bin/python tools/make_breaks.py
+Usage: .venv/bin/python tools/make_breaks.py [--only id-2,goof-1]
+  --only  remake just these clips (each costs ElevenLabs credit); the rest keep their files
 """
 
 import json
@@ -21,12 +22,12 @@ S = STATION
 CLIPS = [
     # kind, tone, sound effect prompt, line
     ("id", "funny", "short bright vintage radio station jingle swoosh with a sparkle", f"You're tuned to {S}. All requests, all night long."),
-    ("id", "funny", "retro radio station ident, quick rising synth sweep", f"Got a song in your head? Scan the code on your table and request it. This is {S}."),
+    ("id", "funny", "retro radio station ident, quick rising synth sweep", f"Got a song in your head? Just scan the code and request it. Stuck? Ask Matt. This is {S}."),
     ("id", "funny", "vinyl record needle drop and crackle", f"Seventies gold and your requests. You're listening to {S}."),
     ("id", "funny", "quick brass fanfare sting, 1970s TV style", f"{S}, broadcasting live from the backyard. Turn it up."),
     ("id", "sweet", "soft warm electric piano chime", f"Good music, good people. This is {S}."),
     ("id", "sweet", "gentle wind chimes, short", f"Thanks for being here, everybody. You're listening to {S}."),
-    ("goof", "funny", "comedic slide whistle going up", f"{S} traffic report: heavy congestion at the dessert table. Proceed with caution."),
+    ("goof", "funny", "comedic slide whistle going up", f"{S} traffic report: heavy congestion by the desserts. Proceed with caution."),
     ("goof", "funny", "old radio news teletype beeping", f"{S} weather: a hundred percent chance of dancing, with scattered high fives."),
     ("goof", "funny", "cartoon boing spring sound", "A friendly reminder from your DJ: drink some water. Punch counts. Probably."),
     ("goof", "funny", "small crowd cheering briefly", f"Breaking news on {S}: the dance floor is open, and nobody is judging. Much."),
@@ -52,10 +53,15 @@ def main() -> None:
     out = cfg.media_dir / "breaks"
     work = out / "work"
     work.mkdir(parents=True, exist_ok=True)
+    only = set(sys.argv[sys.argv.index("--only") + 1].split(",")) if "--only" in sys.argv else None
+    old = {e["file"]: e for e in json.loads((out / "index.json").read_text())} if only else {}
     http, index, counts = httpx.Client(), [], {}
     for kind, tone, sound, line in CLIPS:
         counts[kind] = counts.get(kind, 0) + 1
         name = f"{kind}-{counts[kind]}"
+        if only is not None and name not in only:
+            index.append(old[f"{name}.mp3"])
+            continue
         voice_raw, voice, fx = work / f"{name}-v.raw.mp3", work / f"{name}-v.mp3", work / f"{name}-fx.mp3"
         engine = tts.speak(line, tone, voice_raw, http=http, aura=lambda t: b"", assets=cfg.media_dir / "assets", names={})
         mix.prepare_voice(voice_raw, voice, cfg.sample_rate)

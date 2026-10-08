@@ -1,4 +1,4 @@
-"""Print-ready table card with the party QR code: writes media/qr-card.html."""
+"""Print-ready card with the party QR code: writes media/qr-card.html."""
 
 import os
 import sys
