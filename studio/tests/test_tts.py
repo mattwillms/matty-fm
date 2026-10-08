@@ -66,3 +66,13 @@ def test_pause_cues_go_to_elevenlabs_but_never_to_aura(tmp_path, monkeypatch):
               http=client(handler), aura=aura, assets=tmp_path, names={})
     assert "[pause]" in sent["eleven"]
     assert "[" not in sent["aura"] and "OrrFM" in sent["aura"]
+
+
+def test_voices_are_picked_by_weight_from_the_settings_file(tmp_path):
+    f = tmp_path / "voices.toml"
+    f.write_text('[funny]\n"johnny" = 2\n"her" = 1\n[sweet]\n"casey" = 1\n')
+    voices = tts.load_voices(f)
+    picks = [tts.pick_voice(voices, "funny", roll=r) for r in (0.0, 0.5, 0.66, 0.67, 0.99)]
+    assert picks == ["johnny", "johnny", "johnny", "her", "her"]
+    assert tts.pick_voice(voices, "sweet", roll=0.9) == "casey"
+    assert tts.load_voices(tmp_path / "missing.toml") == tts.DEFAULT_VOICES   # no file: the built-in pair

@@ -1,6 +1,7 @@
 """Turn a DJ script into speech: ElevenLabs, then Aura via the Worker, then a stock clip."""
 
 import os
+import random
 import re
 import shutil
 import tomllib
@@ -10,7 +11,30 @@ from pathlib import Path
 import httpx
 
 MODEL = "eleven_v4"
-VOICES = {"funny": "CeNX9CMwmxDxUF5Q2Inm", "sweet": "mKoqwDP2laxTdq1gEgU6"}
+VOICES = {"funny": "CeNX9CMwmxDxUF5Q2Inm", "sweet": "mKoqwDP2laxTdq1gEgU6"}   # Johnny Dynamite, Countdown Casey
+DEFAULT_VOICES = {tone: {vid: 1.0} for tone, vid in VOICES.items()}
+VOICES_FILE = Path(__file__).resolve().parents[1] / "voices.toml"
+
+
+def load_voices(path: Path = VOICES_FILE) -> dict[str, dict[str, float]]:
+    """studio/voices.toml: per tone, ElevenLabs voice id = weight (2 and 1: the first reads two lines
+    in three). Read for every recording, so an edit takes effect without a restart."""
+    try:
+        data = tomllib.loads(path.read_text())
+        out = {t: {str(v): float(w) for v, w in data.get(t, {}).items() if float(w) > 0} for t in DEFAULT_VOICES}
+        return {t: out[t] or DEFAULT_VOICES[t] for t in out}
+    except (OSError, ValueError, TypeError, AttributeError):
+        return DEFAULT_VOICES
+
+
+def pick_voice(voices: dict[str, dict[str, float]], tone: str, roll: float | None = None) -> str:
+    pool = voices.get(tone) or DEFAULT_VOICES.get(tone) or DEFAULT_VOICES["funny"]
+    at = (random.random() if roll is None else roll) * sum(pool.values())
+    for vid, w in pool.items():
+        at -= w
+        if at < 0:
+            return vid
+    return list(pool)[-1]
 
 
 def load_names(path: Path) -> dict[str, str]:
@@ -25,7 +49,7 @@ def respell(text: str, names: dict[str, str]) -> str:
 
 def _eleven(text: str, tone: str, http: httpx.Client) -> bytes:
     resp = http.post(
-        f"https://api.elevenlabs.io/v1/text-to-speech/{VOICES[tone]}",
+        f"https://api.elevenlabs.io/v1/text-to-speech/{pick_voice(load_voices(), tone)}",
         params={"output_format": "mp3_44100_128"},
         headers={"xi-api-key": os.environ["ELEVENLABS_API_KEY"]},
         json={"text": text, "model_id": MODEL},
