@@ -263,6 +263,10 @@ export class Party extends DurableObject<Env> {
     if (waiting >= 2) return { ok: false, error: "You have 2 waiting. Once one is read out, send another!" };
     if (urgent && this.one("SELECT 1 AS u FROM jokes WHERE device=? AND urgent=1 AND created_at>?", device, Date.now() - 3_600_000))
       return { ok: false, error: "One urgent announcement an hour. Send it as a regular one?" };
+    // and one urgent guest announcement per 10 minutes for the whole party: a new phone id is cheap,
+    // so the per-phone limit alone would let one person keep cutting into the music
+    if (urgent && this.one("SELECT 1 AS u FROM jokes WHERE source='guest' AND urgent=1 AND status<>'deleted' AND created_at>?", Date.now() - 600_000))
+      return { ok: false, error: "Another urgent announcement just went out. Send this one as a regular announcement?" };
     const id = "j" + this.newId().slice(1);
     this.sql.exec("INSERT INTO jokes(id,device,name,text,status,created_at,ip,kind,urgent,source) VALUES(?,?,?,?, 'pending', ?, ?, ?, ?, 'guest')",
       id, device, name, text, Date.now(), ip, kind, urgent ? 1 : 0);
@@ -513,7 +517,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "announce-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "announce-2",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: this.all("SELECT * FROM jokes WHERE status<>'deleted' ORDER BY CASE WHEN status IN ('pending','preparing','ready') THEN 0 ELSE 1 END, created_at DESC LIMIT 20")
         .map((j) => ({ id: String(j.id), name: String(j.name), text: String(j.text), status: String(j.status),

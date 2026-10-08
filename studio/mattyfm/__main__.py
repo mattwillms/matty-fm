@@ -167,6 +167,8 @@ def main() -> None:
             api.joke_result({"id": jid, "status": "ready", "file": out.name, "seconds": round(seconds, 2),
                              "script": djline.display(line.script)})
             log.info("joke %s ready via %s (%.1fs): %s", jid, engine, seconds, djline.display(line.script))
+        except djline.WriterDown:   # say nothing: its lease lapses and it's written up once the writer is back
+            log.warning("joke %s waits: the writer is down", jid)
         except Exception:
             log.exception("joke %s failed", jid)
             try:

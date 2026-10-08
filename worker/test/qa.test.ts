@@ -594,4 +594,11 @@ describe("QA round", () => {
     const r = await p.beat({ ...beat, wantJokes: 1 });
     expect(r.jokeJobs[0]).toEqual(expect.objectContaining({ kind: "announcement", urgent: true, source: "host" }));
   });
+  it("one urgent guest announcement per 10 minutes for the whole party (cheap phone ids can't spam it)", async () => {
+    const p = stub("urgent-global");
+    expect((await p.submitJoke("a", { name: "A", text: "Red truck lights are on outside.", kind: "announcement", urgent: true })).ok).toBe(true);
+    expect((await p.submitJoke("b", { name: "B", text: "Blue truck lights are on outside.", kind: "announcement", urgent: true })).ok).toBe(false);
+    expect((await p.submitJoke("b", { name: "B", text: "Blue truck lights are on outside.", kind: "announcement" })).ok).toBe(true);
+    expect((await p.adminAction({ action: "announce", text: "The host can always announce." })).ok).toBe(true);
+  });
 });

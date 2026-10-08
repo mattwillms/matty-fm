@@ -323,6 +323,10 @@ def display(script: str) -> str:
     return re.sub(r"\s+([.,!?])", r"\1", " ".join(re.sub(r"\[[^\]]*\]", " ", script).split()))
 
 
+class WriterDown(Exception):
+    """The DJ's writer (Claude) couldn't be reached: a guest's message waits; it's never read out raw."""
+
+
 JOKE_SYSTEM = f"""You are the DJ of {STATION}, a pretend 1970s FM station at a family reunion. A guest \
 sent in a joke for you to tell on air.
 
@@ -345,7 +349,6 @@ Reply with only a JSON object: {{"ok": true|false, "script": "..."}}"""
 def joke_line(name: str, text: str, client) -> DJLine:
     """A guest's joke as the DJ tells it, a pause before the punchline. ok=False: the DJ declines it."""
     who = _safe(name) or "A guest"
-    fallback = DJLine(True, "funny", f"{who} sent this one in. {_safe(text)}", True)
     try:
         msg = client.messages.create(
             model=MODEL, max_tokens=1024, output_config={"effort": "low"}, system=JOKE_SYSTEM,
@@ -354,8 +357,8 @@ def joke_line(name: str, text: str, client) -> DJLine:
             return DJLine(False, "funny", "", False)
         found = re.search(r"\{.*\}", "".join(b.text for b in msg.content if b.type == "text"), re.S)
         data = json.loads(found.group(0)) if found else None
-    except Exception:   # the writer is down: read it plainly (the Worker already filtered it)
-        return fallback
+    except Exception as e:   # the writer is down: the joke waits (a guest's raw text is never read on air)
+        raise WriterDown(str(e)) from e
     if not isinstance(data, dict) or not data.get("ok"):
         return DJLine(False, "funny", "", False)
     script = pause_cues(speech_text(str(data.get("script") or "")))
@@ -395,8 +398,10 @@ def announce_line(name: str, text: str, urgent: bool, host: bool, client) -> DJL
             return fallback if host else DJLine(False, "funny", "", False)
         found = re.search(r"\{.*\}", "".join(b.text for b in msg.content if b.type == "text"), re.S)
         data = json.loads(found.group(0)) if found else None
-    except Exception:   # the writer is down: read it plainly
-        return fallback
+    except Exception as e:   # the writer is down: the host's own is read as typed; a guest's waits
+        if host:
+            return fallback
+        raise WriterDown(str(e)) from e
     if not isinstance(data, dict) or not data.get("ok"):
         return fallback if host else DJLine(False, "funny", "", False)   # the host's own always gets read
     script = " ".join(re.sub(r"\[[^\]]*\]", " ", speech_text(str(data.get("script") or ""))).split())

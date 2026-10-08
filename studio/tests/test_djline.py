@@ -251,8 +251,12 @@ def test_a_declined_joke_and_an_unreachable_writer():
             @staticmethod
             def create(**k):
                 raise RuntimeError("down")
-    line = djline.joke_line("Ann", "Knock knock. Who's there? Lettuce. Lettuce who? Lettuce in!", Down())
-    assert line.ok and line.fallback and line.script.startswith("Ann sent this one in.")
+    import pytest
+    with pytest.raises(djline.WriterDown):   # never read a guest's raw text: wait for the writer
+        djline.joke_line("Ann", "Knock knock. Who's there? Lettuce. Lettuce who? Lettuce in!", Down())
+    with pytest.raises(djline.WriterDown):
+        djline.announce_line("Ann", "Cake at three", False, False, Down())
+    assert djline.announce_line("", "Fish is ready", True, True, Down()).script == "A word from your host: Fish is ready"
 
 
 def test_announcements_keep_every_fact_and_say_who_they_are_from():
