@@ -38,6 +38,12 @@ CLIPS = [
     ("goof", "funny", "news helicopter rotor whir, short", f"{S} traffic. Dawgs merging left, Rebels merging right. [long pause] [playful] Anybody headed to Baton Rouge, that's your exit. Keep going."),
     ("goof", "funny", "boxing ring bell, two dings", "Hail State and Hotty Toddy in the same backyard, and nobody's bleeding. [long pause] [deadpan] Turns out you'll forgive anybody once Lane Kiffin moves to Baton Rouge."),
     ("goof", "funny", "marching band snare drum roll, short", "The Egg Bowl's a month out. Today, it's a truce. [long pause] [smug] We're all family here. Except Bama. Bama's still waiting by the phone for Saban."),
+    # the food: Matt is frying fish and hush puppies; boiled peanuts; beer
+    ("goof", "funny", "hot oil sizzling in a fryer, short", "[smug] The fish just hit the grease. [long pause] If you can smell that and you're still sitting down, I can't help you."),
+    ("goof", "funny", "kitchen timer ding", "Matt's on the fryer. [long pause] [deadpan] If the fish is perfect, tell him. If it isn't, tell him louder."),
+    ("goof", "funny", "paper bag rustling, peanuts shaking", "[deadpan] Public service announcement. Boiled peanuts go in your mouth. [long pause] The shells go wherever you want. We're in the country. There is no HOA."),
+    ("goof", "funny", "dinner bell triangle ringing", "[excited] Hush puppies are up. [long pause] Fair warning: there is no line. Just fast people and hungry people."),
+    ("goof", "funny", "beer can cracking open with a fizz", "That sound means the cooler's open. [long pause] [playful] OrrFM reminds you: one beer, one water. We're not your mom. Mostly."),
     ("skip", "funny", "vinyl record scratch, fast", "Whoa! Let's try something else."),
     ("skip", "funny", "vinyl record scratch and rewind", "Okay, okay. Moving on!"),
     ("skip", "funny", "quick comedic record scratch", "The DJ has spoken. Next!"),
