@@ -139,11 +139,12 @@ describe("party", () => {
     await runInDurableObject(p, async (_i: Party, state) => {
       state.storage.sql.exec("UPDATE items SET status='played' WHERE id=?", a.id!);
     });
-    await p.adminAction({ action: "resend", id: a.id });
+    const copy = (await p.adminAction({ action: "resend", id: a.id })) as { id: string };   // a fresh copy: the original stays played
     const st = await p.adminState();
     const waiting = st.items.filter((i) => ["pending", "preparing", "ready", "queued"].includes(i.status));
-    expect(waiting.map((i) => i.id)).toEqual([b.id, a.id]);
-    expect(st.items.find((i) => i.id === a.id)?.status).toBe("ready");
+    expect(waiting.map((i) => i.id)).toEqual([b.id, copy.id]);
+    expect(st.items.find((i) => i.id === copy.id)?.status).toBe("ready");
+    expect(st.items.find((i) => i.id === a.id)?.status).toBe("played");
   });
 
   it("the bumper button sends a break command to the studio", async () => {

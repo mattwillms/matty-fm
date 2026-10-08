@@ -44,7 +44,7 @@
   .quote { margin-top: 12px; background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: .95rem; }
   .quote .qhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
   .quote .qhead b { margin: 0; }
-  .quote button.replay { height: 28px; padding: 0 12px; border-radius: 14px; font-size: .82rem; font-weight: 600; flex: none;
+  .quote button.replay { height: 36px; padding: 0 12px; border-radius: 14px; font-size: .82rem; font-weight: 600; flex: none;
                          background: transparent; color: var(--gold); box-shadow: inset 0 0 0 1.5px var(--line); }
   .quote b { display: block; color: var(--faint); font-weight: 500; font-size: .85rem; margin-bottom: 2px; }
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
@@ -88,8 +88,8 @@
   button:disabled { opacity: .4; cursor: not-allowed; filter: none; transform: none; }
   button.primary { background: var(--orange); color: #241208; }
   button.busy { opacity: .55; cursor: progress; }
-  button.sm { height: 34px; padding: 0 12px; font-size: .88rem; border-radius: 8px; }
-  button.icon { width: 34px; height: 34px; padding: 0; font-size: .9rem; border-radius: 8px; flex: none; }
+  button.sm { height: 40px; padding: 0 12px; font-size: .88rem; border-radius: 8px; }
+  button.icon { width: 44px; height: 44px; padding: 0; font-size: .9rem; border-radius: 8px; flex: none; }
   button.ghost { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); color: var(--muted); }
   button.danger { background: transparent; box-shadow: inset 0 0 0 1.5px #7a3a30; color: var(--bad); }
 
@@ -146,7 +146,7 @@
   #toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(16px); opacity: 0;
            background: var(--ink); color: var(--bg); padding: 12px 20px; border-radius: 999px; font-weight: 700; box-shadow: 0 8px 24px #0009;
            transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: var(--bad); color: #fff; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: #B23A22; color: #fff; }   /* 4.5:1 for white text */
   @media (prefers-reduced-motion: reduce) { button, .toggle::after { transition: none; } }
 </style>
 </head>
@@ -258,11 +258,14 @@ const DONE = { announce: "Announcement sent: the DJ reads it as soon as it's rec
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
   return busy(btn, async () => {
+    let ok = false;
     try {
       const r = await call("/api/admin/action", body);
-      if (r && r.ok === false) toast(r.error || "That didn't work", true); else toast(DONE[body.action] || "Done");
+      ok = !(r && r.ok === false);
+      if (!ok) toast(r.error || "That didn't work", true); else toast(DONE[body.action] || "Done");
     } catch (e) { if (e.message !== "auth") toast("Couldn't reach the server", true); }
     await load();
+    return ok;   // so a form only clears when its action went through
   });
 }
 function cleanTitle(t) {
@@ -447,7 +450,7 @@ function render() {
   const waiting = state.items.filter((i) => ["pending", "preparing", "ready", "queued"].includes(i.status));
   // guests' jokes, worked in as they'll be told: one at each song change, before the next song
   const jokes = state.jokes || [];
-  const jokesWaiting = jokes.filter((j) => ["pending", "preparing", "ready"].includes(j.status)).sort((a, b) => a.createdAt - b.createdAt);
+  const jokesWaiting = jokes.filter((j) => ["pending", "preparing", "ready"].includes(j.status)).sort((a, b) => (b.urgent - a.urgent) || (a.createdAt - b.createdAt));   // as they'll be told: urgent first
   $("upCount").textContent = waiting.length || jokesWaiting.length ? String(waiting.length + jokesWaiting.length) : "";
   const songRows = waiting.map((it, i) => {
     const up = btn("icon", "▲", (e) => act({ action: "move", id: it.id, dir: -1 }, e), "Move up"); up.disabled = i === 0;
@@ -479,8 +482,16 @@ function render() {
     : [el("div", "empty", "Nothing played yet.")]));
 }
 let lastGood = 0;
+let lastKey = "";
 async function load() {
-  try { state = await call("/api/admin/state"); state.loadedAt = lastGood = Date.now(); render(); }
+  try {
+    state = await call("/api/admin/state"); state.loadedAt = lastGood = Date.now();
+    // the lists rebuild only when what they show changed: a rebuild under a finger loses the tap
+    const h = state.health || {};
+    const key = JSON.stringify([state.items, state.jokes, state.history, state.muted, state.settings, state.nowPlaying,
+                                h.lastDj, h.source, h.current]);
+    if (key !== lastKey) { lastKey = key; render(); } else { renderStatus(); renderTimer(); }
+  }
   catch (e) { if (e.message !== "auth") renderStale(); }
 }
 function renderStale() {   // the Worker can't be reached: don't let old data look live
@@ -497,7 +508,7 @@ function offline() {
 $("annSend").onclick = (e) => {
   const text = $("annText").value.trim();
   if (!text) { toast("Type the announcement first", true); return; }
-  act({ action: "announce", text }, e).then(() => { $("annText").value = ""; });
+  act({ action: "announce", text }, e).then((ok) => { if (ok) $("annText").value = ""; });   // a refusal keeps the text
 };
 $("skip").onclick = (e) => {
   if (!studioUp()) return offline();
@@ -528,14 +539,15 @@ function originalArtist(a) {
     .replace(/\s*[-–(\[]?\s*(?:tribute(?:\s+band)?|karaoke(?:\s+version)?|covers?|in the style of.*|made famous by.*|sound-?alikes?)\s*[)\]]?\s*$/i, "")
     .trim();
 }
+function baseTitle(t) { return String(t || "").replace(/\s*[(\[][^)\]]*[)\]]/g, "").replace(/\s+-\s+.*$/, "").trim() || t; }
 function withOriginals(list) {
-  const out = [], keys = new Set(list.filter((t) => !COVER_ARTIST.test(t.artist)).map((t) => (t.artist + "|" + cleanTitle(t.title)).toLowerCase()));
+  const out = [], keys = new Set(list.filter((t) => !COVER_ARTIST.test(t.artist)).map((t) => (t.artist + "|" + baseTitle(t.title)).toLowerCase()));
   for (const t of list) {
     if (!COVER_ARTIST.test(t.artist)) { out.push(t); continue; }
-    const orig = originalArtist(t.artist), key = (orig + "|" + cleanTitle(t.title)).toLowerCase();
+    const orig = originalArtist(t.artist), key = (orig + "|" + baseTitle(t.title)).toLowerCase();
     if (orig && orig.toLowerCase() !== t.artist.toLowerCase() && !keys.has(key)) {
       keys.add(key);   // the real recording: the studio finds it on YouTube by artist and title
-      out.push({ title: cleanTitle(t.title), artist: orig, album: "", durationMs: null, explicit: false, artwork: "", source: "original", original: true });
+      out.push({ title: baseTitle(t.title), artist: orig, album: "", durationMs: null, explicit: false, artwork: "", source: "original", original: true });
     }
     out.push({ ...t, cover: true });
   }

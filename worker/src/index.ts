@@ -103,7 +103,7 @@ async function takeOver(env: Env, party: DurableObjectStub<Party>): Promise<void
   try {
     if (!(await party.isFresh())) return;   // in use (even if empty right now): never import into it
     const state = await env.PARTY.getByName(`orrfm-v${QUEUE_VERSION - 1}`).exportState();
-    if (state.items?.length || state.settings?.length) await party.importState(state);
+    if (state.items?.length || state.settings?.length || state.jokes?.length) await party.importState(state);
   } catch (e) {
     console.log("queue take-over skipped:", String(e));
   }
