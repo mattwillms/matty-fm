@@ -98,10 +98,16 @@
   .vfd .t, .vfd .a { white-space: nowrap; overflow: hidden; }   /* a VFD never wraps: it scrolls */
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
-  .controls { margin-top: 10px; }
-  .engrave { font: 700 .72rem Jost, sans-serif; color: #4b453c; text-shadow: 0 1px 0 #fffb; letter-spacing: .04em; }
-  .label { display: flex; align-items: center; gap: 7px; margin: 0 0 10px 2px; line-height: 1; }   /* centred between the screens */
-  .request-mod { min-width: 0; }
+  /* the request module: a dark gunmetal plate (lamp, label, name screen), the script screen under it */
+  .plate { position: relative; display: flex; align-items: center; gap: 9px; margin-top: 12px; padding: 8px 22px; border-radius: 5px;
+           background: repeating-linear-gradient(90deg, #ffffff06 0 1px, transparent 1px 3px), linear-gradient(#45403a, #2a2723 55%, #211e1b);
+           box-shadow: inset 0 1px 0 #ffffff26, inset 0 -1px 0 #0008, 0 1px 0 #fff8, 0 0 0 1px #1a1714; }
+  .plate .lamp { flex: none; }
+  .plate .screw { top: 50%; margin-top: -5px; filter: brightness(.82); }
+  .plate .screw.ml { left: 6px; } .plate .screw.mr { right: 6px; }
+  .plate-label { font: 700 .66rem/1.15 Jost, sans-serif; letter-spacing: .07em; color: #d8cfbd; text-shadow: 0 -1px 0 #000c; white-space: nowrap; }
+  .name-screen { flex: 1; min-width: 0; padding: 5px 9px 6px; }
+  .msg-screen { margin-top: 12px; }
   /* the request VFD: dark glass, glowing teal dot-matrix, same family as the display above */
   .lcd { position: relative; border-radius: var(--glass-r); padding: 7px 10px 8px; overflow: hidden; background: var(--glass);
          box-shadow: inset 0 3px 8px #000, 0 1px 0 #fff8; font-family: VT323, monospace; color: var(--teal);
@@ -109,8 +115,8 @@
   .lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none;
                 background: repeating-linear-gradient(0deg, #0000 0 2px, #00000026 2px 3px), linear-gradient(170deg, #ffffff12 0 25%, transparent 25%); }
   .lcd-line { position: relative; white-space: nowrap; overflow: hidden; }
-  .lcd-line.name { font-size: 1.2rem; line-height: 1.05; color: #6fe3c8b8; }
-  .lcd-line.msg { font-size: 1.75rem; line-height: 1.05; }
+  .lcd-line.name { font-size: 1.3rem; line-height: 1.05; }
+  .lcd-line.msg { font-size: 1.575rem; line-height: 1.05; }
   /* ---- record sleeve lightbox: tap the screen to pull the record ---- */
   dialog.sleeve-box { border: 0; padding: 24px 16px; margin: 0; width: 100%; height: 100%; max-width: none; max-height: none;
                       background: transparent; color: var(--cream); overflow-x: hidden; }
@@ -276,14 +282,14 @@
         <div class="ticks"></div>
         <div class="needle" id="needle"></div>
       </div>
-      <div class="controls">
-        <div class="request-mod">
-          <div class="engrave label"><span class="lamp" id="lamp" aria-hidden="true"></span><span id="reqLabel">SPECIAL REQUEST</span></div>
-          <div class="lcd" aria-live="polite">
-            <div class="lcd-line name"><span class="track" id="lcdName"><span>SomaFM 70s</span></span></div>
-            <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
-          </div>
-        </div>
+      <div class="plate">
+        <i class="screw ml"><b class="slit" style="--r: 64deg"></b></i><i class="screw mr"><b class="slit" style="--r: 118deg"></b></i>
+        <span class="lamp" id="lamp" aria-hidden="true"></span>
+        <span class="plate-label" id="reqLabel">SPECIAL<br>REQUEST</span>
+        <div class="lcd name-screen"><div class="lcd-line name"><span class="track" id="lcdName"><span>SomaFM 70s</span></span></div></div>
+      </div>
+      <div class="lcd msg-screen" aria-live="polite">
+        <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
       </div>
     </div>
   </section>
