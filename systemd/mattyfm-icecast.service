@@ -1,0 +1,13 @@
+[Unit]
+Description=MattyFM Icecast (stream server the Pi listens to)
+After=network-online.target
+
+[Service]
+EnvironmentFile=%h/.config/mattyfm/env
+ExecStart=%h/dev/mattyfm/station/icecast.sh
+ExecStop=/usr/bin/docker stop -t 5 mattyfm-icecast
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

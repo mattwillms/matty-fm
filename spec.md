@@ -29,13 +29,18 @@ after the event (`docs/teardown.md`) and rebuilt from `docs/setup.md`.
 
 ```
 guests' phones ──► fm.willms.co  (Cloudflare Worker + one Durable Object)
-                       ▲ │  HTTPS poll ~3 s, bearer secret
+                       ▲ │  HTTPS beat ~3 s, bearer secret
                        │ ▼
-Arch workstation:  studio (Python) ──telnet──► Liquidsoap 2.4.5 (Docker)
-                                                     │ HTTP MP3 stream, LAN
-                                                     ▼
-                                  Pi 1 Model B + Logitech USB audio ──► PA
+Arch workstation:  studio (Python) ──telnet──► Liquidsoap 2.4.5 ──► Icecast 2.4.4
+                                               (requests, backup)     │ MP3 + ICY titles, LAN :8040
+                                                                      ▼
+SomaFM (internet) ─────────────────────────────────────────► Pi 1 Model B: two mpg123 players,
+                                                              crossfaded via ALSA softvol ──► PA
 ```
+
+**SomaFM is played only by the Pi, as an ordinary listener.** SomaFM blocks
+Liquidsoap (any user agent containing "Liquidsoap" gets zero bytes), which is
+how they enforce their no-restreaming terms; we do not disguise around it.
 
 Every connection starts from inside the house. Nothing listens on the internet.
 
@@ -136,15 +141,15 @@ cannot sleep while it runs.
 
 Source chain (each level takes over automatically):
 1. `reqs` — the request queue, crossfaded (6 s).
-2. SomaFM Left Coast 70s, `input.http` over three hosts (ice6, ice2, ice5),
-   `blank.strip` so a silent stream counts as down. Fixed gain to match
-   −16 LUFS (measured on the day before).
-3. Backup playlist — `media/backup/`, local MP3s.
-4. `mksafe` — silence filler, last resort.
+2. Backup playlist — `media/backup/`, local MP3s (heard only when SomaFM is
+   unreachable at the Pi). **Must never be empty.**
+3. `mksafe` — silence filler, last resort.
 
-Transitions: requests start with SomaFM fading out over 3 s; SomaFM returns
-with a 4 s crossfade. Telnet on 127.0.0.1:1234 for push / skip / queue.
-Output: `output.harbor` MP3 192 kbps on port 8000, mount `/radio`.
+The in-stream (ICY) title is `MATTYFM:<id> <artist> - <title>` while a request
+plays and `IDLE` otherwise. Telnet on 127.0.0.1:1234 for push / skip / queue.
+Output: `output.icecast` MP3 192 kbps to Icecast (`libretime/icecast:2.4.4`,
+Docker, host port 8040, mount `/radio`). Liquidsoap's own harbor server does
+not send ICY titles on 2.4.5, so Icecast is required.
 Sample rate: **48 kHz if the Logitech adapter only accepts 48 kHz**,
 otherwise 44.1 kHz — the whole pipeline uses one rate.
 
@@ -154,9 +159,14 @@ Raspberry Pi 1 Model B, Raspberry Pi OS Lite 32-bit (Trixie). Wifi via USB
 dongle (to be tested — see risks), Logitech USB audio adapter, analog out to
 the PA.
 
-- `mpg123 -q --timeout 10 -b 1024 -o alsa -a plughw:CARD=<name>,DEV=0
-  http://<workstation>:8000/radio` under systemd, `Restart=always`,
-  `RestartSec=2`.
+- Two `mpg123` players run all the time: SomaFM (`ice6`, fallback `ice2`)
+  into ALSA softvol `SomaVol`, and the station into softvol `StationVol`,
+  both mixed by `dmix` on the Logitech card (`hw:CARD=X`). Measured decode
+  cost: ~12% CPU for both.
+- A controller (Python, systemd) reads the station's ICY titles from
+  `mpg123 -R` and crossfades over ~2.5 s: station up when a title starts
+  with `MATTYFM:`, SomaFM up otherwise. If the SomaFM player is down, the
+  station (backup playlist) is up.
 - Watchdog timer (15 s): restart the player if the ALSA stream is not
   RUNNING or its hardware pointer has not moved.
 - Card selected **by name**, never by index. Onboard audio off
@@ -170,13 +180,13 @@ the PA.
 
 | Failure | Result |
 |---|---|
-| Home internet down | SomaFM drops → backup playlist. Requests already prepared still play. Guests on cellular can still submit; they wait. |
+| Home internet down | Pi's SomaFM player drops → controller fades to the station's backup playlist. Requests already prepared still play. Guests on cellular can still submit; they wait. |
 | yt-dlp broken / blocked | Cache hits still work. Misses fail fast; guest told; admin flagged. |
 | Claude down | Template DJ line. |
 | TTS down or out of credits | Cloudflare Aura-2 (`orion`); if that fails too, a generic pre-rendered clip. |
 | Studio crash | systemd restarts it; leases return items to pending. |
 | Liquidsoap crash | Docker restarts it; studio re-pushes. |
-| Pi stream drops | mpg123 exits, systemd restarts it within 2 s; 6 s buffer covers blips. |
+| Pi stream drops | The controller restarts the dead mpg123 within 2 s; buffers cover blips. |
 | Workstation dies | Silence at the PA. Manual backup: a phone with a playlist on an aux cable, labeled, by the PA. |
 
 ## Testing
@@ -206,7 +216,8 @@ the PA.
 
 1. ~~DJ voice~~ — decided 2026-10-07 by ear: ElevenLabs, Johnny Dynamite
    (funny) and Countdown Casey (sweet). Aura-2 kept as the fallback voice.
-2. **Sample rate:** 44.1 vs 48 kHz — read from the Logitech adapter.
+2. ~~Sample rate~~ — 44.1 kHz. The adapter is a Logitech G PRO X DAC
+   (card id `X`), playback rates 16–48 kHz including 44100.
 
 ## Risks
 

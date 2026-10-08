@@ -1,0 +1,14 @@
+[Unit]
+Description=MattyFM station (Liquidsoap in Docker)
+After=network-online.target mattyfm-icecast.service
+Wants=mattyfm-icecast.service
+
+[Service]
+EnvironmentFile=%h/.config/mattyfm/env
+ExecStart=/usr/bin/systemd-inhibit --what=sleep:idle --who=MattyFM --why="Party radio on air" %h/dev/mattyfm/station/run.sh
+ExecStop=/usr/bin/docker stop -t 5 mattyfm-station
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target
