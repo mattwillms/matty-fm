@@ -64,12 +64,12 @@
                background-blend-mode: normal, normal, normal, overlay, normal;
                box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 #0004, 0 0 0 1px #2a1a1255; }
   .screw { position: absolute; width: 10px; height: 10px; border-radius: 50%;
-           background: radial-gradient(circle at 35% 35%, #f6ecc4, #c4ab68 45%, #9f8648 72%, #6f5c2c);   /* old gold, like the plate */
-           box-shadow: inset 0 0 0 1px #4a3a1455; }
+           background: radial-gradient(circle at 35% 35%, #cdb984, #8f7a45 45%, #6f5d33 72%, #45391c);   /* dark old gold, like the plate */
+           box-shadow: inset 0 0 0 1px #2a200b66; }
   .screw { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .screw::before { content: ""; position: absolute; inset: -12px; border-radius: 50%; }   /* a fingertip-sized tap target */
   /* only the slit turns: the head's highlight is the room's light and stays put */
-  .slit { position: absolute; left: 1px; right: 1px; top: 4px; height: 2px; background: #4a3a14; transform: rotate(var(--r)); }
+  .slit { position: absolute; left: 1px; right: 1px; top: 4px; height: 2px; background: #2a200b; transform: rotate(var(--r)); }
   .screw.tl { top: 6px; left: 6px; } .screw.tr { top: 6px; right: 6px; } .screw.bl { bottom: 6px; left: 6px; } .screw.br { bottom: 6px; right: 6px; }
   .dial { position: relative; height: 54px; margin-top: 12px; border-radius: var(--glass-r); background: linear-gradient(#1b1410, #2a201a);
           box-shadow: inset 0 3px 8px #000d, 0 1px 0 #fff8; overflow: hidden; }
@@ -101,26 +101,30 @@
   .vfd, .lcd { font-family: Doto, monospace; font-weight: 800; font-variation-settings: "ROND" 20; }   /* ROND: 0 square … 100 round */
   .vfd .t, .vfd .a, .lcd-line { width: 125%; transform: scaleX(.8); transform-origin: left; }
   .vfd { flex: 1; min-width: 0; color: var(--teal);   /* a definite width, so 125% lines resolve */ text-shadow: 0 0 6px #6fe3c899, 0 0 1px #b8fff0; }
-  .vfd .t { font-size: 2.2rem; line-height: 1; }
-  .vfd .a { font-size: 1.6rem; line-height: 1.05; }
+  /* line-height 1.15: Doto's tails (g, j, p, q, y) drop .20em below the baseline; at 1.0 the box ends at .15em and cuts them */
+  .vfd .t { font-size: 2.2rem; line-height: 1.15; }
+  .vfd .a { font-size: 1.6rem; line-height: 1.15; }
   .vfd .t, .vfd .a { white-space: nowrap; overflow: hidden; }   /* a VFD never wraps: it scrolls */
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
   /* the request module: a dark gunmetal plate (lamp, label, name screen), the script screen under it */
-  /* a sliver of old brushed gold: muted, matte, fine strokes all one way, a touch darker at the ends */
+  /* a sliver of old brushed gold: dark, dulled and grimy from years of hands */
   .plate { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 4px 28px; border-radius: var(--glass-r);   /* 14px clear of each screw; corners match the screens */
-           background: linear-gradient(90deg, #3a2a0a40, #0000 14%, #0000 86%, #3a2a0a40),   /* ends a shade darker */
+           background: linear-gradient(100deg, #fff0 30%, #ffffff14 48%, #fff0 64%),   /* a tired sheen */
+                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='4' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .14 0 0 0 0 .1 0 0 0 0 .03 0 0 0 1.7 -.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 200px,   /* grime in the low spots */
+                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='1' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .07 0 0 0 0 .02 0 0 0 2.4 -1.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 100px,   /* pitting */
                        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='80'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.003 1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .75 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 400px 80px,   /* fine brush strokes */
-                       linear-gradient(#c4ab68, #b29856 50%, #9f8648);   /* muted old gold */
-           background-blend-mode: normal, overlay, normal;
-           box-shadow: inset 0 1px 0 #ecdca288, inset 0 -1px 0 #a68d4c, 0 1px 0 #fff6, 0 0 0 1px #8f7740; }   /* gold rim, no black edge */
+                       linear-gradient(90deg, #2a1e0840, #0000 14%, #0000 86%, #2a1e0840),   /* ends a shade darker */
+                       linear-gradient(#8f7a45, #7a6638 50%, #66542c);   /* dark old gold */
+           background-blend-mode: normal, normal, normal, overlay, normal, normal;
+           box-shadow: inset 0 1px 0 #cdb97a66, inset 0 -1px 0 #7d6a3a, 0 1px 0 #fff6, 0 0 0 1px #6f5d30; }   /* gold rim, no black edge */
   .plate .lamp { flex: none; width: 9px; height: 9px; }
   .plate .screw { width: 8px; height: 8px; top: 50%; margin-top: -4px; box-shadow: inset 0 0 0 1px #0003, 0 1px 0 #fff4c066;   /* steel */
                   background: radial-gradient(circle at 35% 35%, #fff, #9a948a 60%, #6d675e); }
   .plate .slit { top: 3px; height: 1.5px; background: #5d574e; }
   .plate .screw.ml { left: 6px; } .plate .screw.mr { right: 6px; }
   .plate-label { font: 400 .5rem/1.05 Michroma, sans-serif; letter-spacing: .1em; white-space: nowrap;   /* wide hi-fi faceplate lettering */   /* engraved: dark cut, lit lower edge */
-                 color: #3b2e10; text-shadow: 0 1px 0 #efe0aa99, 0 -1px 0 #1a100333; }
+                 color: #1f1604; text-shadow: 0 1px 0 #c8b37488, 0 -1px 0 #0a060133; }
   .lcd.name-screen { flex: 1; min-width: 0; padding: 2px 8px 3px; }   /* .lcd comes later in the file: match its weight to win */
   .msg-screen { margin-top: 12px; }
   /* the request VFD: dark glass, glowing teal dot-matrix, same family as the display above */
@@ -130,8 +134,8 @@
   .lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none;
                 background: repeating-linear-gradient(0deg, #0000 0 2px, #00000026 2px 3px), linear-gradient(170deg, #ffffff12 0 25%, transparent 25%); }
   .lcd-line { position: relative; white-space: nowrap; overflow: hidden; }
-  .lcd-line.name { font-size: 1.1rem; line-height: 1; }
-  .lcd-line.msg { font-size: 1.575rem; line-height: 1.05; }
+  .lcd-line.name { font-size: 1.1rem; line-height: 1.15; }
+  .lcd-line.msg { font-size: 1.575rem; line-height: 1.15; }
   /* ---- record sleeve lightbox: tap the screen to pull the record ---- */
   dialog.sleeve-box { border: 0; padding: 24px 16px; margin: 0; width: 100%; height: 100%; max-width: none; max-height: none;
                       background: transparent; color: var(--cream); overflow-x: hidden; }
