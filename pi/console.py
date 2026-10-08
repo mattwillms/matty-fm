@@ -150,6 +150,12 @@ class Engine:
         for k in ("songS", "voiceS"):   # a NaN or a string here would make every tick raise
             seconds(item.get(k, 0.0))
         with self.lock:
+            _, on_air = self.on_air
+            starting = self.pending_play and self.pending_play[1].endswith(f"/{item['id']}.mp3")
+            if (on_air and on_air.get("id") == item["id"]) or starting:
+                # a push that landed late gets re-sent: queueing the song on air would play it twice
+                self.log(f"push {item['id']} ignored: it's already on air")
+                return
             self.queued = item
             self.log(f"push {item['id']}: {item.get('artist')} - {item.get('title')} "
                      f"(song {item.get('songS', 0):.0f}s, voice {item.get('voiceS', 0):.1f}s)")

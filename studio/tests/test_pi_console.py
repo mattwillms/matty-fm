@@ -345,3 +345,17 @@ def test_a_soma_stream_that_keeps_reconnecting_and_stalling_still_reaches_the_ba
     eng.soma_up = lambda: (clock.t - 1000.0) % 6.5 < 4.0   # up 4 s, down 2.5 s, over and over (38% down)
     run(eng, clock, 40)
     assert eng.status()["source"] == "backup"
+
+
+def test_a_late_repeat_push_of_the_song_on_air_is_ignored():
+    # QA 2026-10-08: the studio's push timed out, the Pi took it late, the same song was handed out
+    # again and pushed while it played: it played twice in a row
+    eng, clock, players, mixer = make()
+    eng.push(item("r3", voice_s=2.0))
+    eng.tick()
+    watch(eng, clock, 8.0, mixer, "SomaVol", "DeckAVol")
+    assert eng.status()["current"] == "r3"
+    eng.push(item("r3", voice_s=2.0))
+    assert eng.status()["queued"] == 0
+    eng.push(item("r4", voice_s=2.0))
+    assert eng.status()["queued"] == 1
