@@ -417,4 +417,39 @@ describe("QA round", () => {
     expect(a).toMatch(/^r\d{6,}$/);
     expect(Number(b!.slice(1))).toBe(Number(a!.slice(1)) + 1);
   });
+  it("a guest can cancel their own waiting request; a shared song just loses their name", async () => {
+    const p = stub("cancel");
+    const { id: solo } = await p.submit("me", { track: T("Fernando"), name: "Me" });
+    const { id: shared } = await p.submit("me", { track: T("Honey, Honey"), name: "Me" });
+    await p.submit("them", { track: T("Honey, Honey"), name: "Them" });
+    expect((await p.cancel("them", solo!)).ok).toBe(false);          // not theirs
+    expect((await p.cancel("me", solo!)).ok).toBe(true);
+    expect((await p.cancel("me", shared!)).ok).toBe(true);
+    const st = await p.adminState();
+    expect(st.items.find((i) => i.id === solo)?.status ?? "deleted").toBe("deleted");
+    expect(st.items.find((i) => i.id === shared)!.requesters.map((r) => r.name)).toEqual(["Them"]);
+    expect((await p.submit("me", { track: T("Mamma Mia"), name: "Me" })).ok).toBe(true);   // slots freed
+    expect((await p.submit("me", { track: T("Dancing Queen"), name: "Me" })).ok).toBe(true);
+  });
+
+  it("cancelling a song already handed to the Pi pulls it back; one on air can't be cancelled", async () => {
+    const p = stub("cancel-queued");
+    const id = await readyItem(p, "Knowing Me, Knowing You", "me");
+    await p.beat({ ...beat, wantNext: true });                      // handed out: queued
+    expect((await p.cancel("me", id)).ok).toBe(true);
+    expect((await p.beat(beat)).commands.map((c) => c.type)).toContain("clear");
+    const id2 = await readyItem(p, "Take a Chance on Me", "me");
+    await p.beat({ ...beat, source: "requests", current: id2, remaining: 100 });
+    expect((await p.cancel("me", id2)).ok).toBe(false);
+  });
+
+  it("now playing carries the time left and the song's length for the countdown", async () => {
+    const p = stub("countdown");
+    const id = await readyItem(p, "Summer Night City");
+    await p.beat({ ...beat, source: "requests", current: id, remaining: 150 });
+    const np = (await p.guestState("x")).nowPlaying as { endsInS?: number; durationS?: number };
+    expect(np.durationS).toBe(200);
+    expect(np.endsInS).toBeGreaterThan(148);
+    expect(np.endsInS).toBeLessThanOrEqual(150);
+  });
 });

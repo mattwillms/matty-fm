@@ -61,4 +61,17 @@ describe("device cookie", () => {
     }
     expect(issued).toBe(30);
   });
+  it("cancel works only from the phone that asked", async () => {
+    const ip = { "cf-connecting-ip": "198.51.100.20" };
+    const cookieOf = async () => ((await SELF.fetch("https://fm.test/api/state?k=dev", { headers: ip })).headers.get("set-cookie") ?? "").split(";")[0];
+    const mine = await cookieOf(), other = await cookieOf();
+    const sent = await (await SELF.fetch("https://fm.test/api/request?k=dev", {
+      method: "POST", headers: { ...ip, cookie: mine, "content-type": "application/json" },
+      body: JSON.stringify({ track: { title: "Eagle", artist: "ABBA" }, name: "Me" }) })).json() as { id: string };
+    const cancel = (cookie: string) => SELF.fetch("https://fm.test/api/cancel?k=dev", {
+      method: "POST", headers: { ...ip, cookie, "content-type": "application/json" }, body: JSON.stringify({ id: sent.id }) });
+    expect((await cancel("mfm_dev=00000000-0000-4000-8000-000000000000")).status).toBe(403);
+    expect(((await (await cancel(other)).json()) as { ok: boolean }).ok).toBe(false);
+    expect(((await (await cancel(mine)).json()) as { ok: boolean }).ok).toBe(true);
+  });
 });

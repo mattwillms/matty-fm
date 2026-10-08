@@ -204,10 +204,32 @@ export class Party extends DurableObject<Env> {
     return { ok: true, id, position: this.display().findIndex((i) => i.id === id) + 1, ...(late ? { late } : {}) };
   }
 
+  /** A guest takes back their own request before it plays. A song others asked for too keeps going
+   *  without their name; one only they asked for is removed (and pulled from the console if handed out). */
+  async cancel(device: string, id: string) {
+    const it = this.one("SELECT status FROM items WHERE id=?", String(id ?? ""));
+    if (!it || !this.one("SELECT 1 AS m FROM requesters WHERE item_id=? AND device=?", id, device))
+      return { ok: false, error: "That request isn't yours to cancel." };
+    if (!["pending", "preparing", "ready", "queued"].includes(String(it.status)))
+      return { ok: false, error: it.status === "playing" ? "It's already on air!" : "That one is done already." };
+    this.sql.exec("DELETE FROM requesters WHERE item_id=? AND device=?", id, device);
+    if (!this.one("SELECT 1 AS r FROM requesters WHERE item_id=?", id)) {
+      this.sql.exec("UPDATE items SET status='deleted' WHERE id=?", id);
+      if (it.status === "queued") this.command("clear");
+    }
+    return { ok: true };
+  }
+
   private nowPlaying() {
     const playing = this.one("SELECT * FROM items WHERE status='playing' LIMIT 1");
     const h = this.health() as unknown as Beat & { at: number };
-    if (playing) return { ...this.pub(playing), djLine: String(playing.dj_line ?? "") };
+    if (playing) {
+      // the countdown: what the console last reported, aged by the time since that beat
+      const timed = h.source === "requests" && h.current === playing.id && typeof h.remaining === "number" && h.remaining >= 0;
+      const durationS = Number(playing.duration_s) > 0 ? Math.round(Number(playing.duration_s)) : null;
+      return { ...this.pub(playing), djLine: String(playing.dj_line ?? ""), durationS,
+               endsInS: timed ? Math.max(0, Math.round((h.remaining - (Date.now() - h.at) / 1000) * 10) / 10) : null };
+    }
     if (h.soma && h.source !== "requests")
       return { id: "soma", title: String(h.soma.title), artist: String(h.soma.artist),
                artwork: safeArtwork(h.soma.artwork), names: "", soma: true,

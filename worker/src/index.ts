@@ -7,7 +7,7 @@ export { Party };
 // Bump whenever party.ts changes. A deployed Durable Object kept running its first
 // version all evening (deploys did not restart it), so each queue-code change gets a
 // fresh instance. Queue state resets on a bump: never bump on party day.
-const QUEUE_VERSION = 20;
+const QUEUE_VERSION = 21;
 
 const enc = new TextEncoder();
 
@@ -160,6 +160,13 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
       if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
         return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
       return json(await party.submit(dev.id, input, false, ip), 200, extra);
+    }
+    if (path === "/api/cancel" && req.method === "POST") {   // a guest takes back their own request
+      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
+      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success)
+        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+      const { id } = await body(req);
+      return json(await party.cancel(dev.id, String(id ?? "")), 200, extra);
     }
     return json({ error: "not found" }, 404, extra);
 }

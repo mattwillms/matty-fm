@@ -107,6 +107,25 @@
   .vfd .a { font-size: 1.6rem; line-height: 1.15; }
   .vfd .t, .vfd .a { white-space: nowrap; overflow: hidden; }   /* a VFD never wraps: it scrolls */
   .vfd .s { color: #6fe3c8aa; }
+  /* The deck's time readout: a small REMAIN annunciator over the digits, bottom right of the glass, as on
+     a 70s/80s cassette or CD deck. The artist line gives up the room (its width is pre-scale: ×1.25). */
+  .vfd { position: relative; }
+  .vfd.timed .a { width: calc((100% - var(--clock)) * 1.25); }
+  .vfd { --clock: 4rem; }
+  .remain { position: absolute; right: 0; bottom: 0; width: var(--clock); height: calc(1.6rem * 1.15); display: none;
+            flex-direction: column; align-items: flex-end; justify-content: flex-end; line-height: 1; }
+  .vfd.timed .remain { display: flex; }
+  .remain .ann { font: 400 .42rem/1 Michroma, sans-serif; letter-spacing: .14em; color: #6fe3c8b0; margin-bottom: 2px; text-shadow: 0 0 4px #6fe3c866; }
+  .remain .clk { font-size: 1.12rem; line-height: 1; transform: scaleX(.8); transform-origin: right; font-variant-numeric: tabular-nums; }   /* label + digits fit inside the artist line */
+  /* elapsed time as a row of VFD segments along the bottom of the glass; unlit ones ghost faintly, as real ones do */
+  .meter { position: absolute; left: 14px; right: 14px; bottom: 4px; height: 3px; display: none; gap: 2px; pointer-events: none;
+           grid-template-columns: repeat(40, 1fr); }
+  .meter.on { display: grid; }
+  .meter i { background: #6fe3c814; border-radius: 1px; }
+  .meter i.lit { background: var(--teal); box-shadow: 0 0 4px #6fe3c8aa; }
+  .song .cancel { background: none; border: 0; padding: 8px 0 2px; margin: 0; font: inherit; font-size: .8rem; color: var(--cream-dim);
+                  text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+  .song .cancel.armed { color: var(--bad); font-weight: 700; }
   .vfd .idle { color: #6fe3c8aa; }
   /* the request module: a dark gunmetal plate (lamp, label, name screen), the script screen under it */
   /* a sliver of old brushed gold: dark, dulled and grimy from years of hands */
@@ -316,6 +335,7 @@
       <i class="screw bl"><b class="slit" style="--r: 81deg"></b></i><i class="screw br"><b class="slit" style="--r: 167deg"></b></i>
       <div class="glass" id="glass" role="button" tabindex="0" aria-label="Show the record sleeve">
         <div class="display" id="display"><div class="vfd"><div class="idle">Warming up…</div></div></div>
+        <div class="meter" id="meter" aria-hidden="true"></div>
       </div>
       <div class="dial" aria-hidden="true">
         <div class="scale"><span>88</span><span>92</span><span>96</span><span>100</span><span>104</span><span>108</span></div>
@@ -763,9 +783,37 @@ for (const screw of document.querySelectorAll(".screw")) {
   });
 }
 let screenKey = null;
+// The countdown: the Worker says how long the song on air has left (from the console's last beat);
+// the phone runs the clock between polls, and only corrects it when it's off by more than 2 s.
+let endAt = 0, lengthS = 0;
+const METER = 40;
+$("meter").replaceChildren(...Array.from({ length: METER }, () => el("i")));
+function setClock(np) {
+  const timed = np && !np.soma && typeof np.endsInS === "number" && np.durationS > 0;
+  if (!timed) { endAt = 0; return; }
+  const at = Date.now() + np.endsInS * 1000;
+  if (!endAt || Math.abs(at - endAt) > 2000) endAt = at;
+  lengthS = np.durationS;
+}
+function tickClock() {
+  const on = endAt > 0, v = document.querySelector("#display .vfd");
+  if (v && v.classList.contains("timed") !== on) {
+    v.classList.toggle("timed", on);
+    if ($("vfdArtist") && onAir) setLine("vfdArtist", onAir.artist, false, SCROLL_PX_S, 1500);   // its room changed: measure again
+  }
+  $("meter").classList.toggle("on", on);
+  if (!on) return;
+  const left = Math.max(0, (endAt - Date.now()) / 1000), whole = Math.ceil(left);
+  const clk = $("clk");
+  if (clk) clk.textContent = `${Math.floor(whole / 60)}:${String(whole % 60).padStart(2, "0")}`;
+  const lit = Math.round(METER * Math.min(1, Math.max(0, 1 - left / lengthS)));
+  [...$("meter").children].forEach((seg, i) => seg.classList.toggle("lit", i < lit));
+}
+setInterval(tickClock, 250);
 function showNow(np, force) {
   const d = $("display");
   onAir = np;
+  setClock(np);
   $("glass").setAttribute("aria-disabled", String(!np || !np.artist));
   if (!np) { $("lamp").classList.remove("on"); henSpin(false); lcd(null); }
   else { $("lamp").classList.toggle("on", !np.soma); henSpin(!np.soma); lcd(np); }
@@ -777,8 +825,10 @@ function showNow(np, force) {
   const v = el("div", "vfd");
   const tl = el("div", "t"), al = el("div", "a");
   tl.append(Object.assign(el("span", "track"), { id: "vfdTitle" })); al.append(Object.assign(el("span", "track"), { id: "vfdArtist" }));
-  v.append(tl, al);
+  const rem = el("div", "remain"); rem.append(el("span", "ann", "REMAIN"), Object.assign(el("span", "clk"), { id: "clk" }));
+  v.append(tl, al, rem);
   d.replaceChildren(art(np.artwork), v);
+  tickClock();   // the artist line's width depends on it: set before measuring
   setLine("vfdTitle", cleanTitle(np.title), false, SCROLL_PX_S, 1500);   // scrolls only if it doesn't fit, resting 1.5 s each loop
   setLine("vfdArtist", np.artist, false, SCROLL_PX_S, 1500);
   const song = `${np.title}|${np.artist}`;
@@ -887,6 +937,25 @@ function badge(m) {
 const lastBadge = new Map();   // request id -> badge text, to flash changes
 let pollTimer = null, lastNextKey = "", lastMineKey = "";
 
+// Taking back a request: two taps (the first arms it for 3 s), so a stray tap never removes a song.
+const armed = new Map();   // request id -> when its Cancel was armed
+function cancelButton(m) {
+  const b = el("button", "cancel"); b.type = "button";
+  const show = () => { const on = Date.now() - (armed.get(m.id) || 0) < 3000; b.classList.toggle("armed", on); b.textContent = on ? "Tap again to cancel" : "Cancel request"; };
+  show();
+  b.onclick = async (e) => {
+    e.stopPropagation();   // the row itself opens the record sleeve
+    if (!b.classList.contains("armed")) { armed.set(m.id, Date.now()); show(); setTimeout(show, 3100); return; }
+    armed.delete(m.id); b.disabled = true; b.textContent = "Cancelling…";
+    try {
+      const r = await api("/api/cancel", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ id: m.id }), signal: AbortSignal.timeout(10000) });
+      toast(r.ok ? "Request cancelled." : r.error, !r.ok);
+    } catch { toast("Didn't cancel. Check your connection and try again.", true); }
+    lastMineKey = ""; refresh();
+  };
+  return b;
+}
 async function refresh() {
   if (!k) { $("gate").hidden = false; return; }
   try {
@@ -915,6 +984,7 @@ async function refresh() {
       const changed = lastBadge.has(m.id) && lastBadge.get(m.id) !== label;
       lastBadge.set(m.id, label);
       const row = songRow(m.status === "failed" ? { ...m, names: "" } : m, label, cls + (changed ? " flash" : ""));
+      if (["pending", "preparing", "ready", "queued"].includes(m.status)) row.querySelector(".meta").append(cancelButton(m));
       if (m.status === "failed") row.querySelector(".a").textContent = "Try a different version, or another song";
       else if (m.artist) sleeveOnTap(row, m);   // a hidden (offensive) title has no artist: nothing to look up
       return row;
