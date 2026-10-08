@@ -145,7 +145,7 @@
                       background: transparent; color: var(--cream); overflow-x: hidden; }
   /* no backdrop blur: fading a full-screen blur in dropped frames on phones; a darker solid ground instead */
   dialog.sleeve-box::backdrop { background: radial-gradient(circle at 50% 38%, #3d2518, #120a06 72%); }   /* solid: no page clutter behind the buttons */
-  .sleeve-close { position: fixed; top: 14px; right: 14px; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
+  .sleeve-close { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right)); width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
                   display: grid; place-items: center; background: #0007; color: var(--cream); cursor: pointer; }
   .sleeve-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }   /* drawn, not a glyph: a font's × sits off-centre */
   /* fade in on open, out on close (the .closing class waits for the fade before closing) */
@@ -168,7 +168,7 @@
   .listen-btn svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
   .sleeve-close:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
   .sleeve-fig { margin: 0; min-height: 100%; display: grid; place-content: center; justify-items: center; gap: 26px; }
-  .sleeve-stage { --w: min(66vw, 360px, 50vh); position: relative; width: var(--w); height: var(--w); margin-right: calc(var(--w) * .3); }
+  .sleeve-stage { --w: min(66vw, 360px, 50vh, 42svh); position: relative; width: var(--w); height: var(--w); margin-right: calc(var(--w) * .3); }
   .vinyl { position: absolute; inset: 3%; border-radius: 50%; box-shadow: 0 8px 22px #000b; will-change: transform;
            animation: pull .8s .3s cubic-bezier(.2, .7, .2, 1) both; }   /* starts as the fade finishes */
   .vinyl::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;   /* the shine stays put while the disc turns */
@@ -279,11 +279,12 @@
           border-radius: 10px; font-weight: 400; width: calc(100% + 12px); }
   .pick:hover { background: #ffffff0d; filter: none; } .pick:active { background: #ffffff1a; transform: none; }
   .chosen { background: #2f1f15; border-radius: 10px; padding: 0 10px; }
-  .empty { color: var(--cream-dim); padding: 6px 0; }
+  .empty { color: var(--cream-dim); padding: 6px 0; overflow-wrap: anywhere; }
 
   #toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(16px); opacity: 0;
            background: var(--cream); color: var(--cocoa); padding: 12px 20px; border-radius: 999px; font-weight: 700;
-           box-shadow: 0 8px 24px #0009; transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
+           box-shadow: 0 8px 24px #0009; transition: opacity .2s, transform .2s; pointer-events: none; width: max-content;
+           max-width: calc(100vw - 32px); text-align: center; z-index: 10; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: var(--bad); color: #fff; }
 
   /* No prefers-reduced-motion switches here, on purpose: iPhones with Reduce Motion on lost the
@@ -383,7 +384,7 @@
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
 let k = params.get("k") || "";
-try { if (k) localStorage.setItem("mfm_k", k); else k = localStorage.getItem("mfm_k") || ""; } catch {}
+try { if (!k) k = localStorage.getItem("mfm_k") || ""; } catch {}
 // Home-screen install: the manifest carries the party code, so the icon opens straight in.
 if (k) { const m = document.createElement("link"); m.rel = "manifest"; m.href = "/manifest.webmanifest?k=" + encodeURIComponent(k); document.head.append(m); }
 let chosen = null, timer = null, lastNow = "";
@@ -413,7 +414,7 @@ function art(src) {
 function songRow(s, extra, chipClass) {
   const li = el("li", "song"), box = el("div", "meta");
   box.append(el("div", "t", cleanTitle(s.title)));
-  box.append(el("div", "a", s.names ? `${s.artist}, for ${s.names}` : s.artist));
+  box.append(el("div", "a", [s.artist, s.names && `for ${s.names}`].filter(Boolean).join(", ")));
   li.append(art(s.artwork), box);
   if (extra) li.append(el("span", "chip " + (chipClass || ""), extra));
   return li;
@@ -613,7 +614,6 @@ function eggRain() {
     egg.style.left = `${Math.random() * 100}vw`;
     egg.style.fontSize = `${16 + near * 30}px`;
     egg.style.opacity = String(.45 + near * .55);
-    if (near < .35) egg.style.filter = "blur(1px)";
     layer.append(egg);
     const life = 3400 - near * 1300, spin = (Math.random() - .5) * 720, sway = 10 + Math.random() * 30, phase = Math.random() * 6;
     const frames = [];
@@ -689,7 +689,8 @@ async function openSleeve(np = onAir) {
   sleeveFor = np;
   // Ask for everything first, give it up to 450 ms, then open with whatever is ready: a complete
   // first frame. Anything slower fades in later without moving the rest.
-  const infoP = releaseInfo(np), big = bigArt(np.artwork);
+  const known = np.year || np.apple ? { year: np.year || "", album: np.album || "", apple: np.apple || "", art: "" } : null;
+  const infoP = known ? Promise.resolve(known) : releaseInfo(np), big = bigArt(np.artwork);
   const bigP = decoded(big);
   let info = null, bigReady = false;
   await Promise.race([Promise.all([infoP.then((i) => { info = i; }), bigP.then((ok) => { bigReady = ok; })]), wait(450)]);
@@ -776,6 +777,15 @@ function showNow(np, force) {
   const song = `${np.title}|${np.artist}`;
   if (song !== lastNow) { lastNow = song; tune(song); }
 }
+// Rotating the phone changes how much fits: re-measure (debounced) when the screens change size.
+let fitTimer = null, fitWidth = 0;
+new ResizeObserver(() => {
+  const w = $("display").clientWidth;
+  if (w === fitWidth) return;
+  fitWidth = w;
+  clearTimeout(fitTimer);
+  fitTimer = setTimeout(() => { if (screenKey !== null) { lcdKey = ""; showNow(onAir, true); } }, 200);
+}).observe($("display"));
 // Scroll speed comes from the text's width: measure again once Doto has loaded.
 document.fonts.ready.then(() => { if (screenKey !== null) { lcdKey = ""; showNow(onAir, true); } });
 function songKeyOf(t) {
@@ -811,7 +821,7 @@ async function loadCached() {
   try { cachedKeys = new Set((await api("/api/cached")).keys || []); } catch {}
 }
 // Cover and tribute acts (Garth Brooks, for one, isn't on Apple Music: only tributes are).
-const COVER_ARTIST = /\b(tribute|karaoke|covers?|in the style of|made famous by|sound-?alikes?|lullaby|piano versions?)\b/i;
+const COVER_ARTIST = /\b(tribute|karaoke|covers?|in the style of|made famous by|sound-?alikes?|lullaby|piano versions?|the sounds of|hit crew|party hits? (?:masters|all-stars))\b/i;
 function originalArtist(a) {
   return String(a || "")
     .replace(/^(?:the\s+)?(?:ultimate\s+|a\s+)?tribute\s+to\s+/i, "")
@@ -842,6 +852,9 @@ async function api(path, opts) {
   const sep = path.includes("?") ? "&" : "?";
   const r = await fetch(path + sep + "k=" + encodeURIComponent(k), opts);
   if (r.status === 403) { $("gate").hidden = false; throw new Error("gate"); }
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  $("gate").hidden = true;
+  try { localStorage.setItem("mfm_k", k); } catch {}   // only a code that worked is remembered
   return r.json();
 }
 function badge(m) {
@@ -859,7 +872,7 @@ function badge(m) {
   }
 }
 const lastBadge = new Map();   // request id -> badge text, to flash changes
-let pollTimer = null;
+let pollTimer = null, lastNextKey = "", lastMineKey = "";
 
 async function refresh() {
   if (!k) { $("gate").hidden = false; return; }
@@ -869,21 +882,28 @@ async function refresh() {
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;
     showNow(s.nowPlaying);
     $("nextBox").hidden = !s.upNext.length;
-    $("next").replaceChildren(...s.upNext.slice(0, 4).map((x) => {
-      const li = el("li");
-      li.append(document.createTextNode(cleanTitle(x.title) + " "), el("span", "by", `by ${x.artist}` + (x.names ? `, for ${x.names}` : "")));
-      return li;
-    }), ...(s.upNext.length > 4 ? [el("li", "more", `…and ${s.upNext.length - 4} more`)] : []));
+    const waiting = s.waitingCount ?? s.upNext.length;
+    const nextKey = JSON.stringify([s.upNext.slice(0, 4), waiting]);
+    if (nextKey !== lastNextKey) {
+      lastNextKey = nextKey;
+      $("next").replaceChildren(...s.upNext.slice(0, 4).map((x) => {
+        const li = el("li");
+        const by = [x.artist && `by ${x.artist}`, x.names && `for ${x.names}`].filter(Boolean).join(", ");   // no stray commas
+        li.append(document.createTextNode(cleanTitle(x.title) + " "), el("span", "by", by));
+        return li;
+      }), ...(waiting > 4 ? [el("li", "more", `…and ${waiting - 4} more`)] : []));
+    }
     $("mineBox").hidden = !s.mine.length;
-    $("mine").replaceChildren(...s.mine.map((m) => {
+    const mineKey = JSON.stringify(s.mine);
+    if (mineKey !== lastMineKey) { lastMineKey = mineKey; $("mine").replaceChildren(...s.mine.map((m) => {
       const [label, cls] = badge(m);
       const changed = lastBadge.has(m.id) && lastBadge.get(m.id) !== label;
       lastBadge.set(m.id, label);
       const row = songRow(m.status === "failed" ? { ...m, names: "" } : m, label, cls + (changed ? " flash" : ""));
       if (m.status === "failed") row.querySelector(".a").textContent = "Try a different version, or another song";
-      else sleeveOnTap(row, m);
+      else if (m.artist) sleeveOnTap(row, m);   // a hidden (offensive) title has no artist: nothing to look up
       return row;
-    }));
+    })); }
     // refresh faster while one of this phone's requests is still on its way
     const active = s.mine.some((m) => ["pending", "preparing", "ready", "queued"].includes(m.status));
     schedule(active ? 5000 : 15000);
@@ -896,11 +916,18 @@ $("q").addEventListener("input", () => {
   if (q.length < 3) { $("results").replaceChildren(); return; }
   $("results").replaceChildren(el("li", "empty", "Searching…"));
   timer = setTimeout(async () => {
-    let results = [];
-    try {
-      const [apple, worker] = await Promise.all([appleSearch(q), api("/api/search?q=" + encodeURIComponent(q))]);
-      results = mergeResults(apple, worker.results || []);
-    } catch (e) { if (e.message !== "gate") toast("Search didn't go through. Try again.", true); return; }
+    // Apple (from the phone) and Deezer (via the Worker) each get 6 s; either may fail alone
+    const [apple, worker] = await Promise.allSettled([appleSearch(q),
+      api("/api/search?q=" + encodeURIComponent(q), { signal: AbortSignal.timeout(6000) })]);
+    if ($("q").value.trim() !== q) return;   // the guest kept typing: this answer is for an old query
+    const fromWorker = worker.status === "fulfilled" ? worker.value.results || [] : [];
+    const fromApple = apple.status === "fulfilled" ? apple.value : [];
+    if (worker.status === "rejected" && worker.reason?.message === "gate") return;
+    const results = mergeResults(fromApple, fromWorker);
+    if (!results.length && worker.status === "rejected") {
+      $("results").replaceChildren(el("li", "empty", "Search didn't go through. Try again in a moment."));
+      return;
+    }
     if (!results.length) {
       const li = el("li", "empty"), b = el("button", "link", `Request “${q}” anyway`);
       b.type = "button"; b.onclick = () => typeIn(q);
@@ -925,8 +952,12 @@ $("freeBtn").onclick = () => typeIn($("q").value.trim());
 // The typed-in form, filled from the search box: "Artist - Song" and "Song by Artist" split; otherwise the guest adds the artist.
 function typeIn(q) {
   choose({ title: "", artist: "", durationMs: null }, true);
-  const dash = q.split(/\s+[-–—]\s+/), by = q.split(/\s+by\s+/i);
-  const [title, artist] = dash.length === 2 ? [dash[1], dash[0]] : by.length === 2 ? [by[0], by[1]] : [q, ""];
+  // "Artist - Song", or "Song by Artist" split on the LAST " by " ("Stand By Me by Ben E. King"),
+  // but only when what follows looks like a name (not "stand by me"); otherwise the guest adds the artist
+  const dash = q.split(/\s+[-–—]\s+/), at = q.search(/\s+by\s+(?!.*\s+by\s+)/i);
+  const after = at > 0 ? q.slice(at).replace(/^\s+by\s+/i, "") : "";
+  const byOk = at > 0 && (after.split(/\s+/).length >= 2 || /^[A-Z0-9]/.test(after));
+  const [title, artist] = dash.length === 2 ? [dash[1], dash[0]] : byOk ? [q.slice(0, at), after] : [q, ""];
   $("ft").value = title; $("fa").value = artist;
   if (title && !artist) setTimeout(() => $("fa").focus({ preventScroll: true }), 350);   // after the scroll settles
 }

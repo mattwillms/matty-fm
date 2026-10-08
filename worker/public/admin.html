@@ -34,9 +34,10 @@
   section { background: var(--panel); border-radius: 14px; padding: 16px; margin: 0 0 14px; }
 
   /* ---- on air ---- */
-  .onair { display: grid; grid-template-columns: 72px 1fr; gap: 14px; align-items: center; }
+  .onair { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 14px; align-items: center; }
   .onair img, .onair .art { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; background: var(--raise); }
   .art { display: grid; place-items: center; font-size: 30px; }
+  .np-t, .np-a, .np-s, .quote { overflow-wrap: anywhere; }
   .np-t { font-weight: 700; font-size: 1.15rem; line-height: 1.25; }
   .np-a { color: var(--muted); }
   .np-s { color: var(--faint); font-size: .92rem; }
@@ -119,6 +120,7 @@
   .details { padding: 0 0 12px; display: grid; gap: 8px; }
   .details .quote { margin: 0; }
   .details .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+  .details .buttons button { white-space: normal; max-width: 100%; height: auto; min-height: 34px; overflow-wrap: anywhere; }
   .empty { color: var(--faint); }
 
   /* ---- add a request ---- */
@@ -214,7 +216,8 @@
 const $ = (id) => document.getElementById(id);
 const q = new URLSearchParams(location.search);
 let token = q.get("t") || "";
-try { if (token) { localStorage.setItem("mfm_t", token); history.replaceState(null, "", location.pathname); } else token = localStorage.getItem("mfm_t") || ""; } catch {}
+const fromLink = Boolean(token);
+try { if (token) history.replaceState(null, "", location.pathname); else token = localStorage.getItem("mfm_t") || ""; } catch {}
 let state = null, timer = null, picked = null;
 const openIds = new Set();
 
@@ -232,6 +235,8 @@ async function busy(btn, work) {
 async function call(path, body) {
   const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "x-admin-token": token, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 401) { $("auth").hidden = false; throw new Error("auth"); }
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  if (fromLink) { try { localStorage.setItem("mfm_t", token); } catch {} }   // a typo in the link never replaces a good token
   return r.json();
 }
 const DONE = { skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
@@ -289,7 +294,8 @@ function renderNow() {
     }
     $("now").replaceChildren(box, ...extra);
   }
-  $("skip").disabled = !playing;
+  if (skippedId && playing?.id !== skippedId) skippedId = null;
+  $("skip").disabled = !playing || playing.id === skippedId;
   $("skip").title = playing ? "Skip the request on air" : "Nothing to skip: SomaFM is on air";
 }
 
@@ -299,6 +305,7 @@ $("pads").replaceChildren(...PADS.map(([ico, lbl], i) => {
   const b = el("button", "pad"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl}`);
   b.append(el("span", "ico", ico), el("span", "lbl", lbl));
   b.onclick = async () => {
+    if (!studioUp()) return offline();
     b.classList.add("hit"); setTimeout(() => b.classList.remove("hit"), 600);   // lit the moment it's tapped
     try {
       const r = await call("/api/admin/action", { action: "pad", pad: i + 1 });
@@ -315,15 +322,18 @@ function renderSwitches() {
   set("stopAfterCurrent", s.stopAfterCurrent, "stopAfterCurrent");
   set("somaOnly", s.somaOnly, "somaOnly");
   const r = $("breakEvery");
-  if (document.activeElement !== r) { r.value = String(s.breakEveryMin ?? 10); showEvery(r); }
+  if (!sliding) { r.value = String(s.breakEveryMin ?? 10); showEvery(r); }
 }
 function showEvery(r) {
   $("breakEveryOut").textContent = r.value;
   const f = (r.value - r.min) / (r.max - r.min);
   r.style.setProperty("--fill", `calc(13px + ${f} * (100% - 26px))`);   // to the thumb's centre
 }
+let sliding = false;   // a poll must not move the slider under a finger (or a mouse) mid-drag
+for (const ev of ["pointerdown", "touchstart", "input"]) $("breakEvery").addEventListener(ev, () => { sliding = true; });
 $("breakEvery").oninput = (e) => showEvery(e.target);
-$("breakEvery").onchange = (e) => act({ action: "settings", settings: { breakEveryMin: Number(e.target.value) } });
+$("breakEvery").onchange = (e) => { sliding = false; act({ action: "settings", settings: { breakEveryMin: Number(e.target.value) } }); };
+$("breakEvery").addEventListener("pointercancel", () => { sliding = false; });
 
 // The studio reports seconds to the next bumper on each beat; count down locally between beats.
 function renderTimer() {
@@ -400,10 +410,27 @@ function render() {
       it.status === "failed" || (it.confidence != null && it.confidence < 50)))
     : [el("div", "empty", "Nothing played yet.")]));
 }
-async function load() { try { state = await call("/api/admin/state"); state.loadedAt = Date.now(); render(); } catch {} }
+let lastGood = 0;
+async function load() {
+  try { state = await call("/api/admin/state"); state.loadedAt = lastGood = Date.now(); render(); }
+  catch (e) { if (e.message !== "auth") renderStale(); }
+}
+function renderStale() {   // the Worker can't be reached: don't let old data look live
+  if (!lastGood) { $("status").replaceChildren(dotted("var(--bad)", "Can't reach OrrFM")); return; }
+  const ago = Math.round((Date.now() - lastGood) / 1000);
+  if (ago >= 10) $("status").replaceChildren(dotted("var(--bad)", `Can't reach OrrFM: showing data from ${ago}s ago`));
+}
 
-$("skip").onclick = (e) => act({ action: "skip" }, e);
-$("bumper").onclick = (e) => act({ action: "break" }, e);
+let skippedId = null;   // the song a skip was sent for: Skip stays off until something else is playing
+function studioUp() { const a = state?.health?.ageS; return a != null && a <= 60; }
+function offline() { toast("Studio offline: not sent. Check the workstation.", true); }
+$("skip").onclick = (e) => {
+  if (!studioUp()) return offline();
+  skippedId = state.items.find((i) => i.status === "playing")?.id ?? null;
+  $("skip").disabled = true;
+  act({ action: "skip" }, e);
+};
+$("bumper").onclick = (e) => studioUp() ? act({ action: "break" }, e) : offline();
 
 /* add a request: search, pick, then name and message, then add */
 async function appleSearch(term) {
@@ -415,7 +442,7 @@ async function appleSearch(term) {
   } catch { return []; }
 }
 // Cover and tribute acts (Garth Brooks, for one, isn't on Apple Music: only tributes are).
-const COVER_ARTIST = /\b(tribute|karaoke|covers?|in the style of|made famous by|sound-?alikes?|lullaby|piano versions?)\b/i;
+const COVER_ARTIST = /\b(tribute|karaoke|covers?|in the style of|made famous by|sound-?alikes?|lullaby|piano versions?|the sounds of|hit crew|party hits? (?:masters|all-stars))\b/i;
 function originalArtist(a) {
   return String(a || "")
     .replace(/^(?:the\s+)?(?:ultimate\s+|a\s+)?tribute\s+to\s+/i, "")
