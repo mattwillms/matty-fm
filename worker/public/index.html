@@ -210,7 +210,7 @@ function showNow(np) {
   if (!np) { const v = el("div", "vfd"); v.append(el("div", "idle", "Between songs")); d.replaceChildren(v); return; }
   const v = el("div", "vfd");
   v.append(el("div", "t", cleanTitle(np.title)), el("div", "a", np.artist),
-           el("div", "s", np.soma ? "SomaFM, Left Coast 70s" : `Requested by ${np.names || "the family"}`));
+           el("div", "s", np.soma ? "SomaFM, 70s" : `Requested by ${np.names || "the family"}`));
   d.replaceChildren(art(np.artwork), v);
   const key = `${np.title}|${np.artist}`;
   if (key !== lastNow) { lastNow = key; tune(key); }

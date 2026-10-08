@@ -147,7 +147,7 @@ function renderNow() {
   if (!np) { $("now").replaceChildren(el("div", "empty", "Nothing on air yet.")); return; }
   const text = el("div");
   text.append(el("div", "t", cleanTitle(np.title)), el("div", "sub", np.artist));
-  text.append(el("div", "sub", np.soma ? "SomaFM · Left Coast 70s" : `for ${np.names || "the family"}`));
+  text.append(el("div", "sub", np.soma ? "SomaFM · 70s" : `for ${np.names || "the family"}`));
   box.append(art(np.artwork), text);
   $("now").replaceChildren(box);
 }
