@@ -60,12 +60,12 @@
                background-blend-mode: multiply;
                box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 #0004, 0 0 0 1px #2a1a1255; }
   .screw { position: absolute; width: 10px; height: 10px; border-radius: 50%;
-           background: radial-gradient(circle at 35% 35%, #fff, #9a948a 60%, #6d675e);
-           box-shadow: inset 0 0 0 1px #0003; }
+           background: radial-gradient(circle at 35% 35%, #f6ecc4, #c4ab68 45%, #9f8648 72%, #6f5c2c);   /* old gold, like the plate */
+           box-shadow: inset 0 0 0 1px #4a3a1455; }
   .screw { cursor: pointer; -webkit-tap-highlight-color: transparent; }
   .screw::before { content: ""; position: absolute; inset: -12px; border-radius: 50%; }   /* a fingertip-sized tap target */
   /* only the slit turns: the head's highlight is the room's light and stays put */
-  .slit { position: absolute; left: 1px; right: 1px; top: 4px; height: 2px; background: #5d574e; transform: rotate(var(--r)); }
+  .slit { position: absolute; left: 1px; right: 1px; top: 4px; height: 2px; background: #4a3a14; transform: rotate(var(--r)); }
   .screw.tl { top: 6px; left: 6px; } .screw.tr { top: 6px; right: 6px; } .screw.bl { bottom: 6px; left: 6px; } .screw.br { bottom: 6px; right: 6px; }
   .dial { position: relative; height: 54px; margin-top: 12px; border-radius: var(--glass-r); background: linear-gradient(#1b1410, #2a201a);
           box-shadow: inset 0 3px 8px #000d, 0 1px 0 #fff8; overflow: hidden; }
@@ -109,9 +109,9 @@
            background-blend-mode: normal, overlay, normal;
            box-shadow: inset 0 1px 0 #ecdca288, inset 0 -1px 0 #a68d4c, 0 1px 0 #fff6, 0 0 0 1px #8f7740; }   /* gold rim, no black edge */
   .plate .lamp { flex: none; width: 9px; height: 9px; }
-  .plate .screw { width: 8px; height: 8px; top: 50%; margin-top: -4px; box-shadow: 0 1px 0 #fff4c066, 0 0 0 1px #0006;   /* black */
-                  background: radial-gradient(circle at 35% 35%, #7a7a7a, #2a2a2a 50%, #0b0b0b); }
-  .plate .slit { top: 3px; height: 1.5px; background: #000; }
+  .plate .screw { width: 8px; height: 8px; top: 50%; margin-top: -4px; box-shadow: inset 0 0 0 1px #0003, 0 1px 0 #fff4c066;   /* steel */
+                  background: radial-gradient(circle at 35% 35%, #fff, #9a948a 60%, #6d675e); }
+  .plate .slit { top: 3px; height: 1.5px; background: #5d574e; }
   .plate .screw.ml { left: 6px; } .plate .screw.mr { right: 6px; }
   .plate-label { font: 400 .5rem/1.05 Michroma, sans-serif; letter-spacing: .1em; white-space: nowrap;   /* wide hi-fi faceplate lettering */   /* engraved: dark cut, lit lower edge */
                  color: #3b2e10; text-shadow: 0 1px 0 #efe0aa99, 0 -1px 0 #1a100333; }
