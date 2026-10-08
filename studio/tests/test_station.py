@@ -49,3 +49,14 @@ def test_skip_and_clear(liq):
     liq.skip()
     liq.clear()
     assert FakeLiq.log[-2:] == ["reqs.skip", "clear"]
+
+
+def test_push_cannot_escape_the_annotation(liq):
+    # A guest-typed title ending in a backslash must not escape the closing quote,
+    # and nothing a guest types may introduce a new key, URI or command.
+    liq.push("/media/ready/r2.mp3", "r2", 'Evil\\', 'x",title="y:http://bad/x.mp3\r\nreqs.skip')
+    sent = FakeLiq.log[-1]
+    assert "\\" not in sent
+    assert sent.count('"') == 6
+    assert sent.endswith(":/media/ready/r2.mp3")
+    assert "reqs.skip" not in FakeLiq.log[:-1] or FakeLiq.log.count("reqs.skip") == 0

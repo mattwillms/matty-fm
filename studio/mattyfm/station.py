@@ -5,7 +5,15 @@ import socket
 
 
 def _clean(text: str) -> str:
-    return " ".join(text.replace('"', "'").split())
+    """Make guest text safe inside a quoted annotate value.
+
+    Double quotes become single quotes, backslashes (which would escape the
+    closing quote) and control characters (which would end the telnet line)
+    are dropped, and whitespace is collapsed.
+    """
+    text = text.replace('"', "'").replace("\\", "")
+    text = "".join(ch if ch.isprintable() else " " for ch in text)
+    return " ".join(text.split())
 
 
 class Station:
