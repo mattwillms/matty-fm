@@ -377,4 +377,37 @@ describe("QA round", () => {
     const r = await p.beat({ ...beat, source: "requests", current: id, remaining: 140 });
     expect(r.commands.filter((c) => c.type === "replay")).toEqual([expect.objectContaining({ target: id })]);
   });
+  it("tells the guest which field is missing", async () => {
+    const p = stub("which-field");
+    expect((await p.submit("d1", { track: T("SOS", ""), name: "Ann" })).error).toMatch(/artist/i);
+    expect((await p.submit("d1", { track: T("", "ABBA"), name: "Ann" })).error).toMatch(/title/i);
+    expect((await p.submit("d1", { track: T("SOS"), name: "🎉🎉" })).error).toMatch(/name/i);
+  });
+
+  it("a guest who joins a song that's already lined up is told the DJ may not read their message", async () => {
+    const p = stub("late-join");
+    const id = await readyItem(p, "Chiquitita");
+    const r = await p.submit("d2", { track: T("Chiquitita"), name: "Bev", message: "Happy anniversary!" });
+    expect(r.ok && r.late).toBe(true);
+    const { id: fresh } = await p.submit("d3", { track: T("Andante, Andante"), name: "Cy" });
+    expect(fresh).not.toBe(id);
+    expect((await p.submit("d4", { track: T("Andante, Andante"), name: "Di" })).late).toBeFalsy();   // still pending: it's re-done
+  });
+
+  it("Your requests lists the songs this phone asked for most recently", async () => {
+    const p = stub("mine-order");
+    const { id: old } = await p.submit("other", { track: T("Waterloo"), name: "x" });
+    for (const t of ["A1", "A2", "A3", "A4", "A5", "A6"]) {
+      const { id } = await p.submit("me", { track: T(t), name: "Me" });
+      await runInDurableObject(p, async (_i: Party, state) => { state.storage.sql.exec("UPDATE items SET status='played' WHERE id=?", id!); });
+    }
+    await p.submit("me", { track: T("Waterloo"), name: "Me" });   // joins an older song
+    expect((await p.guestState("me")).mine[0].id).toBe(old);
+  });
+
+  it("& and \"and\" are the same song", () => {
+    expect(songKey("Kool & The Gang", "Celebration")).toBe(songKey("Kool and the Gang", "Celebration"));
+    expect(songKey("Simon & Garfunkel", "Cecilia")).toBe("simon garfunkel|cecilia");
+    expect(songKey("Band", "Sandman")).toBe("band|sandman");   // only the whole word
+  });
 });

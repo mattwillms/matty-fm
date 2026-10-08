@@ -32,6 +32,7 @@ function norm(text: string): string {
     .replace(/\((?:[^)]*(?:remaster|version|edit|mono|stereo)[^)]*)\)/g, " ")
     .replace(/\s-\s.*(?:remaster|version|edit|mono|stereo).*$/, " ")
     .replace(/[^\p{L}\p{N} ]+/gu, " ")   // letters of any script: an all-Japanese title is not "" (was: every one collided)
+    .replace(/(?<=^|\s)and(?=\s|$)/g, " ")   // "&" is already a space, so "Kool & The Gang" = "Kool and the Gang"
     .replace(/\s+/g, " ")
     .trim();
 }

@@ -156,7 +156,9 @@ export class Party extends DurableObject<Env> {
       return { ok: false, error: "Requests are paused for this phone." };
     const name = clean(s.name, 40), message = clean(s.message ?? "", 280);
     const title = clean(s.track?.title, 200), artist = clean(s.track?.artist, 200);
-    if (!visible(name) || !title || !artist) return { ok: false, error: "Pick a song and add your name." };
+    if (!visible(name)) return { ok: false, error: "Add your name (letters, not just emoji)." };
+    if (!title) return { ok: false, error: "Add the song title." };
+    if (!artist) return { ok: false, error: "Add the artist, or your best guess." };
     if (!asAdmin) {
       const n = Number(this.one(`SELECT COUNT(*) AS n FROM requesters r JOIN items i ON i.id=r.item_id
         WHERE r.device=? AND i.status IN ${WAITING}`, device)?.n ?? 0);
@@ -168,7 +170,7 @@ export class Party extends DurableObject<Env> {
     if (this.one("SELECT 1 AS p FROM items WHERE song_key=? AND status='playing'", key))
       return { ok: false, error: "That one is playing right now! Pick another?" };
     const dup = this.one(`SELECT id,status FROM items WHERE song_key=? AND status IN ${WAITING} ORDER BY rank LIMIT 1`, key);
-    let id: string;
+    let id: string, late = false;
     if (dup) {
       id = String(dup.id);
       if (this.one("SELECT 1 AS m FROM requesters WHERE item_id=? AND device=?", id, device))   // asked twice: one slot
@@ -177,6 +179,8 @@ export class Party extends DurableObject<Env> {
       // (re-preparing a ready song on every join kept popular songs off the air).
       // at most once per song: a join every cycle could otherwise keep it from ever finishing
       if (dup.status === "preparing") this.sql.exec("UPDATE items SET redo=1 WHERE id=? AND COALESCE(redos,0)<1", id);
+      // its DJ line is already recorded: say so, rather than let them wait for a shout-out that won't come
+      late = dup.status === "ready" || dup.status === "queued";
     } else {
       id = this.newId();
       const t = s.track;
@@ -195,7 +199,7 @@ export class Party extends DurableObject<Env> {
       id, device, name, message, now, ip);
     if ((await this.ctx.storage.getAlarm()) === null)
       await this.ctx.storage.setAlarm(now < PURGE_AT ? PURGE_AT : now + PURGE_AFTER_MS);
-    return { ok: true, id, position: this.display().findIndex((i) => i.id === id) + 1 };
+    return { ok: true, id, position: this.display().findIndex((i) => i.id === id) + 1, ...(late ? { late } : {}) };
   }
 
   private nowPlaying() {
@@ -211,8 +215,9 @@ export class Party extends DurableObject<Env> {
 
   async guestState(device: string) {
     const waiting = this.display();
-    const mine = this.all(`SELECT DISTINCT i.* FROM items i JOIN requesters r ON r.item_id=i.id
-      WHERE r.device=? ORDER BY i.created_at DESC LIMIT 6`, device);
+    // newest of this phone's own asks first (joining an older song puts it at the top too)
+    const mine = this.all(`SELECT i.*, MAX(r.created_at) AS mine_at FROM items i JOIN requesters r ON r.item_id=i.id
+      WHERE r.device=? GROUP BY i.id ORDER BY mine_at DESC LIMIT 6`, device);
     return {
       nowPlaying: this.nowPlaying(),
       upNext: waiting.slice(0, 6).map((i) => this.pub(i)),

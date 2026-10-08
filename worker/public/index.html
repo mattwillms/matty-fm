@@ -17,7 +17,7 @@
     --cocoa: #2A1A12; --walnut: #4A2E1E; --walnut-2: #5B3A26;
     --orange: #E2621B; --gold: #F0A92B; --avocado: #8A8F3C;
     --cream: #F3E3C3; --cream-dim: #CDB591; --teal: #6FE3C8; --glass: #0E1513;
-    --bad: #E8644A;
+    --bad: #FF8A70;   /* 4.5:1 on the walnut, readable for everyone */
     --glass-r: 6px;   /* dial, display and request screen: one radius for all three */
   }
   * { box-sizing: border-box; }
@@ -197,11 +197,13 @@
   .sticker.late { animation: land .35s cubic-bezier(.3, 1.5, .5, 1) both; }
   .sl-al.late { animation: fade .3s ease-out both; }
   @keyframes land { from { opacity: 0; transform: rotate(-11deg) scale(.5); } }
-  .track { display: inline-flex; }
+  /* Its own layer for good, drawn whole: iPhone Safari dropped the off-screen part of a scrolling
+     line and blanked the title for a moment each time the loop jumped back to the start */
+  .track { display: inline-flex; will-change: transform; backface-visibility: hidden; transform: translate3d(0,0,0); }
   .track span { flex: none; }
   .ticking .track span { padding-right: 3em; }
   .ticking .track { animation: tick var(--dur, 12s) linear infinite; }
-  @keyframes tick { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @keyframes tick { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
   .lamp { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #6d6a5f, #3b3a33);
           box-shadow: inset 0 1px 2px #000a, 0 1px 0 #fff8; transition: background .4s, box-shadow .4s; }
   .lamp.on { background: radial-gradient(circle at 40% 35%, #d8ffd0, #4fd16a 45%, #1f8a35);
@@ -252,8 +254,9 @@
   button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   button:disabled, button.busy { opacity: .55; cursor: progress; }
   button.quiet { background: transparent; color: var(--cream-dim); box-shadow: inset 0 0 0 2px #6b4a32; }
-  button.link { background: none; padding: 0; border-radius: 0; color: var(--gold); text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
-  .row { display: flex; gap: 10px; margin-top: 16px; } .row > * { flex: 1; }
+  button.link { background: none; padding: 11px 4px; margin: -11px -4px; border-radius: 0;   /* a finger-sized target, same layout */
+                color: var(--gold); text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; } .row > * { flex: 1 1 7.5em; padding-inline: 12px; }   /* wraps at big zoom, never off-screen */
   .hint { margin: 12px 0 0; color: var(--cream-dim); font-size: .95rem; }
   .fine { color: #a88d6a; font-size: .85rem; margin: 22px 2px 0; }
 
@@ -369,7 +372,7 @@
     <ul id="chosen" class="chosen"></ul>
     <div id="freeFields" hidden>
       <label for="ft">Song title</label><input id="ft" maxlength="200">
-      <label for="fa">Artist</label><input id="fa" maxlength="200">
+      <label for="fa">Artist (your best guess is fine)</label><input id="fa" maxlength="200">
     </div>
     <label for="name">Your name</label><input id="name" maxlength="40" autocomplete="given-name">
     <label for="msg">Message for the DJ (optional)</label>
@@ -447,8 +450,8 @@ function setLine(id, text, always, speed = SCROLL_PX_S, holdMs = 0) {
     if (holdMs) {   // rest at the start of every loop, then scroll one copy's width at the same speed
       const move = (w / speed) * 1000, total = holdMs + move;
       track.style.animation = "none";
-      track.animate([{ transform: "translateX(0)" }, { transform: "translateX(0)", offset: holdMs / total },
-                     { transform: "translateX(-50%)" }], { duration: total, iterations: Infinity, easing: "linear" });
+      track.animate([{ transform: "translate3d(0,0,0)" }, { transform: "translate3d(0,0,0)", offset: holdMs / total },
+                     { transform: "translate3d(-50%,0,0)" }], { duration: total, iterations: Infinity, easing: "linear" });
     } else track.style.animation = "";
   }
 }
@@ -814,7 +817,8 @@ function normKey(x) {
   return String(x || "").normalize("NFKD").replace(/[\u0300-\u036f]/g, "").toLowerCase()
     .replace(/\((?:[^)]*(?:remaster|version|edit|mono|stereo)[^)]*)\)/g, " ")
     .replace(/\s-\s.*(?:remaster|version|edit|mono|stereo).*$/, " ")
-    .replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/\s+/g, " ").trim().slice(0, 80);   // letters of any script, as the Worker
+    .replace(/[^\p{L}\p{N} ]+/gu, " ").replace(/(?<=^|\s)and(?=\s|$)/g, " ")   // letters of any script; "and" = "&", as the Worker
+    .replace(/\s+/g, " ").trim().slice(0, 80);
 }
 function baseTitle(t) { return String(t || "").replace(/\s*[(\[][^)\]]*[)\]]/g, "").replace(/\s+-\s+.*$/, "").trim() || t; }
 let cachedKeys = new Set();
@@ -886,9 +890,11 @@ let pollTimer = null, lastNextKey = "", lastMineKey = "";
 async function refresh() {
   if (!k) { $("gate").hidden = false; return; }
   try {
-    const s = await api("/api/state");
+    const s = await api("/api/state", { signal: AbortSignal.timeout(8000) });   // a hung poll never piles up
+    if (!s || !Array.isArray(s.upNext)) return;   // an error reply is not "requests closed": keep what's shown
     $("onbreak").hidden = !s.djOnBreak;
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;
+    $("freeBtn").disabled = !s.accepting; $("freeBtn").closest("p").hidden = !s.accepting;
     showNow(s.nowPlaying);
     $("nextBox").hidden = !s.upNext.length;
     const waiting = s.waitingCount ?? s.upNext.length;
@@ -922,7 +928,7 @@ async function refresh() {
 $("q").addEventListener("input", () => {
   clearTimeout(timer);
   const q = $("q").value.trim();
-  if (q.length < 3) { $("results").replaceChildren(); return; }
+  if (q.length < 2) { $("results").replaceChildren(...(q ? [el("li", "empty", "Keep typing…")] : [])); return; }   // "U2" is a band
   $("results").replaceChildren(el("li", "empty", "Searching…"));
   timer = setTimeout(async () => {
     // Apple (from the phone) and Deezer (via the Worker) each get 6 s; either may fail alone
@@ -931,7 +937,7 @@ $("q").addEventListener("input", () => {
     if ($("q").value.trim() !== q) return;   // the guest kept typing: this answer is for an old query
     const fromWorker = worker.status === "fulfilled" ? worker.value.results || [] : [];
     const fromApple = apple.status === "fulfilled" ? apple.value : [];
-    if (worker.status === "rejected" && worker.reason?.message === "gate") { $("results").replaceChildren(); return; }
+    if (worker.status === "rejected" && worker.reason?.message === "gate") { $("results").replaceChildren(el("li", "empty", $("gate").textContent)); return; }
     const results = mergeResults(fromApple, fromWorker);
     if (!results.length && worker.status === "rejected") {
       $("results").replaceChildren(el("li", "empty", "Search didn't go through. Try again in a moment."));
@@ -956,7 +962,13 @@ function choose(t, free) {
   $("find").hidden = true; $("form").hidden = false; $("formErr").textContent = "";
   try { $("name").value = localStorage.getItem("mfm_name") || ""; } catch {}
   $("form").scrollIntoView({ behavior: "smooth", block: "start" });
+  if (!history.state?.form) history.pushState({ form: 1 }, "");   // Back closes the form, not the site
 }
+function closeForm() {
+  if (history.state?.form) history.back();   // popstate below does the closing
+  else { $("form").hidden = true; $("find").hidden = false; }
+}
+addEventListener("popstate", () => { $("form").hidden = true; $("find").hidden = false; });
 $("freeBtn").onclick = () => typeIn($("q").value.trim());
 // The typed-in form, filled from the search box: "Artist - Song" and "Song by Artist" split; otherwise the guest adds the artist.
 function typeIn(q) {
@@ -971,7 +983,7 @@ function typeIn(q) {
   $("ft").value = title; $("fa").value = artist;
   if (title && !artist) setTimeout(() => $("fa").focus({ preventScroll: true }), 350);   // after the scroll settles
 }
-$("cancel").onclick = () => { $("form").hidden = true; $("find").hidden = false; };
+$("cancel").onclick = closeForm;
 $("send").onclick = () => busy($("send"), "Sending…", async () => {
   const track = { ...chosen }, free = !$("freeFields").hidden;
   if (free) {
@@ -984,15 +996,26 @@ $("send").onclick = () => busy($("send"), "Sending…", async () => {
     else if (lead && t.toLowerCase().endsWith(" " + lead)) title = t.slice(0, -lead.length).replace(/[\s\-–—:]+$/, "");
     track.title = title || t;
   }
+  const send = () => api("/api/request", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ track, name: $("name").value, message: $("msg").value, freeText: free }),
+    signal: AbortSignal.timeout(15000) });   // a stalled send gives up and says so (a repeat is merged, not doubled)
   try {
-    const r = await api("/api/request", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ track, name: $("name").value, message: $("msg").value, freeText: free }) });
+    let r = await send();
+    if (!r.ok && /reload/i.test(r.error ?? "")) {   // no phone id yet (a busy minute at the door): get one, try once more
+      await api("/api/state", { signal: AbortSignal.timeout(8000) }).catch(() => null);
+      r = await send();
+      if (!r.ok && /reload/i.test(r.error ?? "")) r = { ok: false, error: "Busy moment. Tap Send again in a minute." };
+    }
     if (!r.ok) { $("formErr").textContent = r.error; toast(r.error, true); return; }
     try { localStorage.setItem("mfm_name", $("name").value); } catch {}
-    toast(r.position ? `Sent to the DJ. You're #${r.position} in line.` : "Sent to the DJ.");
+    toast(r.late ? "Added your name! It's already lined up, so the DJ may not read your message."
+          : r.position ? `Sent to the DJ. You're #${r.position} in line.` : "Sent to the DJ.");
     $("msg").value = ""; $("q").value = ""; $("results").replaceChildren();
-    $("form").hidden = true; $("find").hidden = false; refresh();
-  } catch (e) { if (e.message !== "gate") toast("Didn't send. Check your connection and try again.", true); }
+    closeForm(); refresh();
+  } catch (e) {
+    const m = e.message === "gate" ? $("gate").textContent : "Didn't send. Check your connection and try again.";
+    $("formErr").textContent = m; toast(m, true);
+  }
 });
 let pollMs = 0;
 function schedule(ms) {

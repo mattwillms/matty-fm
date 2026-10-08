@@ -7,7 +7,7 @@ export { Party };
 // Bump whenever party.ts changes. A deployed Durable Object kept running its first
 // version all evening (deploys did not restart it), so each queue-code change gets a
 // fresh instance. Queue state resets on a bump: never bump on party day.
-const QUEUE_VERSION = 18;
+const QUEUE_VERSION = 19;
 
 const enc = new TextEncoder();
 
@@ -138,7 +138,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
     const extra: HeadersInit = dev.cookie ? { "set-cookie": dev.cookie } : {};
     if (path === "/api/search") {
       const q = (url.searchParams.get("q") ?? "").trim();
-      if (q.length < 3) return json({ results: [] }, 200, extra);
+      if (q.length < 2) return json({ results: [] }, 200, extra);
       return json(await cachedSearch(q, ctx), 200, extra);
     }
     if (path === "/api/state") return json(await party.guestState(dev.id), 200, extra);

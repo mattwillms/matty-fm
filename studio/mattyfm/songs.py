@@ -56,6 +56,7 @@ def _key_part(text: str) -> str:
     text = re.sub(r"\s-\s.*(?:remaster|version|edit|mono|stereo).*$", " ", text)
     # letters and digits of any script stay (an all-Japanese title is not ""); everything else is a space
     text = "".join(c if c == " " or unicodedata.category(c)[0] in "LN" else " " for c in text)
+    text = re.sub(r"(?<!\S)and(?!\S)", " ", text)   # "&" is already a space: "Kool & The Gang" = "Kool and the Gang"
     return re.sub(r"\s+", " ", text).strip()[:80]
 
 

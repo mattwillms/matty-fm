@@ -241,3 +241,9 @@ def test_a_service_that_hangs_is_not_tried_on_the_other_matches(tmp_path):
     with pytest.raises(SongNotFound):
         songs.get_song(item, tmp_path, search=lambda q: cands, download=[hanging, backup], tries=2)
     assert order == [("hanging", "v1"), ("backup", "v1"), ("backup", "v2")]
+
+
+def test_ampersand_and_the_word_and_make_the_same_key_like_the_worker():
+    assert songs.song_key("Kool & The Gang", "Celebration") == songs.song_key("Kool and the Gang", "Celebration")
+    assert songs.song_key("Simon & Garfunkel", "Cecilia") == "simon garfunkel|cecilia"
+    assert songs.song_key("Band", "Sandman") == "band|sandman"
