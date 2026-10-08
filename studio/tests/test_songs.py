@@ -73,3 +73,31 @@ def test_get_song_downloads_best_and_writes_cache(tmp_path):
     item = {"songKey": "abba|dancing queen", "title": "Dancing Queen", "artist": "ABBA", "durationMs": 231000}
     got = songs.get_song(item, tmp_path, search=lambda q: cands, download=fake_download)
     assert got.path.exists() and (tmp_path / "abba|dancing queen.json").exists()
+
+
+def test_unavailable_video_falls_back_to_next_best(tmp_path):
+    import subprocess
+    cands = [c("Dancing Queen", channel="ABBA - Topic", duration=231, id="blocked"),
+             c("ABBA - Dancing Queen (Official Audio)", channel="ABBA", duration=231, id="ok")]
+    tried = []
+
+    def flaky(video_id: str, dest: Path) -> None:
+        tried.append(video_id)
+        if video_id == "blocked":
+            raise subprocess.CalledProcessError(1, "yt-dlp", stderr="ERROR: [youtube] blocked: Video unavailable")
+        dest.write_bytes(b"ID3")
+
+    item = {"songKey": "abba|dancing queen", "title": "Dancing Queen", "artist": "ABBA", "durationMs": 231000}
+    got = songs.get_song(item, tmp_path, search=lambda q: cands, download=flaky)
+    assert tried == ["blocked", "ok"] and got.video_id == "ok"
+
+
+def test_all_downloads_failing_reports_youtube_reason(tmp_path):
+    import subprocess
+
+    def broken(video_id: str, dest: Path) -> None:
+        raise subprocess.CalledProcessError(1, "yt-dlp", stderr="noise\nERROR: [youtube] x: Video unavailable\n")
+
+    item = {"songKey": "a|b", "title": "B", "artist": "A", "durationMs": None}
+    with pytest.raises(SongNotFound, match="Video unavailable"):
+        songs.get_song(item, tmp_path, search=lambda q: [c("B", id="x"), c("B", id="y")], download=broken)

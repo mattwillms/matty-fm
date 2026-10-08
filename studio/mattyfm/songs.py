@@ -1,6 +1,7 @@
 """Find a requested song on YouTube, download it once, cache it by song key."""
 
 import json
+import logging
 import re
 import subprocess
 import sys
@@ -10,9 +11,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 CONFIDENT = 50.0
+MAX_TRIES = 3
 MAX_SECONDS = 600
 PENALTY_WORDS = ("live", "remix", "karaoke", "cover", "extended", "sped up", "slowed",
                  "8d", "instrumental", "nightcore", "reverb", "acoustic", "demo")
+
+
+log = logging.getLogger("mattyfm.songs")
 
 
 class SongNotFound(Exception):
@@ -77,13 +82,27 @@ def score(c: Candidate, title: str, artist: str, duration_s: float | None) -> fl
     return s
 
 
+def ranked(cands: list[Candidate], title: str, artist: str,
+           duration_s: float | None) -> list[tuple[Candidate, float]]:
+    """Usable candidates, best first, with their scores."""
+    usable = [c for c in cands if c.duration <= MAX_SECONDS]
+    scored = [(c, score(c, title, artist, duration_s)) for c in usable]
+    return sorted(scored, key=lambda cs: cs[1], reverse=True)
+
+
 def pick(cands: list[Candidate], title: str, artist: str,
          duration_s: float | None) -> tuple[Candidate, float]:
-    usable = [c for c in cands if c.duration <= MAX_SECONDS]
-    if not usable:
+    best = ranked(cands, title, artist, duration_s)
+    if not best:
         raise SongNotFound(f"No usable match for {artist} - {title}")
-    best = max(usable, key=lambda c: score(c, title, artist, duration_s))
-    return best, score(best, title, artist, duration_s)
+    return best[0]
+
+
+def _reason(e: subprocess.SubprocessError) -> str:
+    """yt-dlp's own last ERROR line, not the command line."""
+    err = getattr(e, "stderr", "") or ""
+    lines = [l for l in str(err).splitlines() if "ERROR" in l] or str(err).splitlines() or [str(e)]
+    return lines[-1].strip()[:200]
 
 
 def yt_search(query: str) -> list[Candidate]:
@@ -126,11 +145,18 @@ def get_song(item: dict, cache_dir: Path,
         cands = search(f'"{item["artist"]} - {item["title"]}"')
     except subprocess.SubprocessError as e:
         raise SongNotFound(f"YouTube search failed: {e}") from e
-    best, confidence = pick(cands, item["title"], item["artist"], duration_s)
-    try:
-        download(best.id, path)
-    except subprocess.SubprocessError as e:
-        raise SongNotFound(f"Download failed: {e}") from e
-    meta.write_text(json.dumps({"confidence": confidence, "video_id": best.id,
-                                "title": best.title, "channel": best.channel}))
-    return SongFile(path, confidence, best.id)
+    options = ranked(cands, item["title"], item["artist"], duration_s)
+    if not options:
+        raise SongNotFound(f"No usable match for {item['artist']} - {item['title']}")
+    reasons = []
+    for best, confidence in options[:MAX_TRIES]:
+        try:
+            download(best.id, path)
+        except subprocess.SubprocessError as e:   # unavailable, region-blocked, age-gated: try the next
+            reasons.append(f"{best.id}: {_reason(e)}")
+            log.warning("download %s failed: %s", best.id, reasons[-1])
+            continue
+        meta.write_text(json.dumps({"confidence": confidence, "video_id": best.id,
+                                    "title": best.title, "channel": best.channel}))
+        return SongFile(path, confidence, best.id)
+    raise SongNotFound("Download failed: " + " | ".join(reasons))

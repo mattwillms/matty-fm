@@ -31,6 +31,18 @@
   .notice { padding:10px 12px; border-radius:10px; background:#1f130a; margin-top:10px; }
   .err { color:var(--bad); } [hidden] { display:none !important; }
   label { display:block; margin:10px 0 4px; color:var(--muted); }
+  .pick:hover .song { background:#4a2e18; } .pick:active .song { background:#563519; }
+  .song { border-radius:10px; padding-left:6px; padding-right:6px; }
+  button { transition: transform .08s ease, filter .15s ease, opacity .15s ease; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+  button:hover { filter: brightness(1.15); }
+  button:active { transform: scale(.95); filter: brightness(.85); }
+  button:focus-visible { outline: 3px solid #f5b829; outline-offset: 2px; }
+  button:disabled, button.busy { opacity: .55; cursor: progress; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(20px); opacity: 0;
+           background: #fbeed5; color: #1f130a; padding: 12px 18px; border-radius: 999px; font-weight: 700;
+           box-shadow: 0 6px 24px #0008; transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.err { background: #e85d4a; color: #fff; }
 </style>
 </head>
 <body>
@@ -72,6 +84,18 @@
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
+function toast(msg, isErr) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.setAttribute("role", "status"); document.body.append(t); }
+  t.textContent = msg; t.className = "show" + (isErr ? " err" : "");
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.className = isErr ? "err" : ""; }, 2600);
+}
+async function busy(btn, label, work) {
+  if (btn.disabled) return;
+  const old = btn.textContent; btn.disabled = true; btn.classList.add("busy"); if (label) btn.textContent = label;
+  try { return await work(); } finally { btn.disabled = false; btn.classList.remove("busy"); btn.textContent = old; }
+}
+
 const params = new URLSearchParams(location.search);
 let k = params.get("k") || "";
 try { if (k) localStorage.setItem("mfm_k", k); else k = localStorage.getItem("mfm_k") || ""; } catch {}
@@ -112,8 +136,12 @@ $("q").addEventListener("input", () => {
   clearTimeout(timer);
   const q = $("q").value.trim();
   if (q.length < 3) { $("results").replaceChildren(); return; }
+  $("results").replaceChildren(el("li", "small", "Searching…"));
   timer = setTimeout(async () => {
-    const { results } = await api("/api/search?q=" + encodeURIComponent(q));
+    let results = [];
+    try { ({ results } = await api("/api/search?q=" + encodeURIComponent(q))); }
+    catch (e) { if (e.message !== "gate") toast("Search failed — try again", true); return; }
+    if (!results.length) { $("results").replaceChildren(el("li", "small", "No matches. Try different words, or type it in below.")); return; }
     $("results").replaceChildren(...results.map((t) => {
       const b = el("button", "pick"); b.type = "button"; b.append(songRow(t, t.explicit ? "Explicit" : ""));
       b.onclick = () => choose(t, false); const li = el("li"); li.append(b); return li;
@@ -127,20 +155,20 @@ function choose(t, free) {
 }
 $("freeBtn").onclick = () => choose({ title: "", artist: "", durationMs: null }, true);
 $("cancel").onclick = () => { $("form").hidden = true; $("find").hidden = false; };
-$("send").onclick = async () => {
+$("send").onclick = () => busy($("send"), "Sending…", async () => {
   const track = { ...chosen };
   const free = !$("freeFields").hidden;
   if (free) { track.title = $("ft").value; track.artist = $("fa").value; }
-  $("send").disabled = true;
   try {
     const r = await api("/api/request", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ track, name: $("name").value, message: $("msg").value, freeText: free }) });
-    if (!r.ok) { $("formErr").textContent = r.error; return; }
+    if (!r.ok) { $("formErr").textContent = r.error; toast(r.error, true); return; }
     try { localStorage.setItem("mfm_name", $("name").value); } catch {}
+    toast(r.position ? `Request sent! You're #${r.position} in line 🎶` : "Request sent! 🎶");
     $("msg").value = ""; $("q").value = ""; $("results").replaceChildren();
     $("form").hidden = true; $("find").hidden = false; refresh();
-  } finally { $("send").disabled = false; }
-};
+  } catch (e) { if (e.message !== "gate") toast("Couldn't send — check your connection and try again.", true); }
+});
 refresh();
 setInterval(() => { if (document.visibilityState === "visible") refresh(); }, 15000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });

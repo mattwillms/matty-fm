@@ -19,6 +19,16 @@
   .item { border-top:1px solid #4a3624; padding:10px 0; } .item:first-child { border-top:0; }
   .t { font-weight:700; } .small { color:var(--muted); font-size:.9rem; } .line { font-style:italic; margin:4px 0; }
   .acts { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  button { transition: transform .08s ease, filter .15s ease, opacity .15s ease; -webkit-tap-highlight-color: transparent; cursor: pointer; }
+  button:hover { filter: brightness(1.15); }
+  button:active { transform: scale(.95); filter: brightness(.85); }
+  button:focus-visible { outline: 3px solid #f5b829; outline-offset: 2px; }
+  button:disabled, button.busy { opacity: .55; cursor: progress; }
+  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(20px); opacity: 0;
+           background: #fbeed5; color: #1f130a; padding: 12px 18px; border-radius: 999px; font-weight: 700;
+           box-shadow: 0 6px 24px #0008; transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.err { background: #e85d4a; color: #fff; }
   input { width:100%; font:inherit; padding:10px; border-radius:8px; border:1px solid #4a3624; background:#0006; color:var(--ink); margin:4px 0; }
 </style>
 </head>
@@ -39,6 +49,18 @@
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
+function toast(msg, isErr) {
+  let t = document.getElementById("toast");
+  if (!t) { t = document.createElement("div"); t.id = "toast"; t.setAttribute("role", "status"); document.body.append(t); }
+  t.textContent = msg; t.className = "show" + (isErr ? " err" : "");
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.className = isErr ? "err" : ""; }, 2600);
+}
+async function busy(btn, label, work) {
+  if (btn.disabled) return;
+  const old = btn.textContent; btn.disabled = true; btn.classList.add("busy"); if (label) btn.textContent = label;
+  try { return await work(); } finally { btn.disabled = false; btn.classList.remove("busy"); btn.textContent = old; }
+}
+
 const q = new URLSearchParams(location.search);
 let token = q.get("t") || "";
 try { if (token) { localStorage.setItem("mfm_t", token); history.replaceState(null, "", location.pathname); } else token = localStorage.getItem("mfm_t") || ""; } catch {}
@@ -49,7 +71,19 @@ async function call(path, body) {
   if (r.status === 401) { $("auth").hidden = false; throw new Error("auth"); }
   return r.json();
 }
-const act = (body) => call("/api/admin/action", body).then(load);
+const DONE = { skip: "Skipped", delete: "Deleted", move: "Moved", retry: "Retrying", add: "Added to the queue", mute: "Phone muted", settings: "Updated" };
+async function act(body, ev) {
+  const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
+  const run = async () => {
+    try {
+      const r = await call("/api/admin/action", body);
+      if (r && r.ok === false) toast(r.error || "That didn't work", true);
+      else toast(DONE[body.action] || "Done");
+    } catch (e) { if (e.message !== "auth") toast("Couldn't reach the server", true); }
+    await load();
+  };
+  return btn ? busy(btn, "…", run) : run();
+}
 function pill(text, cls) { return el("span", "pill " + cls, text); }
 function render() {
   const h = state.health, age = h.ageS;
@@ -57,7 +91,7 @@ function render() {
   const src = { requests: ["Playing requests", "ok"], soma: ["Playing SomaFM", "ok"], backup: ["BACKUP playlist (internet?)", "warn"], silence: ["SILENCE", "bad"] }[h.source] || ["Source: ?", "warn"];
   $("health").replaceChildren(studio, pill(src[0], src[1]), ...(h.error ? [pill("Last error: " + h.error, "warn")] : []));
   const s = state.settings;
-  const sw = (id, on, onText, offText) => { $(id).textContent = on ? onText : offText; $(id).className = on ? "on" : ""; $(id).onclick = () => act({ action: "settings", settings: { [id]: !on } }); };
+  const sw = (id, on, onText, offText) => { $(id).textContent = on ? onText : offText; $(id).className = on ? "on" : ""; $(id).onclick = (e) => act({ action: "settings", settings: { [id]: !on } }, e); };
   sw("accepting", !s.accepting, "Requests CLOSED (tap to open)", "Last call (close requests)");
   sw("stopAfterCurrent", s.stopAfterCurrent, "Stopping after current (tap to resume)", "Stop after current");
   sw("somaOnly", s.somaOnly, "SomaFM ONLY (tap to resume)", "Panic: SomaFM only");
@@ -68,30 +102,30 @@ function render() {
     d.append(el("div", "t", `${it.title} — ${it.artist}`), el("div", "small", flags));
     for (const r of it.requesters) {
       const who = el("div", "small", `${r.name}${r.message ? ": “" + r.message + "”" : ""}`);
-      const mute = el("button", "", "mute phone"); mute.style.marginLeft = "6px"; mute.onclick = () => confirm(`Mute ${r.name}'s phone?`) && act({ action: "mute", device: r.device });
+      const mute = el("button", "", "mute phone"); mute.style.marginLeft = "6px"; mute.onclick = (e) => confirm(`Mute ${r.name}'s phone?`) && act({ action: "mute", device: r.device }, e);
       if (r.device !== "admin") who.append(mute);
       d.append(who);
     }
     if (it.djLine) d.append(el("div", "line", "DJ: " + it.djLine));
     if (it.error) d.append(el("div", "small bad", it.error));
     const acts = el("div", "acts");
-    const b = (t, f) => { const x = el("button", "", t); x.onclick = f; acts.append(x); };
-    if (["pending", "preparing", "ready", "queued"].includes(it.status)) { b("▲", () => act({ action: "move", id: it.id, dir: -1 })); b("▼", () => act({ action: "move", id: it.id, dir: 1 })); }
-    if (it.status === "playing") b("Skip", () => act({ action: "skip" }));
-    if (it.status === "failed") b("Retry", () => act({ action: "retry", id: it.id }));
-    if (!["played", "deleted"].includes(it.status)) b("Delete", () => act({ action: "delete", id: it.id }));
+    const b = (t, f) => { const x = el("button", "", t); x.onclick = (e) => f(e); acts.append(x); };
+    if (["pending", "preparing", "ready", "queued"].includes(it.status)) { b("▲", (e) => act({ action: "move", id: it.id, dir: -1 }, e)); b("▼", (e) => act({ action: "move", id: it.id, dir: 1 }, e)); }
+    if (it.status === "playing") b("Skip", (e) => act({ action: "skip" }, e));
+    if (it.status === "failed") b("Retry", (e) => act({ action: "retry", id: it.id }, e));
+    if (!["played", "deleted"].includes(it.status)) b("Delete", (e) => act({ action: "delete", id: it.id }, e));
     d.append(acts); return d;
   }));
 }
 async function load() { try { state = await call("/api/admin/state"); render(); } catch {} }
-$("skip").onclick = () => act({ action: "skip" });
+$("skip").onclick = (e) => act({ action: "skip" }, e);
 $("aq").addEventListener("input", () => {
   clearTimeout(timer); const text = $("aq").value.trim(); if (text.length < 3) return;
   timer = setTimeout(async () => {
     const { results } = await call("/api/admin/search?q=" + encodeURIComponent(text));
     $("aresults").replaceChildren(...results.slice(0, 6).map((t) => {
       const x = el("button", "", `${t.title} — ${t.artist}`); x.style.display = "block"; x.style.margin = "4px 0";
-      x.onclick = async () => { const r = await act({ action: "add", track: t, name: $("aname").value || "the family", message: $("amsg").value }); $("aq").value = $("amsg").value = ""; $("aresults").replaceChildren(); };
+      x.onclick = async (e) => { await act({ action: "add", track: t, name: $("aname").value || "the family", message: $("amsg").value }, e); $("aq").value = $("amsg").value = ""; $("aresults").replaceChildren(); };
       return x;
     }));
   }, 400);
