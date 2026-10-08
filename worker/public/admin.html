@@ -43,6 +43,28 @@
   .quote { margin-top: 12px; background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: .95rem; }
   .quote b { display: block; color: var(--faint); font-weight: 500; font-size: .85rem; margin-bottom: 2px; }
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
+  .timer { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 12px;
+           padding: 10px 12px; background: var(--bg); border-radius: 10px; }
+  .timer .what { color: var(--muted); font-size: .92rem; }
+  .timer .when { font-weight: 700; font-size: 1.3rem; font-variant-numeric: tabular-nums; }
+  .timer .when.wait { font-size: .92rem; font-weight: 500; color: var(--faint); text-align: right; }
+
+  /* ---- interval slider ---- */
+  .slider-row { padding: 12px 0 4px; border-top: 1px solid var(--line); }
+  .slider-row .what { font-weight: 700; }
+  .slider-row output { color: var(--gold); }
+  /* one thumb width (26px) on every browser, so the tick numbers can sit under its centre */
+  input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 30px; margin: 10px 0 0; padding: 0; border: 0; box-shadow: none; background: transparent; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px;
+    background: linear-gradient(var(--orange), var(--orange)) 0 / var(--fill, 60%) 100% no-repeat, var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 26px; height: 26px; margin-top: -10px; border-radius: 50%;
+    background: var(--orange); box-shadow: inset 0 0 0 3px var(--ink); }
+  input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: var(--line); }
+  input[type=range]::-moz-range-progress { height: 6px; border-radius: 3px; background: var(--orange); }
+  input[type=range]::-moz-range-thumb { width: 26px; height: 26px; border: 0; border-radius: 50%; background: var(--orange); box-shadow: inset 0 0 0 3px var(--ink); }
+  input[type=range]:focus-visible { outline: 3px solid var(--gold); outline-offset: 4px; border-radius: 6px; }
+  .ticks { display: flex; justify-content: space-between; color: var(--faint); font-size: .8rem; font-variant-numeric: tabular-nums; }
+  .ticks span { width: 26px; text-align: center; }
 
   /* ---- buttons ---- */
   button { font: 700 1rem Jost, sans-serif; border: 0; border-radius: 10px; padding: 12px 14px; cursor: pointer; color: var(--ink);
@@ -125,23 +147,9 @@
       <button class="primary" id="skip">Skip this song</button>
       <button id="bumper">Play a bumper</button>
     </div>
+    <div class="timer"><span class="what">Next bumper</span><span class="when" id="nextBumper">–</span></div>
   </section>
 
-  <section aria-label="Station switches">
-    <h2>Station</h2>
-    <div class="switch-row">
-      <div><div class="what">Requests open</div><div class="why">Turn off for last call: guests can't add songs; the line still plays out.</div></div>
-      <button class="toggle" role="switch" id="accepting" aria-label="Requests open"></button>
-    </div>
-    <div class="switch-row">
-      <div><div class="what">Stop after this song</div><div class="why">Back to SomaFM when the current request ends.</div></div>
-      <button class="toggle warn" role="switch" id="stopAfterCurrent" aria-label="Stop after this song"></button>
-    </div>
-    <div class="switch-row">
-      <div><div class="what">SomaFM only</div><div class="why">Pause all requests now. Turn off to resume the line.</div></div>
-      <button class="toggle warn" role="switch" id="somaOnly" aria-label="SomaFM only"></button>
-    </div>
-  </section>
 
   <section aria-label="Up next">
     <h2>Up next<span class="count" id="upCount"></span></h2>
@@ -165,6 +173,28 @@
     <label for="aname">Their name</label><input id="aname" maxlength="40" placeholder="Grandma June">
     <label for="amsg">Message for the DJ (optional)</label><input id="amsg" maxlength="280">
     <div class="add-row"><button class="primary" id="addBtn" disabled>Pick a song first</button></div>
+  </section>
+
+  <section aria-label="Station switches">
+    <h2>Station</h2>
+    <div class="switch-row">
+      <div><div class="what">Requests open</div><div class="why">Turn off for last call: guests can't add songs; the line still plays out.</div></div>
+      <button class="toggle" role="switch" id="accepting" aria-label="Requests open"></button>
+    </div>
+    <div class="switch-row">
+      <div><div class="what">Stop after this song</div><div class="why">Back to SomaFM when the current request ends.</div></div>
+      <button class="toggle warn" role="switch" id="stopAfterCurrent" aria-label="Stop after this song"></button>
+    </div>
+    <div class="switch-row">
+      <div><div class="what">SomaFM only</div><div class="why">Pause all requests now. Turn off to resume the line.</div></div>
+      <button class="toggle warn" role="switch" id="somaOnly" aria-label="SomaFM only"></button>
+    </div>
+    <div class="slider-row">
+      <div class="what">Bumper every <output id="breakEveryOut" for="breakEvery">20</output> min</div>
+      <div class="why">How often the DJ cuts in over SomaFM. A request resets the clock.</div>
+      <input type="range" id="breakEvery" min="5" max="30" step="5" value="20" aria-label="Minutes between bumpers">
+      <div class="ticks" aria-hidden="true"><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
+    </div>
   </section>
 </main>
 <script>
@@ -256,7 +286,30 @@ function renderSwitches() {
   set("accepting", s.accepting, "accepting");
   set("stopAfterCurrent", s.stopAfterCurrent, "stopAfterCurrent");
   set("somaOnly", s.somaOnly, "somaOnly");
+  const r = $("breakEvery");
+  if (document.activeElement !== r) { r.value = String(s.breakEveryMin ?? 20); showEvery(r); }
 }
+function showEvery(r) {
+  $("breakEveryOut").textContent = r.value;
+  const f = (r.value - r.min) / (r.max - r.min);
+  r.style.setProperty("--fill", `calc(13px + ${f} * (100% - 26px))`);   // to the thumb's centre
+}
+$("breakEvery").oninput = (e) => showEvery(e.target);
+$("breakEvery").onchange = (e) => act({ action: "settings", settings: { breakEveryMin: Number(e.target.value) } });
+
+// The studio reports seconds to the next bumper on each beat; count down locally between beats.
+function renderTimer() {
+  const out = $("nextBumper"), h = state && state.health;
+  const wait = (text) => { out.textContent = text; out.className = "when wait"; };
+  if (!h || h.nextBreakS == null || h.ageS == null || h.ageS > 60) return wait("Studio not reporting");
+  if (h.source === "requests") return wait(`${state.settings.breakEveryMin ?? 20} min after the requests end`);
+  if (h.source !== "soma") return wait("Waits for SomaFM");
+  const left = Math.max(0, Math.round(h.nextBreakS - h.ageS - (Date.now() - state.loadedAt) / 1000));   // server age, not this phone's clock
+  if (!left) return wait(h.queued ? "Due: waits for the queue" : "Due now");
+  out.textContent = `${Math.floor(left / 60)}:${String(left % 60).padStart(2, "0")}`;
+  out.className = "when";
+}
+setInterval(renderTimer, 1000);
 
 function tagsFor(it) {
   const t = [];
@@ -292,7 +345,7 @@ function itemBlock(it, lead, tools, detailButtons, showTags) {
 
 function render() {
   if (!state) return;
-  renderStatus(); renderNow(); renderSwitches();
+  renderStatus(); renderNow(); renderSwitches(); renderTimer();
 
   const waiting = state.items.filter((i) => ["pending", "preparing", "ready", "queued"].includes(i.status));
   $("upCount").textContent = waiting.length ? String(waiting.length) : "";
@@ -319,7 +372,7 @@ function render() {
       it.status === "failed" || (it.confidence != null && it.confidence < 50)))
     : [el("div", "empty", "Nothing played yet.")]));
 }
-async function load() { try { state = await call("/api/admin/state"); render(); } catch {} }
+async function load() { try { state = await call("/api/admin/state"); state.loadedAt = Date.now(); render(); } catch {} }
 
 $("skip").onclick = (e) => act({ action: "skip" }, e);
 $("bumper").onclick = (e) => act({ action: "break" }, e);

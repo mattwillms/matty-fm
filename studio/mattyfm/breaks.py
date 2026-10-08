@@ -1,4 +1,4 @@
-"""When the DJ speaks between requests: at least 20 minutes apart, over SomaFM only.
+"""When the DJ speaks between requests: every N minutes (the admin slider, 5 to 30), over SomaFM only.
 
 Kinds rotate: a back-announce of the SomaFM song that just started (voiced fresh),
 a station ID, a goof (both pre-made clips with sound effects). A request on air
@@ -6,25 +6,38 @@ pushes the next break out to a full gap after it.
 """
 
 import json
-import random
 from pathlib import Path
 
-MIN_GAP_S = 20 * 60
-MAX_GAP_S = 28 * 60
+DEFAULT_GAP_S = 20 * 60
+MIN_GAP_S, MAX_GAP_S, STEP_S = 5 * 60, 30 * 60, 5 * 60
 BACKANNOUNCE_WINDOW_S = (10, 75)   # seconds after a SomaFM song started (its intro)
 ROTATION = ("backannounce", "id", "goof")
 
 
 class Scheduler:
-    def __init__(self, rng: random.Random | None = None, now: float = 0.0):
-        self.rng = rng or random.Random()
-        self.next_due = now + self.rng.uniform(MIN_GAP_S, MAX_GAP_S)
+    """No randomness: the admin page shows a countdown, so the break must land when it says."""
+
+    def __init__(self, gap_s: float = DEFAULT_GAP_S, now: float = 0.0):
+        self.gap_s = DEFAULT_GAP_S
+        self.set_gap(gap_s)
+        self.last = now          # the last break, or the last moment a request was on air
         self.turn = 0
+
+    def set_gap(self, gap_s: float) -> None:
+        stepped = round(gap_s / STEP_S) * STEP_S
+        self.gap_s = min(MAX_GAP_S, max(MIN_GAP_S, stepped))
+
+    @property
+    def next_due(self) -> float:
+        return self.last + self.gap_s
+
+    def seconds_left(self, now: float) -> float:
+        return max(0.0, self.next_due - now)
 
     def due(self, status: dict, now: float, soma_age: float | None) -> str | None:
         """The kind of break to play now, or None. `soma_age`: seconds since SomaFM's song began."""
         if status["source"] == "requests":
-            self.next_due = max(self.next_due, now + MIN_GAP_S)
+            self.last = max(self.last, now)
             return None
         if now < self.next_due or status["source"] != "soma" or status["queued"]:
             return None
@@ -38,7 +51,7 @@ class Scheduler:
 
     def done(self, now: float) -> None:
         self.turn += 1
-        self.next_due = now + self.rng.uniform(MIN_GAP_S, MAX_GAP_S)
+        self.last = now
 
 
 def library(media: Path) -> dict[str, list[dict]]:

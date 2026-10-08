@@ -72,6 +72,7 @@ export class Party extends DurableObject<Env> {
       accepting: this.setting("accepting", "1") === "1",
       stopAfterCurrent: this.setting("stopAfterCurrent", "0") === "1",
       somaOnly: this.setting("somaOnly", "0") === "1",
+      breakEveryMin: Number(this.setting("breakEveryMin", "20")),
     };
   }
   private command(type: "skip" | "clear" | "break"): void {
@@ -214,7 +215,7 @@ export class Party extends DurableObject<Env> {
     return {
       commands: this.all("SELECT id,type FROM commands WHERE done=0 ORDER BY id")
         .map((c) => ({ id: Number(c.id), type: String(c.type) })),
-      settings: { somaOnly: f.somaOnly, stopAfterCurrent: f.stopAfterCurrent },
+      settings: { somaOnly: f.somaOnly, stopAfterCurrent: f.stopAfterCurrent, breakEveryMin: f.breakEveryMin },
       next: next ? this.studioItem(next) : null,
       jobs,
     };
@@ -263,7 +264,7 @@ export class Party extends DurableObject<Env> {
 
   async adminAction(a: {
     action: string; id?: string; dir?: -1 | 1; device?: string; track?: Track; name?: string;
-    message?: string; settings?: Partial<Record<"accepting" | "stopAfterCurrent" | "somaOnly", boolean>>;
+    message?: string; settings?: Partial<Record<"accepting" | "stopAfterCurrent" | "somaOnly", boolean>> & { breakEveryMin?: number };
   }) {
     const status = a.id ? String(this.one("SELECT status FROM items WHERE id=?", a.id)?.status ?? "") : "";
     switch (a.action) {
@@ -314,6 +315,8 @@ export class Party extends DurableObject<Env> {
         for (const [k, v] of Object.entries(a.settings ?? {})) {
           if (["accepting", "stopAfterCurrent", "somaOnly"].includes(k)) this.set(k, v ? "1" : "0");
         }
+        const every = Number(a.settings?.breakEveryMin);
+        if (Number.isFinite(every)) this.set("breakEveryMin", String(Math.min(30, Math.max(5, Math.round(every / 5) * 5))));
         if (a.settings?.somaOnly || a.settings?.stopAfterCurrent) {
           this.command("clear");
           this.sql.exec("UPDATE items SET status='ready' WHERE status='queued'");

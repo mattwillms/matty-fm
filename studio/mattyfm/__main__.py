@@ -129,12 +129,14 @@ def main() -> None:
                         "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error,
                         "wantNext": feed.wants_next(status), "soma": soma_np.get(),
                         "lastDj": dict(last_dj) or None,
+                        "nextBreakS": round(sched.seconds_left(time.monotonic())),
                         "cached": sorted(p.stem for p in (cfg.media_dir / "cache").glob("*.mp3"))}
             reply = api.beat(body)
             pushed = []
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]
             done_cmds = {c["id"] for c in reply["commands"]} | {c["id"] for c in fresh}
             reply = {**reply, "commands": fresh}
+            sched.set_gap(60 * reply["settings"].get("breakEveryMin", 20))
             if reply["settings"]["somaOnly"] or reply["settings"]["stopAfterCurrent"]:
                 log.debug("settings: %s", reply["settings"])
             for job in reply["jobs"]:
