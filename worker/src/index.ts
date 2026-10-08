@@ -45,6 +45,18 @@ export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
     const path = url.pathname;
+    if (path === "/manifest.webmanifest") {
+      // Home-screen install: the party code rides in start_url (iOS gives installed
+      // apps their own storage, so the code saved by the browser would be lost).
+      const k = url.searchParams.get("k") ?? "";
+      const start = same(k, env.PARTY_CODE) ? `/?k=${encodeURIComponent(k)}` : "/";
+      return new Response(JSON.stringify({
+        name: "OrrFM", short_name: "OrrFM", start_url: start, scope: "/", display: "standalone",
+        background_color: "#2A1A12", theme_color: "#2A1A12",
+        icons: [{ src: "/icon-192.png", sizes: "192x192", type: "image/png" },
+                { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any maskable" }],
+      }), { headers: { "content-type": "application/manifest+json", "cache-control": "no-store" } });
+    }
     if (!path.startsWith("/api/")) return env.ASSETS.fetch(req);
     const party = env.PARTY.getByName(`orrfm-v${QUEUE_VERSION}`);
     const body = async () => (req.method === "POST" ? await req.json<any>() : {});
