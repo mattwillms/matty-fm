@@ -55,11 +55,13 @@
                linear-gradient(#5a3520, #3b2214);
              box-shadow: 0 14px 28px #000a, inset 0 1px 0 #ffffff1a; }
   .faceplate { position: relative; padding: 18px 16px; border-radius: 4px;   /* same gap to the screws top and bottom */
-               /* brushed aluminum: fine random streaks run about 5° off level, with a soft band of sheen */
-               background: linear-gradient(100deg, #fff0 28%, #ffffff30 47%, #fff0 66%),
+               /* old brushed aluminum: streaks about 5° off level, a tired sheen, grime and pitting from years of hands */
+               background: linear-gradient(100deg, #fff0 30%, #ffffff18 48%, #fff0 64%),
+                           url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.025' numOctaves='4' seed='11' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .22 0 0 0 0 .19 0 0 0 0 .14 0 0 0 1.5 -.55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 240px,   /* tile × frequency must be whole for a seamless repeat */
+                           url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='1' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .15 0 0 0 0 .13 0 0 0 0 .1 0 0 0 2.4 -1.4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 140px,
                            url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='900' height='900'%3E%3Cfilter id='b' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.0022 .8' numOctaves='3' seed='4'/%3E%3CfeColorMatrix values='.62 0 0 0 .19 .62 0 0 0 .19 .62 0 0 0 .19 0 0 0 0 1'/%3E%3C/filter%3E%3Crect x='-250' y='-250' width='1400' height='1400' filter='url%28%23b%29' transform='rotate%28-5 450 450%29'/%3E%3C/svg%3E") 0 0 / 900px 900px,
-                           linear-gradient(#cbc4b6, #9a9283);   /* warm grey aluminum */
-               background-blend-mode: normal, overlay, normal;
+                           linear-gradient(#aea695, #8a8273 60%, #7a7264);
+               background-blend-mode: normal, normal, normal, overlay, normal;
                box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 #0004, 0 0 0 1px #2a1a1255; }
   .screw { position: absolute; width: 10px; height: 10px; border-radius: 50%;
            background: radial-gradient(circle at 35% 35%, #f6ecc4, #c4ab68 45%, #9f8648 72%, #6f5c2c);   /* old gold, like the plate */
@@ -108,7 +110,7 @@
   /* a sliver of old brushed gold: muted, matte, fine strokes all one way, a touch darker at the ends */
   .plate { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 4px 28px; border-radius: var(--glass-r);   /* 14px clear of each screw; corners match the screens */
            background: linear-gradient(90deg, #3a2a0a40, #0000 14%, #0000 86%, #3a2a0a40),   /* ends a shade darker */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.003 1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .75 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 400px 80px,   /* fine brush strokes */
+                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='80'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.003 1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .75 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 400px 80px,   /* fine brush strokes */
                        linear-gradient(#c4ab68, #b29856 50%, #9f8648);   /* muted old gold */
            background-blend-mode: normal, overlay, normal;
            box-shadow: inset 0 1px 0 #ecdca288, inset 0 -1px 0 #a68d4c, 0 1px 0 #fff6, 0 0 0 1px #8f7740; }   /* gold rim, no black edge */
@@ -414,9 +416,10 @@ function shoutout(line, np) {
 }
 let lcdKey = "";
 const SCROLL_PX_S = 55;   // the title's scroll speed; the request screen runs at half that
-function setLine(id, text, always, speed = SCROLL_PX_S) {
+function setLine(id, text, always, speed = SCROLL_PX_S, holdMs = 0) {
   const track = $(id), line = track.parentElement;
   line.classList.remove("ticking");
+  track.getAnimations().forEach((a) => a.cancel());
   const one = el("span", null, text);
   track.replaceChildren(one);
   if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
@@ -425,6 +428,12 @@ function setLine(id, text, always, speed = SCROLL_PX_S) {
     track.append(el("span", null, text));   // second copy: the strip slides one copy's width, then repeats seamlessly
     const w = one.getBoundingClientRect().width;
     track.style.setProperty("--dur", `${(w / speed).toFixed(2)}s`);   // same px per second whatever the length
+    if (holdMs) {   // rest at the start of every loop, then scroll one copy's width at the same speed
+      const move = (w / speed) * 1000, total = holdMs + move;
+      track.style.animation = "none";
+      track.animate([{ transform: "translateX(0)" }, { transform: "translateX(0)", offset: holdMs / total },
+                     { transform: "translateX(-50%)" }], { duration: total, iterations: Infinity, easing: "linear" });
+    } else track.style.animation = "";
   }
 }
 function lcd(np) {
@@ -727,8 +736,8 @@ function showNow(np, force) {
   tl.append(Object.assign(el("span", "track"), { id: "vfdTitle" })); al.append(Object.assign(el("span", "track"), { id: "vfdArtist" }));
   v.append(tl, al);
   d.replaceChildren(art(np.artwork), v);
-  setLine("vfdTitle", cleanTitle(np.title), false);   // scrolls only if it doesn't fit
-  setLine("vfdArtist", np.artist, false);
+  setLine("vfdTitle", cleanTitle(np.title), false, SCROLL_PX_S, 1500);   // scrolls only if it doesn't fit, resting 1.5 s each loop
+  setLine("vfdArtist", np.artist, false, SCROLL_PX_S, 1500);
   const song = `${np.title}|${np.artist}`;
   if (song !== lastNow) { lastNow = song; tune(song); }
 }
