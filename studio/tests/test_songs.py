@@ -199,3 +199,45 @@ def test_song_keys_keep_letters_of_every_script_like_the_worker():
     assert songs.song_key("Кино", "Группа крови") == "кино|группа крови"
     assert songs.song_key("坂本九", "上を向いて歩こう") != songs.song_key("Кино", "Группа крови")
     assert len(songs.song_key("Q" * 300, "B" * 300)) == 161
+
+
+class FakeService:
+    """A download service as get_song sees it: callable, plus what it remembers about its last try."""
+
+    def __init__(self, name, order, works=True, failed_at=0.0, hangs=False):
+        self.name, self.order, self.works, self.failed_at, self.hangs, self.timed_out = name, order, works, failed_at, hangs, False
+
+    def __call__(self, vid, dest):
+        self.order.append((self.name, vid))
+        if not self.works:
+            self.timed_out = self.hangs
+            raise SongNotFound(f"{self.name} failed")
+        dest.write_bytes(b"ID3")
+
+
+def test_a_service_that_failed_recently_is_tried_after_the_ones_that_work(tmp_path):
+    # 2026-10-08: with a blocked service first, every request waited out its failures again
+    order = []
+    blocked = FakeService("blocked", order, works=False, failed_at=100.0)
+    older = FakeService("older", order, works=False, failed_at=50.0)
+    fine = FakeService("fine", order)
+    item = {"songKey": "abba|sos", "title": "SOS", "artist": "ABBA", "durationMs": 200000}
+    songs.get_song(item, tmp_path, search=lambda q: [c("SOS", id="v1")], download=[blocked, older, fine], tries=2)
+    assert order == [("fine", "v1")]
+    order.clear()
+    (tmp_path / f"{songs.cache_name('abba|sos')}.mp3").unlink()
+    fine.works = False
+    with pytest.raises(SongNotFound):
+        songs.get_song(item, tmp_path, search=lambda q: [c("SOS", id="v1")], download=[blocked, older, fine], tries=2)
+    assert [n for n, _ in order] == ["fine", "older", "blocked"]   # the oldest failure is likeliest to have recovered
+
+
+def test_a_service_that_hangs_is_not_tried_on_the_other_matches(tmp_path):
+    order = []
+    hanging = FakeService("hanging", order, works=False, hangs=True)
+    backup = FakeService("backup", order, works=False)
+    cands = [c("SOS", channel="ABBA - Topic", duration=200, id="v1"), c("SOS (lyrics)", duration=200, id="v2")]
+    item = {"songKey": "abba|sos", "title": "SOS", "artist": "ABBA", "durationMs": 200000}
+    with pytest.raises(SongNotFound):
+        songs.get_song(item, tmp_path, search=lambda q: cands, download=[hanging, backup], tries=2)
+    assert order == [("hanging", "v1"), ("backup", "v1"), ("backup", "v2")]

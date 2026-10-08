@@ -188,14 +188,23 @@ def get_song(item: dict, cache_dir: Path,
         raise SongNotFound(f"No usable match for {item['artist']} - {item['title']}")
     reasons = []
     downloaders = download if isinstance(download, (list, tuple)) else [download]
-    # every candidate with the fast downloader first; slower fallbacks only after that
+    # Services whose last try worked come first; ones that failed recently go last, the oldest
+    # failure first (likeliest to have recovered). Otherwise a blocked service at the head of
+    # the list made every request wait out its failures again.
+    downloaders = sorted(downloaders, key=lambda d: getattr(d, "failed_at", 0.0) or 0.0)
+    # every candidate with the first service before any fallback
     attempts = [(dl, best, conf) for dl in downloaders for best, conf in options[:tries]]
+    hung = set()
     for dl, best, confidence in attempts:
+        if id(dl) in hung:   # it hung on one match: don't wait out the same on the next
+            continue
         try:
             dl(best.id, path)
         except Exception as e:   # blocked, unavailable, a bad reply: try the next
             reasons.append(f"{best.id}: {_reason(e) if isinstance(e, subprocess.SubprocessError) else e}")
             log.warning("download %s failed: %s", best.id, reasons[-1])
+            if getattr(dl, "timed_out", False):
+                hung.add(id(dl))
             continue
         if verify is not None and not verify(path):   # bytes that aren't audio never reach the cache
             path.unlink(missing_ok=True)

@@ -156,3 +156,26 @@ def test_two_processes_sharing_the_search_cache_keep_each_others_entries(tmp_pat
     assert set(json.loads(f.read_text())) == {"abba waterloo", "abba sos"}
     f.write_text('{"half')   # a torn file never crashes a new reader
     assert sources.YouTubeSearch("k", client(handler), f).cache == {}
+
+
+def test_apify_download_remembers_failures_and_hangs(tmp_path):
+    clock = iter([0.0, 5.0, 100.0, 300.0, 400.0, 410.0])
+    fail = {"on": True}
+
+    def handler(r):
+        if "streamers" in r.url.path:
+            if fail["on"]:
+                return httpx.Response(400, json={"error": {"type": "run-timeout-exceeded"}})
+            return httpx.Response(200, json=[{"downloadedFileUrl": "https://api.apify.com/v2/key-value-stores/s/records/a.mp3"}])
+        return httpx.Response(200, content=b"ID3audio")
+
+    dl = sources.ApifyDownload("tok", client(handler), only="streamers", clock=lambda: next(clock))
+    with pytest.raises(SongNotFound):
+        dl("abc", tmp_path / "x.mp3")          # fails fast (5 s): a failure, not a hang
+    assert dl.failed_at == 5.0 and not dl.timed_out
+    with pytest.raises(SongNotFound):
+        dl("abc", tmp_path / "x.mp3")          # fails after 200 s: it hung
+    assert dl.failed_at == 300.0 and dl.timed_out
+    fail["on"] = False
+    dl("abc", tmp_path / "x.mp3")
+    assert dl.failed_at == 0.0 and not dl.timed_out

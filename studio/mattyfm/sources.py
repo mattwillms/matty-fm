@@ -11,6 +11,7 @@ thenetaji/youtube-music-downloader, lurkapi/youtube-to-mp3-audio-downloader.
 
 import html
 import os
+import time
 import json
 import logging
 import re
@@ -89,8 +90,13 @@ class YouTubeSearch:
 class ApifyDownload:
     """`only`: restrict to one actor ("streamers", "thenetaji" or "lurkapi"); default tries all in order."""
 
-    def __init__(self, token: str, http: httpx.Client, only: str | None = None):
-        self.token, self.http, self.only = token, http, only
+    HANG_S = 150   # a failure this slow means the service hung (run-sync gives up at 170 s)
+
+    def __init__(self, token: str, http: httpx.Client, only: str | None = None, clock=time.monotonic):
+        self.token, self.http, self.only, self.clock = token, http, only, clock
+        # what songs.get_song reads to order services and skip a hung one: when this last
+        # failed (0 = its last try worked, or it hasn't been tried) and whether that was a hang
+        self.failed_at, self.timed_out = 0.0, False
 
     def _run(self, actor: str, body: dict) -> list:
         r = self.http.post(f"{APIFY}/{actor}/run-sync-get-dataset-items", timeout=200,
@@ -101,6 +107,16 @@ class ApifyDownload:
         return r.json() if isinstance(r.json(), list) else []
 
     def __call__(self, video_id: str, dest: Path) -> None:
+        started = self.clock()
+        try:
+            self._download(video_id, dest)
+        except Exception:
+            self.failed_at = self.clock()
+            self.timed_out = self.failed_at - started >= self.HANG_S
+            raise
+        self.failed_at, self.timed_out = 0.0, False
+
+    def _download(self, video_id: str, dest: Path) -> None:
         url = f"https://www.youtube.com/watch?v={video_id}"
         attempts = [
             # first since 2026-10-08, when YouTube blocked the other two; it also returns a direct
