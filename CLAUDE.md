@@ -40,3 +40,4 @@ Version 0.1.0 (semver = big.small.bug).
 - SomaFM returns 200 to curl from this machine; a 403 seen from a subagent sandbox was not a block.
 - **Outage recovery:** the studio unit is enabled and user lingering is on (`loginctl enable-linger matt`), so a power cut brings back mattyfm-files and mattyfm-studio without a login; the Pi unit is enabled with Restart=always. Queue state lives in the Durable Object's storage. A request cut off early without a Skip (Pi restart) goes back to the front once.
 - Bumpers rotate as a shuffle bag per kind (media/breaks/plays.json): every clip plays before any repeats.
+- **Every row a queue query looks at is billed** (free plan: 5M rows read/day; it took the queue down on 2026-10-08; the account is now on Workers Paid). Polls must stay indexed: `worker/test/reads.test.ts` pins rows per poll, queries over 500 rows log "heavy query" to Workers Logs, and `python3 tools/usage.py [hours]` shows hourly requests and rows read.
