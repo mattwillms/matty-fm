@@ -17,7 +17,7 @@ from .pilink import PiLink
 from .worker_api import WorkerAPI
 
 BEAT_S = 3.0
-WORKERS = 2
+WORKERS = 3   # one slow or stuck request can't hold every slot (cached songs wait behind it otherwise)
 log = logging.getLogger("mattyfm")
 
 
@@ -100,18 +100,44 @@ def main() -> None:
     last_seen = None   # (source, current, queued) — logged whenever it changes   # executed locally; acked every beat until the Worker drops them
     last_error = ""
 
+    unsent: dict[str, dict] = {}   # finished results the Worker hasn't taken yet: re-sent every beat
+
     def run_job(item: dict) -> None:
         nonlocal last_error
+        result = None
         try:
             result = prepare.prepare(item, deps)
             api.result(result)
             log.info("%s %s: %s - %s", item["id"], result["status"], item["artist"], item["title"])
         except Exception as e:
-            last_error = f"result {item['id']}: {e}"[:200]
+            last_error = f"result {item['id']}: {type(e).__name__}"[:200]
             log.exception("job %s", item["id"])
-        finally:
+            if result is not None:   # the work is done, only the post failed: keep it, and its lease
+                with lock:
+                    unsent[item["id"]] = result
+                return
+        with lock:
+            working.discard(item["id"])
+
+    def resend() -> None:
+        """Results whose post failed (the Worker blinked): until now they were dropped, the lease ran
+        out, and the whole song was prepared again, about 2 minutes later."""
+        with lock:
+            todo = list(unsent.items())
+        for rid, result in todo:
+            try:
+                api.result(result)
+            except Exception as e:
+                tries = result.get("_tries", 0) + 1
+                result["_tries"] = tries
+                log.warning("result %s still not delivered (try %d): %s", rid, tries, type(e).__name__)
+                if tries < 20:
+                    return   # still unwell: next beat
+                log.error("result %s given up after %d tries: its lease lapses and it's prepared again", rid, tries)
+            log.info("%s %s delivered late", rid, result["status"])
             with lock:
-                working.discard(item["id"])
+                unsent.pop(rid, None)
+                working.discard(rid)
 
     while True:
         started = time.monotonic()
@@ -133,6 +159,7 @@ def main() -> None:
                         "cached": sorted(p.stem for p in (cfg.media_dir / "cache").glob("*.mp3"))}
             reply = api.beat(body)
             pushed = []
+            resend()
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]
             done_cmds = {c["id"] for c in reply["commands"]} | {c["id"] for c in fresh}
             reply = {**reply, "commands": fresh}

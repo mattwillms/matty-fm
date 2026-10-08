@@ -10,6 +10,7 @@ thenetaji/youtube-music-downloader, lurkapi/youtube-to-mp3-audio-downloader.
 """
 
 import html
+import threading
 import os
 import time
 import json
@@ -47,6 +48,7 @@ class YouTubeSearch:
     def __init__(self, key: str, http: httpx.Client, cache_file: Path):
         self.key, self.http, self.cache_file = key, http, cache_file
         self.cache = self._read()
+        self.lock = threading.Lock()   # two prepare threads share this object (and its temp file name)
 
     def _read(self) -> dict:
         try:
@@ -77,14 +79,22 @@ class YouTubeSearch:
                            channel=html.unescape(i["snippet"]["channelTitle"]),
                            duration=float(lengths.get(i["id"]["videoId"], 0)))
                  for i in items if lengths.get(i["id"]["videoId"])]
-        self.cache[query] = [c.__dict__ for c in cands]
-        # the studio and tools/precache.py share this file: merge what the other wrote, then
-        # swap the file in whole, so neither drops the other's entries or reads half a file
-        self.cache = {**self._read(), **self.cache}
-        tmp = self.cache_file.with_name(f"{self.cache_file.name}.{os.getpid()}.tmp")
-        tmp.write_text(json.dumps(self.cache))
-        tmp.replace(self.cache_file)
+        with self.lock:
+            self.cache[query] = [c.__dict__ for c in cands]
+            # the studio and tools/precache.py share this file: merge what the other wrote, then
+            # swap the file in whole, so neither drops the other's entries or reads half a file
+            self.cache = {**self._read(), **self.cache}
+            try:
+                tmp = self.cache_file.with_name(f"{self.cache_file.name}.{os.getpid()}.tmp")
+                tmp.write_text(json.dumps(self.cache))
+                tmp.replace(self.cache_file)
+            except OSError as e:   # the answer is good even if saving it isn't: never fail the request
+                log.warning("search cache not saved: %s", e)
         return cands
+
+
+class FetchTooSlow(Exception):
+    """The finished file arrived too slowly to be worth waiting for."""
 
 
 class ApifyDownload:
@@ -116,6 +126,26 @@ class ApifyDownload:
             raise
         self.failed_at, self.timed_out = 0.0, False
 
+    FETCH_LIMIT_S = 120   # the whole finished file: a per-read timeout lets a trickle run on for ever
+
+    def _fetch(self, link: str, dest: Path) -> int:
+        """Stream the finished file to dest within FETCH_LIMIT_S overall; nothing is left behind on failure."""
+        tmp = dest.with_name(dest.stem + ".dl")
+        end, size = self.clock() + self.FETCH_LIMIT_S, 0
+        try:
+            with self.http.stream("GET", link, timeout=30) as f:
+                f.raise_for_status()
+                with tmp.open("wb") as out:
+                    for chunk in f.iter_bytes():
+                        if self.clock() > end:
+                            raise FetchTooSlow()
+                        out.write(chunk)
+                        size += len(chunk)
+            tmp.rename(dest)
+            return size
+        finally:
+            tmp.unlink(missing_ok=True)
+
     def _download(self, video_id: str, dest: Path) -> None:
         url = f"https://www.youtube.com/watch?v={video_id}"
         attempts = [
@@ -145,13 +175,12 @@ class ApifyDownload:
                     reasons.append(f"{actor.split('~')[0]}: {(items[0].get('error') if items else 'no result')}"[:160])
                     log.warning("apify %s gave no file for %s: %s", actor, video_id, reasons[-1])
                     continue
-                f = self.http.get(link, timeout=60)
-                f.raise_for_status()
-                tmp = dest.with_name(dest.stem + ".dl")
-                tmp.write_bytes(f.content)
-                tmp.rename(dest)
-                log.info("apify %s downloaded %s (%d bytes)", actor.split("~")[0], video_id, len(f.content))
+                size = self._fetch(link, dest)
+                log.info("apify %s downloaded %s (%d bytes)", actor.split("~")[0], video_id, size)
                 return
+            except FetchTooSlow:
+                reasons.append(f"{actor.split('~')[0]}: file fetch too slow")
+                log.warning("apify %s file for %s came too slowly", actor, video_id)
             except httpx.HTTPError as e:   # str(e) can contain URLs: report only the type and status
                 status = getattr(getattr(e, "response", None), "status_code", "")
                 reasons.append(f"{actor.split('~')[0]}: {type(e).__name__} {status}".strip())

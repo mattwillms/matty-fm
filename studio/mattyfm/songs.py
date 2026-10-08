@@ -6,6 +6,7 @@ import logging
 import re
 import subprocess
 import sys
+import time
 import unicodedata
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from pathlib import Path
 
 CONFIDENT = 50.0
 MAX_TRIES = 3
+DOWNLOAD_BUDGET_S = 240   # one song's downloads, all services and matches together
 MAX_SECONDS = 600
 PENALTY_WORDS = ("live", "remix", "karaoke", "cover", "extended", "sped up", "slowed",
                  "8d", "instrumental", "nightcore", "reverb", "acoustic", "demo",
@@ -167,7 +169,9 @@ def cache_name(key: str) -> str:
 def get_song(item: dict, cache_dir: Path,
              search: Callable[[str], list[Candidate]] | None = yt_search,
              download: Callable[[str, Path], None] | list | None = yt_download,
-             tries: int = MAX_TRIES, verify: Callable[[Path], bool] | None = None) -> SongFile:
+             tries: int = MAX_TRIES, verify: Callable[[Path], bool] | None = None,
+             verify_cached: Callable[[Path], bool] | None = None,
+             budget_s: float = DOWNLOAD_BUDGET_S, clock: Callable[[], float] = time.monotonic) -> SongFile:
     cache_dir.mkdir(parents=True, exist_ok=True)
     key = item["songKey"]
     path, meta = cache_dir / f"{cache_name(key)}.mp3", cache_dir / f"{cache_name(key)}.json"
@@ -177,12 +181,19 @@ def get_song(item: dict, cache_dir: Path,
         if hit_path.exists() and hit_meta.exists():
             try:
                 m = json.loads(hit_meta.read_text())
-            except ValueError:   # a half-written or corrupt entry is a miss, not a crash
+                hit = SongFile(hit_path, float(m["confidence"]), str(m["video_id"]), m.get("title", ""), m.get("channel", ""))
+            except Exception:   # half-written, hand-edited or odd metadata: a miss, not a crash
                 log.warning("cache: %s has unreadable metadata; fetching again", k)
+                continue
+            check = verify_cached or verify
+            if check is not None and not check(hit_path):   # empty or junk: drop it and fetch again
+                log.warning("cache: %s is not playable audio; fetching again", k)
+                hit_path.unlink(missing_ok=True)
+                hit_meta.unlink(missing_ok=True)
                 continue
             if k != key:
                 log.info("cache: %s plays the cached %s", key, k)
-            return SongFile(hit_path, float(m["confidence"]), m["video_id"], m.get("title", ""), m.get("channel", ""))
+            return hit
     if search is None or download is None:
         raise SongNotFound("Not cached, and no song source is configured (APIFY_TOKEN / YOUTUBE_API_KEY)")
     duration_s = item["durationMs"] / 1000 if item.get("durationMs") else None
@@ -202,7 +213,11 @@ def get_song(item: dict, cache_dir: Path,
     # every candidate with the first service before any fallback
     attempts = [(dl, best, conf) for dl in downloaders for best, conf in options[:tries]]
     hung = set()
+    deadline = clock() + budget_s
     for dl, best, confidence in attempts:
+        if clock() >= deadline:   # every service slow at once: give up, rather than hold a slot for 15 min
+            reasons.append(f"gave up after {budget_s / 60:.0f} min of downloads")
+            break
         if id(dl) in hung:   # it hung on one match: don't wait out the same on the next
             continue
         try:

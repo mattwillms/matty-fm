@@ -55,6 +55,7 @@ def _ready(tmp_path, monkeypatch, actual_s, duration_ms, channel="Nielson Lucas"
     monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: "eleven")
     monkeypatch.setattr(prepare.mix, "prepare_files", lambda *a, **k: (actual_s, 3.0))
     monkeypatch.setattr(prepare.mix, "duration", lambda p: actual_s)
+    monkeypatch.setattr(prepare.mix, "decoded_duration", lambda p: actual_s)   # lengths are checked by decoding
     return prepare.prepare({**ITEM, "durationMs": duration_ms}, deps(tmp_path))
 
 

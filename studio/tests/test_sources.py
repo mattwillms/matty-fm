@@ -159,7 +159,8 @@ def test_two_processes_sharing_the_search_cache_keep_each_others_entries(tmp_pat
 
 
 def test_apify_download_remembers_failures_and_hangs(tmp_path):
-    clock = iter([0.0, 5.0, 100.0, 300.0, 400.0, 410.0])
+    import itertools
+    clock = itertools.chain([0.0, 5.0, 100.0, 300.0, 400.0], itertools.repeat(410.0))   # then still (the fetch reads it too)
     fail = {"on": True}
 
     def handler(r):

@@ -1,6 +1,7 @@
 """Turn one claimed request into a ready, pre-mixed MP3 in media/ready/."""
 
 import logging
+import shutil
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -36,7 +37,7 @@ def check_match(song, item: dict) -> tuple[float, str]:
     and a short note saying where the audio came from and how well it matches."""
     confidence = song.confidence
     try:
-        actual = mix.duration(song.path)
+        actual = mix.decoded_duration(song.path)
     except Exception:   # advisory only: an unreadable length must not stop the song
         return confidence, f"{song.title or 'video'}: length unreadable"
     if song.channel.endswith(" - Topic"):
@@ -60,10 +61,12 @@ def check_match(song, item: dict) -> tuple[float, str]:
     return confidence, f"{title}{source}; {length}"
 
 
-def is_audio(path: Path) -> bool:
-    """A download is only cached if ffprobe reads it as audio of a plausible length."""
+def is_audio(path: Path, expected_s: float | None = None) -> bool:
+    """Audio that decodes for over 20 s and, given the catalog length, at least 3/4 of it: a
+    truncated download keeps its full-length header, so the header alone would pass it."""
     try:
-        return mix.duration(path) > 20
+        got = mix.decoded_duration(path)
+        return got > 20 and (not expected_s or got >= 0.75 * expected_s)
     except Exception:
         return False
 
@@ -74,7 +77,8 @@ def prepare(item: dict, deps: Deps) -> dict:
     t0 = time.monotonic()
     try:
         song = songs.get_song(item, media / "cache", search=deps.search, download=deps.download, tries=2,
-                              verify=is_audio)
+                              verify=lambda p: is_audio(p, (item.get("durationMs") or 0) / 1000),
+                              verify_cached=is_audio)   # a cached shorter edit is fine; only junk is dropped
     except songs.SongNotFound as e:
         log.warning("%s song not found (%.1fs): %s", rid, time.monotonic() - t0, e)
         return {"id": rid, "status": "failed", "error": str(e)}
@@ -99,8 +103,17 @@ def prepare(item: dict, deps: Deps) -> dict:
         log.info("%s voice in %.1fs via %s", rid, time.monotonic() - t1, engine)
         t1 = time.monotonic()
         mixing = True
-        seconds, voice_s = mix.prepare_files(song.path, raw_voice, media / "ready" / f"{rid}.mp3",
-                                             media / "voice" / f"{rid}.mp3", deps.cfg.sample_rate)
+        try:
+            seconds, voice_s = mix.prepare_files(song.path, raw_voice, media / "ready" / f"{rid}.mp3",
+                                                 media / "voice" / f"{rid}.mp3", deps.cfg.sample_rate)
+        except Exception:   # a voice reply that looked like audio but won't decode: the generic clip, not no song
+            if engine == "generic" or not is_audio(song.path):
+                raise
+            log.warning("%s voice from %s would not mix; using the generic clip", rid, engine)
+            shutil.copyfile(media / "assets" / f"generic-{line.tone}.mp3", raw_voice)
+            engine = "generic"
+            seconds, voice_s = mix.prepare_files(song.path, raw_voice, media / "ready" / f"{rid}.mp3",
+                                                 media / "voice" / f"{rid}.mp3", deps.cfg.sample_rate)
     except Exception as e:  # any failure here must not kill the studio
         log.exception("prepare %s failed", item["id"])
         if mixing and not is_audio(song.path):

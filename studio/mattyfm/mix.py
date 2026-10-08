@@ -22,15 +22,29 @@ VOICE_CHAIN = ("highpass=f=80,equalizer=f=3000:t=q:w=1:g=3,"
                "acompressor=threshold=-18dB:ratio=4:attack=5:release=100:makeup=2")
 
 
+TOOL_TIMEOUT_S = 120   # no ffmpeg run on one song takes this long: a hung one must not hold a slot forever
+
+
 def _ffmpeg(*args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-y", *args],
-                          capture_output=True, text=True, check=True)
+    return subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-y", *args], stdin=subprocess.DEVNULL,
+                          capture_output=True, text=True, check=True, timeout=TOOL_TIMEOUT_S)
 
 
 def duration(path: Path) -> float:
+    """The length the file's header claims (fast; a cut-off MP3 still claims its full length)."""
     out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
-                          "-of", "csv=p=0", str(path)], capture_output=True, text=True, check=True)
+                          "-of", "csv=p=0", str(path)], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                         check=True, timeout=30)
     return float(out.stdout.strip())
+
+
+def decoded_duration(path: Path) -> float:
+    """Seconds of audio that actually decode: what a truncated download really holds."""
+    out = subprocess.run(["ffmpeg", "-v", "error", "-nostats", "-i", str(path), "-map", "0:a:0", "-f", "null",
+                          "-progress", "pipe:1", "-"], stdin=subprocess.DEVNULL, capture_output=True, text=True,
+                         check=True, timeout=TOOL_TIMEOUT_S).stdout
+    us = [int(v) for k, _, v in (line.partition("=") for line in out.splitlines()) if k == "out_time_us" and v.isdigit()]
+    return max(us, default=0) / 1e6
 
 
 def _measure(path: Path, target: int) -> dict:
