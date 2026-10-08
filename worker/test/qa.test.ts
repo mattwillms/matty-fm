@@ -572,4 +572,26 @@ describe("QA round", () => {
     expect(up.map((u) => (u.joke ? `joke:${u.names}` : u.title))).toEqual(["joke:Matt", "Voulez-Vous", "joke:Nan", "Eagle"]);
     expect((await p.guestState("x")).waitingCount).toBe(2);   // songs only
   });
+  it("announcements: urgent ones go first, one urgent per phone per hour; jokes wait behind them", async () => {
+    const p = stub("announce");
+    const j = await p.submitJoke("me", { name: "Ray", text: "Why did the chicken cross the road? Worms." });
+    const a = await p.submitJoke("you", { name: "Ann", text: "Cake is on the back table at 3 o'clock.", kind: "announcement" });
+    const u = await p.submitJoke("you", { name: "Ann", text: "Whoever owns the red truck, your lights are on.", kind: "announcement", urgent: true });
+    expect([j.ok, a.ok, u.ok]).toEqual([true, true, true]);
+    const r = await p.beat({ ...beat, wantJokes: 2 });
+    expect(r.jokeJobs[0]).toEqual(expect.objectContaining({ id: u.id, kind: "announcement", urgent: true }));
+    expect((await p.submitJoke("you", { name: "Ann", text: "Another urgent thing to say here.", kind: "announcement", urgent: true })).ok).toBe(false);
+    for (const x of [j, a, u]) await p.jokeResult({ id: x.id!, status: "ready", file: `${x.id}.mp3`, seconds: 8, script: "x" });
+    expect((await p.beat(beat)).nextJoke).toEqual(expect.objectContaining({ id: u.id, urgent: true, kind: "announcement" }));
+    const up = (await p.guestState("x")).upNext as { joke?: boolean; title: string }[];
+    expect(up.map((x) => x.title)).toEqual(["An urgent announcement", "A joke", "An announcement"]);
+  });
+
+  it("the host's announcements are always urgent and need no phone", async () => {
+    const p = stub("announce-host");
+    expect((await p.adminAction({ action: "announce", text: "Fish is ready! Come and get it." })).ok).toBe(true);
+    expect((await p.adminAction({ action: "announce", text: "" })).ok).toBe(false);
+    const r = await p.beat({ ...beat, wantJokes: 1 });
+    expect(r.jokeJobs[0]).toEqual(expect.objectContaining({ kind: "announcement", urgent: true, source: "host" }));
+  });
 });

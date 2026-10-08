@@ -141,6 +141,12 @@
   .meter i { background: #6fe3c814; border-radius: 1px; }
   .meter i.lit { background: var(--teal); box-shadow: 0 0 4px #6fe3c8aa; }
   #next li.joke-up { font-style: italic; }   /* the note card's own ink */
+  .seg { display: flex; gap: 6px; margin-top: 14px; background: #0000002e; padding: 4px; border-radius: 12px; }
+  .seg .segb { flex: 1; background: transparent; color: var(--cream-dim); border-radius: 9px; padding: 9px 6px; font-weight: 600; }
+  .seg .segb[aria-pressed="true"] { background: var(--orange); color: #241208; }
+  label.check { display: flex; gap: 10px; align-items: flex-start; margin: 14px 0 0; color: var(--cream); font-weight: 500; cursor: pointer; }
+  label.check input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--orange); flex: none; }
+  label.check small { color: var(--cream-dim); font-weight: 400; }
   .jokes-head { margin: 18px 0 0; font-size: .85rem; font-weight: 600; letter-spacing: .02em; color: var(--cream-dim); }
   .jokes { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 8px; }
   .jokes li { background: #0000002e; border-radius: 10px; padding: 10px 12px; }
@@ -431,13 +437,19 @@
   <section class="panel" id="mineBox" hidden><h2>Your requests</h2><ul id="mine"></ul></section>
 
   <section class="panel" id="jokeBox">
-    <h2>Tell the DJ a joke</h2>
+    <h2>Jokes and announcements</h2>
     <p class="hint" style="margin-top:6px">The DJ reads them on air between songs.</p>
-    <label for="joke">Your joke</label><textarea id="joke" maxlength="400"></textarea>
+    <div class="seg" role="group" aria-label="What are you sending?">
+      <button type="button" class="segb" data-kind="joke" aria-pressed="true">Joke</button>
+      <button type="button" class="segb" data-kind="announcement" aria-pressed="false">Announcement</button>
+    </div>
+    <label for="joke" id="jokeLabel">Your joke</label><textarea id="joke" maxlength="400"></textarea>
+    <label class="check" id="urgentRow" hidden><input type="checkbox" id="urgent">
+      <span>Urgent: read it as soon as it's ready <small>(one an hour)</small></span></label>
     <label for="jname">Your name</label><input id="jname" maxlength="40" autocomplete="given-name">
-    <div class="row"><button id="jsend" type="button">Send the joke</button></div>
+    <div class="row"><button id="jsend" type="button">Send to the DJ</button></div>
     <p id="jokeErr" class="hint" style="color:var(--bad)"></p>
-    <p class="jokes-head" id="myJokesHead" hidden>Your jokes</p>
+    <p class="jokes-head" id="myJokesHead" hidden>Yours</p>
     <ul id="myJokes" class="jokes"></ul>
   </section>
 
@@ -1018,19 +1030,29 @@ function showJokes(list) {
   $("myJokes").replaceChildren(...(list || []).map((j) => {
     const [label, cls] = JOKE_STATUS[j.status] || [j.status, ""];
     const li = el("li");
-    li.append(el("div", "jt", `“${j.text}”`), el("div", "js " + cls, label));
+    const what = j.kind === "announcement" ? (j.urgent ? "Urgent announcement · " : "Announcement · ") : "";
+    li.append(el("div", "jt", `“${j.text}”`), el("div", "js " + cls, what + label));
     return li;
   }));
 }
+let sendKind = "joke";
+document.querySelectorAll(".seg .segb").forEach((b) => b.onclick = () => {
+  sendKind = b.dataset.kind;
+  document.querySelectorAll(".seg .segb").forEach((x) => x.setAttribute("aria-pressed", String(x === b)));
+  $("jokeLabel").textContent = sendKind === "joke" ? "Your joke" : "Your announcement";
+  $("urgentRow").hidden = sendKind !== "announcement";
+  if (sendKind !== "announcement") $("urgent").checked = false;
+});
 $("jsend").onclick = () => busy($("jsend"), "Sending…", async () => {
   try {
+    const urgent = sendKind === "announcement" && $("urgent").checked;
     const r = await api("/api/joke", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: $("jname").value, text: $("joke").value }), signal: AbortSignal.timeout(15000) });
+      body: JSON.stringify({ name: $("jname").value, text: $("joke").value, kind: sendKind, urgent }), signal: AbortSignal.timeout(15000) });
     if (!r.ok) { $("jokeErr").textContent = r.error; toast(r.error, true); return; }
     $("jokeErr").textContent = "";
     try { localStorage.setItem("mfm_name", $("jname").value); } catch {}
-    toast("Joke sent! The DJ will tell it between songs.");
-    $("joke").value = ""; refresh();
+    toast(urgent ? "Sent! The DJ will read it as soon as it's ready." : "Sent! The DJ will read it between songs.");
+    $("joke").value = ""; $("urgent").checked = false; refresh();
   } catch (e) {
     const m = e.message === "gate" ? $("gate").textContent : "Didn't send. Check your connection and try again.";
     $("jokeErr").textContent = m; toast(m, true);

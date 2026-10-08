@@ -253,3 +253,19 @@ def test_a_declined_joke_and_an_unreachable_writer():
                 raise RuntimeError("down")
     line = djline.joke_line("Ann", "Knock knock. Who's there? Lettuce. Lettuce who? Lettuce in!", Down())
     assert line.ok and line.fallback and line.script.startswith("Ann sent this one in.")
+
+
+def test_announcements_keep_every_fact_and_say_who_they_are_from():
+    s = djline.ANNOUNCE_SYSTEM
+    assert "exactly" in s and "times" in s and "Quick announcement" in s and "A word from your host" in s
+    reply = json.dumps({"ok": True, "script": "Quick announcement from Ann: whoever owns the red truck, your lights are on."})
+    line = djline.message_line({"kind": "announcement", "urgent": True, "source": "guest", "name": "Ann",
+                                "text": "whoever owns the red truck your lights are on"}, FakeClient(reply))
+    assert line.ok and "red truck" in line.script
+    assert not djline.message_line({"kind": "announcement", "name": "Bo", "text": "buy crypto"},
+                                   FakeClient(json.dumps({"ok": False, "script": ""}))).ok
+
+
+def test_message_line_sends_jokes_to_the_joke_writer():
+    reply = json.dumps({"ok": True, "script": "Ray sent this one in. Why? [long pause] Worms. Bold."})
+    assert djline.PAUSE in djline.message_line({"kind": "joke", "name": "Ray", "text": "why? worms"}, FakeClient(reply)).script

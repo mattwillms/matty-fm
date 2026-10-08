@@ -144,7 +144,7 @@ def main() -> None:
         """Write the joke up in the DJ's voice, record it, and hand it back as a ready break."""
         jid = job["id"]
         try:
-            line = djline.joke_line(job["name"], job["text"], deps.claude)
+            line = djline.message_line(job, deps.claude)   # a joke or an announcement
             if not line.ok:
                 api.joke_result({"id": jid, "status": "rejected"})
                 log.info("joke %s declined by the DJ", jid)
@@ -289,7 +289,11 @@ def main() -> None:
             soma = soma_np.last
             soma_age = time.time() - soma["since"] if soma else None
             kind = sched.due(status, time.monotonic(), soma_age, joke_ready=bool(next_joke))
-            if kind:
+            if next_joke and next_joke.get("urgent") and joke_file(next_joke):
+                # urgent (and every host announcement): read now, over whatever is on air; the console
+                # declines near a song's end, so it's tried again each beat until it's on
+                start_break("joke", soma_only=False)
+            elif kind:
                 start_break(kind)
             for action in feed.decide(status, reply):
                 if action[0] == "skip":
@@ -322,7 +326,7 @@ def main() -> None:
                     voice = cfg.media_dir / "voice" / f"{item['id']}.mp3"
                     try:
                         song_s = mix.duration(song)
-                        jf = joke_file(next_joke)
+                        jf = joke_file(next_joke) if next_joke and not next_joke.get("urgent") else None   # urgent goes as a break
                         told_elsewhere = next_joke and any(j == next_joke["id"] and r != item["id"] for r, (j, _) in joke_on.items())
                         has_message = any(r.get("message") for r in item.get("requesters") or [])
                         if voice.exists() and jf and not told_elsewhere and not has_message:

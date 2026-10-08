@@ -126,13 +126,16 @@
   .details .buttons { display: flex; flex-wrap: wrap; gap: 8px; }
   .details .buttons button { white-space: normal; max-width: 100%; height: auto; min-height: 34px; overflow-wrap: anywhere; }
   .empty { color: var(--faint); }
+  #annText { box-sizing: border-box; resize: vertical; min-height: 76px; }
+  .ann-row { display: flex; gap: 12px; align-items: center; justify-content: space-between; margin-top: 10px; font-size: .9rem; }
+  .ann-row button { flex: none; }
   .joke { padding: 12px 0; border-top: 1px solid var(--line); overflow-wrap: anywhere; }
   .joke:first-child { border-top: 0; }
   .joke .jhead { color: var(--faint); font-size: .85rem; margin-bottom: 2px; }
   .joke .jbtns { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
 
   /* ---- add a request ---- */
-  input { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 12px; }
+  input, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 12px; }
   input::placeholder { color: var(--faint); }
   input:focus { outline: none; border-color: var(--gold); }
   label { display: block; color: var(--muted); font-size: .9rem; margin: 12px 0 5px; }
@@ -168,6 +171,13 @@
     <div class="timer"><span class="what">Next bumper</span><span class="when" id="nextBumper">–</span></div>
   </section>
 
+
+  <section aria-label="Announcement">
+    <h2>Make an announcement</h2>
+    <textarea id="annText" maxlength="400" rows="3" aria-label="Announcement"></textarea>
+    <div class="ann-row"><span class="empty">The DJ reads yours as soon as it's recorded, over whatever is playing.</span>
+      <button class="primary" id="annSend" type="button">Announce</button></div>
+  </section>
 
   <section aria-label="Sound pads">
     <h2>Sound pads</h2>
@@ -247,7 +257,7 @@ async function call(path, body) {
   if (fromLink) { try { localStorage.setItem("mfm_t", token); } catch {} }   // a typo in the link never replaces a good token
   return r.json();
 }
-const DONE = { deleteJoke: "Joke removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
+const DONE = { announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
   mute: "Phone muted", unmute: "Phone unmuted", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
@@ -398,16 +408,18 @@ function itemBlock(it, lead, tools, detailButtons, showTags) {
   return wrap;
 }
 
-const JOKE = { pending: "Waiting", preparing: "Being written up", ready: "Recorded, told at the next song change",
+const JOKE = { pending: "Waiting", preparing: "Being written up", ready: "Recorded, up next",
                played: "Told on air", rejected: "DJ passed", failed: "Couldn't record" };
 function jokeBlock(j) {
   const box = el("div", "joke");
-  box.append(el("div", "jhead", `🎤 Joke from ${j.name} · ${JOKE[j.status] || j.status}`), el("div", "jtext", j.text));
+  const what = j.kind === "announcement" ? (j.source === "host" ? "📣 Your announcement" : `📣 ${j.urgent ? "Urgent announcement" : "Announcement"} from ${j.name}`)
+                                         : `🎤 Joke from ${j.name}`;
+  box.append(el("div", "jhead", `${what} · ${JOKE[j.status] || j.status}`), el("div", "jtext", j.text));
   if (j.script) box.append(quote("The DJ says", j.script));
   if (["pending", "preparing", "ready"].includes(j.status)) {
     const row = el("div", "jbtns");
-    row.append(btn("sm danger", "Delete", (e) => act({ action: "deleteJoke", id: j.id }, e)),
-               btn("sm ghost", `Mute ${j.name}'s phone`, (e) => confirm(`Mute ${j.name}'s phone? Their waiting requests and jokes are removed.`) && act({ action: "mute", device: j.device }, e)));
+    row.append(btn("sm danger", "Delete", (e) => act({ action: "deleteJoke", id: j.id }, e)));
+    if (j.source !== "host") row.append(btn("sm ghost", `Mute ${j.name}'s phone`, (e) => confirm(`Mute ${j.name}'s phone? Their waiting requests and jokes are removed.`) && act({ action: "mute", device: j.device }, e)));
     box.append(row);
   }
   return box;
@@ -465,6 +477,11 @@ function studioUp() { const a = state?.health?.ageS; return a != null && a <= 60
 function offline() {
   toast(state ? "Studio offline: not sent. Check the workstation." : "Not signed in: open this page from your admin link.", true);
 }
+$("annSend").onclick = (e) => {
+  const text = $("annText").value.trim();
+  if (!text) { toast("Type the announcement first", true); return; }
+  act({ action: "announce", text }, e).then(() => { $("annText").value = ""; });
+};
 $("skip").onclick = (e) => {
   if (!studioUp()) return offline();
   skippedId = state.items.find((i) => i.status === "playing")?.id ?? null; skippedAt = Date.now();
