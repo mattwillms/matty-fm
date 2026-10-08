@@ -1,0 +1,49 @@
+"""Settings from ~/.config/mattyfm/env and the environment."""
+
+import os
+from dataclasses import dataclass
+from pathlib import Path
+
+ENV_FILE = Path.home() / ".config" / "mattyfm" / "env"
+REPO = Path(__file__).resolve().parents[2]
+
+
+def load_env(path: Path = ENV_FILE) -> None:
+    """Load KEY=VALUE lines without overriding variables already set.
+
+    A trailing " # note" is a comment; a "#" inside a value is kept.
+    """
+    if not path.exists():
+        return
+    for line in path.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.split(" #")[0].strip())
+
+
+@dataclass(frozen=True)
+class Config:
+    worker_url: str
+    studio_secret: str
+    repo: Path
+    media_dir: Path
+    station_media_dir: str
+    telnet_host: str
+    telnet_port: int
+    sample_rate: int
+
+
+def load() -> Config:
+    load_env()
+    return Config(
+        worker_url=os.environ.get("MATTYFM_WORKER_URL", "https://fm.willms.co").rstrip("/"),
+        studio_secret=os.environ.get("STUDIO_SECRET", ""),
+        repo=REPO,
+        media_dir=REPO / "media",
+        station_media_dir="/media",
+        telnet_host="127.0.0.1",
+        telnet_port=1234,
+        sample_rate=int(os.environ.get("MATTYFM_RATE", "44100")),
+    )
