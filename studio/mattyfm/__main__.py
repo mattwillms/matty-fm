@@ -52,6 +52,7 @@ def main() -> None:
     clips = breaks.library(cfg.media_dir)
     log.info("break clips: %s", {k: len(v) for k, v in clips.items()} or "none (run tools/make_breaks.py)")
     on_break = threading.Event()   # one break at a time
+    last_dj: dict = {}             # the last thing the DJ said over SomaFM, for the admin page
     break_pool = ThreadPoolExecutor(1)   # breaks never take a song-preparation worker
 
     def run_break(kind: str) -> None:
@@ -76,6 +77,7 @@ def main() -> None:
                 url, seconds, text = f"breaks/{clip['file']}", clip["seconds"], clip["text"]
             if station.voice(url, seconds):
                 log.info("break on air (%s): %s", kind, text)
+                last_dj.update({"kind": kind, "text": text, "at": int(time.time() * 1000)})
                 sched.done(time.monotonic())
             else:
                 log.info("break %s declined by the console (busy)", kind)
@@ -125,7 +127,8 @@ def main() -> None:
             with lock:
                 body = {**status, "pushed": pushed, "working": sorted(working),
                         "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error,
-                        "wantNext": feed.wants_next(status), "soma": soma_np.get()}
+                        "wantNext": feed.wants_next(status), "soma": soma_np.get(),
+                        "lastDj": dict(last_dj) or None}
             reply = api.beat(body)
             pushed = []
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]

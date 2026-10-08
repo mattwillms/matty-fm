@@ -171,7 +171,24 @@ function renderNow() {
   text.append(el("div", "t", cleanTitle(np.title)), el("div", "sub", np.artist));
   text.append(el("div", "sub", np.soma ? "SomaFM · 70s" : `for ${np.names || "the family"}`));
   box.append(art(np.artwork), text);
-  $("now").replaceChildren(box);
+  const extra = [];
+  const playing = state.items.find((i) => i.status === "playing");
+  if (playing && !np.soma) {
+    for (const r of playing.requesters) {
+      if (r.message) { const q = el("div", "quote"); q.append(el("b", null, `${r.name} wrote`), document.createTextNode(r.message)); extra.push(q); }
+    }
+    const q = el("div", "quote");
+    q.append(el("b", null, `DJ read (${playing.tone || "funny"} voice)`), document.createTextNode(playing.djLine || "No DJ line recorded."));
+    extra.push(q);
+  } else if (state.health.lastDj) {
+    const d = state.health.lastDj, mins = Math.max(0, Math.round((Date.now() - d.at) / 60000));
+    const label = { backannounce: "back-announce", id: "station ID", goof: "goof" }[d.kind] || d.kind;
+    const q = el("div", "quote");
+    q.append(el("b", null, `Last on the mic, ${mins ? mins + " min ago" : "just now"} (${label})`), document.createTextNode(d.text));
+    extra.push(q);
+  }
+  const wrap = el("div", "detail"); wrap.style.padding = "12px 0 0"; wrap.append(...extra);
+  $("now").replaceChildren(box, ...(extra.length ? [wrap] : []));
 }
 
 function row(it, actions) {
