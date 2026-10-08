@@ -231,8 +231,7 @@
   .track { display: inline-flex; will-change: transform; backface-visibility: hidden; transform: translate3d(0,0,0); }
   .track span { flex: none; }
   .ticking .track span { padding-right: 3em; }
-  .ticking .track { animation: tick var(--dur, 12s) linear infinite; }
-  @keyframes tick { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
+
   .lamp { width: 12px; height: 12px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #6d6a5f, #3b3a33);
           box-shadow: inset 0 1px 2px #000a, 0 1px 0 #fff8; transition: background .4s, box-shadow .4s; }
   .lamp.on { background: radial-gradient(circle at 40% 35%, #d8ffd0, #4fd16a 45%, #1f8a35);
@@ -466,23 +465,32 @@ function shoutout(line, np) {
 }
 let lcdKey = "";
 const SCROLL_PX_S = 55;   // the title's scroll speed; the request screen runs at half that
+// Scrolling lines are moved by one frame loop, not a repeating CSS/Web animation: iPhone Safari
+// blanked the text for a frame each time such an animation started its next loop.
+const scrollers = new Map();   // track element -> { dist (px, unscaled), holdMs, moveMs, t0 }
+function scrollFrame(now) {
+  for (const [track, sc] of scrollers) {
+    if (!track.isConnected) { scrollers.delete(track); continue; }
+    const t = (now - sc.t0) % (sc.holdMs + sc.moveMs);
+    const x = t < sc.holdMs ? 0 : -sc.dist * (t - sc.holdMs) / sc.moveMs;
+    track.style.transform = `translate3d(${x.toFixed(2)}px,0,0)`;
+  }
+  requestAnimationFrame(scrollFrame);
+}
+requestAnimationFrame(scrollFrame);
 function setLine(id, text, always, speed = SCROLL_PX_S, holdMs = 0) {
   const track = $(id), line = track.parentElement;
   line.classList.remove("ticking");
-  track.getAnimations().forEach((a) => a.cancel());
+  scrollers.delete(track);
+  track.style.transform = "";
   const one = el("span", null, text);
   track.replaceChildren(one);
   if (always || one.scrollWidth > line.clientWidth) {
     line.classList.add("ticking");
     track.append(el("span", null, text));   // second copy: the strip slides one copy's width, then repeats seamlessly
-    const w = one.getBoundingClientRect().width;
-    track.style.setProperty("--dur", `${(w / speed).toFixed(2)}s`);   // same px per second whatever the length
-    if (holdMs) {   // rest at the start of every loop, then scroll one copy's width at the same speed
-      const move = (w / speed) * 1000, total = holdMs + move;
-      track.style.animation = "none";
-      track.animate([{ transform: "translate3d(0,0,0)" }, { transform: "translate3d(0,0,0)", offset: holdMs / total },
-                     { transform: "translate3d(-50%,0,0)" }], { duration: total, iterations: Infinity, easing: "linear" });
-    } else track.style.animation = "";
+    const w = one.getBoundingClientRect().width;   // as seen (the line is narrowed): sets the speed
+    // rest at the start of every loop (holdMs), then slide one copy's width at the same px per second
+    scrollers.set(track, { dist: one.offsetWidth, holdMs, moveMs: (w / speed) * 1000, t0: performance.now() });
   }
 }
 function lcd(np) {
