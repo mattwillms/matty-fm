@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>MattyFM Booth</title>
+<style>
+  :root { --bg:#16110c; --card:#2a1f15; --ink:#f6ead6; --muted:#c7a77c; --ok:#6cc070; --warn:#f5b829; --bad:#e85d4a; --hot:#f2711c; }
+  * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 system-ui, sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:12px 16px 40px; }
+  h1 { margin:.2em 0; font-size:1.5rem; } h2 { font-size:1.05rem; margin:0 0 .5em; color:var(--muted); }
+  section { background:var(--card); border-radius:12px; padding:12px; margin:12px 0; }
+  .health { display:flex; flex-wrap:wrap; gap:8px; } .pill { padding:4px 10px; border-radius:999px; background:#0005; }
+  .ok { color:var(--ok); } .warn { color:var(--warn); } .bad { color:var(--bad); }
+  button { font:inherit; border:0; border-radius:8px; padding:8px 12px; background:#4a3624; color:var(--ink); }
+  button.hot { background:var(--hot); color:#1a0f05; font-weight:700; } button.on { background:var(--bad); }
+  .switches { display:flex; flex-wrap:wrap; gap:8px; }
+  .item { border-top:1px solid #4a3624; padding:10px 0; } .item:first-child { border-top:0; }
+  .t { font-weight:700; } .small { color:var(--muted); font-size:.9rem; } .line { font-style:italic; margin:4px 0; }
+  .acts { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
+  input { width:100%; font:inherit; padding:10px; border-radius:8px; border:1px solid #4a3624; background:#0006; color:var(--ink); margin:4px 0; }
+</style>
+</head>
+<body>
+<main>
+  <h1>MattyFM Booth</h1>
+  <p id="auth" class="bad" hidden>Open this page from your admin link.</p>
+  <section><h2>Health</h2><div class="health" id="health"></div></section>
+  <section><h2>Switches</h2><div class="switches">
+    <button class="hot" id="skip">Skip current</button>
+    <button id="accepting"></button><button id="stopAfterCurrent"></button><button id="somaOnly"></button>
+  </div></section>
+  <section><h2>Queue</h2><div id="items"></div></section>
+  <section><h2>Add a request for someone</h2>
+    <input id="aq" placeholder="Search song…"><div id="aresults"></div>
+    <input id="aname" placeholder="Their name" maxlength="40"><input id="amsg" placeholder="Message (optional)" maxlength="280">
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const q = new URLSearchParams(location.search);
+let token = q.get("t") || "";
+try { if (token) { localStorage.setItem("mfm_t", token); history.replaceState(null, "", location.pathname); } else token = localStorage.getItem("mfm_t") || ""; } catch {}
+let state = null, timer = null;
+function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+async function call(path, body) {
+  const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "x-admin-token": token, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
+  if (r.status === 401) { $("auth").hidden = false; throw new Error("auth"); }
+  return r.json();
+}
+const act = (body) => call("/api/admin/action", body).then(load);
+function pill(text, cls) { return el("span", "pill " + cls, text); }
+function render() {
+  const h = state.health, age = h.ageS;
+  const studio = age == null ? pill("Studio: never seen", "bad") : age > 60 ? pill(`Studio: silent ${age}s`, "bad") : pill("Studio: OK", "ok");
+  const src = { requests: ["Playing requests", "ok"], soma: ["Playing SomaFM", "ok"], backup: ["BACKUP playlist (internet?)", "warn"], silence: ["SILENCE", "bad"] }[h.source] || ["Source: ?", "warn"];
+  $("health").replaceChildren(studio, pill(src[0], src[1]), ...(h.error ? [pill("Last error: " + h.error, "warn")] : []));
+  const s = state.settings;
+  const sw = (id, on, onText, offText) => { $(id).textContent = on ? onText : offText; $(id).className = on ? "on" : ""; $(id).onclick = () => act({ action: "settings", settings: { [id]: !on } }); };
+  sw("accepting", !s.accepting, "Requests CLOSED (tap to open)", "Last call (close requests)");
+  sw("stopAfterCurrent", s.stopAfterCurrent, "Stopping after current (tap to resume)", "Stop after current");
+  sw("somaOnly", s.somaOnly, "SomaFM ONLY (tap to resume)", "Panic: SomaFM only");
+  $("items").replaceChildren(...state.items.map((it) => {
+    const d = el("div", "item");
+    const flags = [it.status.toUpperCase(), it.tone, it.voice, it.explicit ? "explicit" : "", it.freeText ? "typed-in" : "",
+      it.confidence != null && it.confidence < 50 ? "LOW CONFIDENCE" : ""].filter(Boolean).join(" · ");
+    d.append(el("div", "t", `${it.title} — ${it.artist}`), el("div", "small", flags));
+    for (const r of it.requesters) {
+      const who = el("div", "small", `${r.name}${r.message ? ": “" + r.message + "”" : ""}`);
+      const mute = el("button", "", "mute phone"); mute.style.marginLeft = "6px"; mute.onclick = () => confirm(`Mute ${r.name}'s phone?`) && act({ action: "mute", device: r.device });
+      if (r.device !== "admin") who.append(mute);
+      d.append(who);
+    }
+    if (it.djLine) d.append(el("div", "line", "DJ: " + it.djLine));
+    if (it.error) d.append(el("div", "small bad", it.error));
+    const acts = el("div", "acts");
+    const b = (t, f) => { const x = el("button", "", t); x.onclick = f; acts.append(x); };
+    if (["pending", "preparing", "ready", "queued"].includes(it.status)) { b("▲", () => act({ action: "move", id: it.id, dir: -1 })); b("▼", () => act({ action: "move", id: it.id, dir: 1 })); }
+    if (it.status === "playing") b("Skip", () => act({ action: "skip" }));
+    if (it.status === "failed") b("Retry", () => act({ action: "retry", id: it.id }));
+    if (!["played", "deleted"].includes(it.status)) b("Delete", () => act({ action: "delete", id: it.id }));
+    d.append(acts); return d;
+  }));
+}
+async function load() { try { state = await call("/api/admin/state"); render(); } catch {} }
+$("skip").onclick = () => act({ action: "skip" });
+$("aq").addEventListener("input", () => {
+  clearTimeout(timer); const text = $("aq").value.trim(); if (text.length < 3) return;
+  timer = setTimeout(async () => {
+    const { results } = await call("/api/admin/search?q=" + encodeURIComponent(text));
+    $("aresults").replaceChildren(...results.slice(0, 6).map((t) => {
+      const x = el("button", "", `${t.title} — ${t.artist}`); x.style.display = "block"; x.style.margin = "4px 0";
+      x.onclick = async () => { const r = await act({ action: "add", track: t, name: $("aname").value || "the family", message: $("amsg").value }); $("aq").value = $("amsg").value = ""; $("aresults").replaceChildren(); };
+      return x;
+    }));
+  }, 400);
+});
+load(); setInterval(() => document.visibilityState === "visible" && load(), 3000);
+</script>
+</body>
+</html>
