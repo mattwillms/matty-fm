@@ -191,3 +191,15 @@ def test_stretched_and_split_words_are_caught_like_the_worker():
         assert djline.is_offensive(bad), bad
     for ok in ("As it is", "Fu Manchu", "Sheila", "Bossa Nova", "Ramblin' Man"):
         assert not djline.is_offensive(ok), ok
+
+
+def test_a_shortened_or_accented_song_name_counts_as_named():
+    # seen live: "Furacão 2000 - Mimosa 2000" voiced as "...Here's Furacao 2000 with Mimosa. Here's Furacao 2000 with Mimosa 2000."
+    it = {**item(), "artist": "Furacão 2000", "title": "Mimosa 2000"}
+    reply = json.dumps({"ok": True, "tone": "funny", "script": "This one's for you, Ava. Here's Furacao 2000 with Mimosa."})
+    assert djline.write_line(it, FakeClient(reply)).script.count("Here's") == 1
+    it = {**item(), "artist": "Earth, Wind & Fire", "title": "September (Remastered 2003)"}
+    reply = json.dumps({"ok": True, "tone": "funny", "script": "For Bob, here's Earth, Wind and Fire with September."})
+    assert djline.write_line(it, FakeClient(reply)).script.count("September") == 1
+    reply = json.dumps({"ok": True, "tone": "funny", "script": "Bob loves Earth, Wind and Fire."})   # artist alone is not the song
+    assert djline.write_line(it, FakeClient(reply)).script.endswith("September (Remastered 2003).")

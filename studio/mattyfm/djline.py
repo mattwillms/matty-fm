@@ -178,6 +178,21 @@ def song_phrase(item: dict) -> str:
     return title or artist
 
 
+def _words(text: str) -> str:
+    """Accents off, & as "and", punctuation gone: " earth wind and fire " (spaces at both ends)."""
+    return " " + " ".join(re.sub(r"[^a-z0-9]+", " ", speech_text(text).lower().replace("&", " and ")).split()) + " "
+
+
+def _names_song(script: str, item: dict) -> bool:
+    """The line already names the song: the whole title, or the artist and the title's first word
+    (the model shortens "Mimosa 2000" to "Mimosa"; appending the full name then said it twice)."""
+    said, title, artist = _words(script), _words(item["title"]), _words(item["artist"])
+    if title.strip() and title in said:
+        return True
+    first = title.split()[0] if title.split() else ""
+    return bool(first and artist.strip() and artist in said and f" {first} " in said)
+
+
 def template(item: dict, ok: bool = True) -> DJLine:
     who = names_phrase(_names(item)) or "a mystery guest"
     song = song_phrase(item)
@@ -220,7 +235,7 @@ def write_line(item: dict, client) -> DJLine:
     script = speech_text(raw)
     title = _safe(item["title"])
     song = song_phrase(item)
-    if script and song and title.lower() not in script.lower():   # the rule: always end by naming the song
+    if script and song and not _names_song(script, item):   # the rule: always end by naming the song
         script = f"{script.rstrip()}{'' if script.rstrip()[-1:] in '.!?' else '.'} Here's {song}."
     if not script or is_offensive(script) or len(script) > 400:
         return template(item)
