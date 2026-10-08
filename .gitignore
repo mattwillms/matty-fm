@@ -8,3 +8,4 @@ __pycache__/
 media/
 *.mp3
 !station/assets/*.mp3
+.superpowers/
