@@ -132,10 +132,9 @@
   .vinyl::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;   /* the shine stays put while the disc turns */
                   background: conic-gradient(from 20deg, transparent 0 6%, #ffffff1f 12%, transparent 20% 50%, #ffffff1f 62%, transparent 70%); }
   .disc { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center;
-          background: radial-gradient(circle, transparent 0 17%, #0b0b0b 17.5% 19%, transparent 19.5%),
-                      repeating-radial-gradient(circle, #121212 0 1.4px, #1f1f1f 1.4px 2.8px);
+          background: repeating-radial-gradient(circle, #121212 0 1.4px, #1f1f1f 1.4px 2.8px);
           animation: spin 6s linear infinite; }
-  .disc img { width: 33%; height: 33%; border-radius: 50%; object-fit: cover; }
+  .disc img { width: 48%; height: 48%; border-radius: 50%; object-fit: cover; }
   @keyframes pull { from { transform: translateX(0); } to { transform: translateX(31%); } }
   @keyframes spin { to { transform: rotate(1turn); } }
   .sleeve { position: absolute; inset: 0; border-radius: 2px; background: var(--walnut); box-shadow: 0 20px 44px #000c, inset 0 0 0 1px #ffffff1a; }
@@ -143,8 +142,8 @@
   .sleeve::after { content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 2px;   /* ring wear from the record inside */
                    background: radial-gradient(circle, transparent 40%, #ffffff12 41.5%, transparent 44%), linear-gradient(135deg, #ffffff17, transparent 45%); }
   .sleeve .noart { width: 100%; height: 100%; display: grid; place-items: center; border-radius: 2px;
-                   background: radial-gradient(circle, transparent 0 17%, #111 17.5% 21%, transparent 21.5%), linear-gradient(160deg, #dcc290, #b18d55); }
-  .sleeve .noart img { width: 33%; height: 33%; border-radius: 50%; object-fit: cover; }
+                   background: linear-gradient(160deg, #dcc290, #b18d55); }
+  .sleeve .noart img { width: 48%; height: 48%; border-radius: 50%; object-fit: cover; }
   .sticker { position: absolute; top: -16px; left: -16px; width: 72px; height: 72px; border-radius: 50%; z-index: 1;
              display: grid; place-items: center; background: var(--gold); color: var(--cocoa); transform: rotate(-11deg);
              font: 900 1.2rem/1 Fraunces, serif; font-variation-settings: "SOFT" 100, "WONK" 1;
@@ -157,9 +156,8 @@
   @media (prefers-reduced-motion: reduce) { .vinyl { animation: none; transform: translateX(31%); } .disc { animation: none; }
     dialog.sleeve-box[open], dialog.sleeve-box.closing { animation-name: fade; } }
   .art.record { border-radius: 50%; filter: none; display: grid; place-items: center;
-                background: radial-gradient(circle, transparent 0 33%, #0b0b0b 34% 37%, transparent 38%),
-                            repeating-radial-gradient(circle, #141414 0 1.2px, #222 1.2px 2.4px); box-shadow: 0 2px 6px #0008; }
-  .art.record img { width: 36%; height: 36%; border-radius: 50%; object-fit: cover; }
+                background: repeating-radial-gradient(circle, #141414 0 1.2px, #222 1.2px 2.4px); box-shadow: 0 2px 6px #0008; }
+  .art.record img { width: 48%; height: 48%; border-radius: 50%; object-fit: cover; }
   .track { display: inline-flex; }
   .track span { flex: none; }
   .ticking .track span { padding-right: 3em; }
