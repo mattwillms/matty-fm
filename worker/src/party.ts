@@ -239,8 +239,14 @@ export class Party extends DurableObject<Env> {
       ...this.display(),
       ...this.all("SELECT * FROM items WHERE status IN ('failed','played') ORDER BY COALESCE(played_at,created_at) DESC LIMIT 15"),
     ];
+    const muted = this.all("SELECT device FROM muted ORDER BY device").map((m) => ({
+      device: String(m.device),
+      names: [...new Set(this.all("SELECT name FROM requesters WHERE device=? ORDER BY id DESC LIMIT 5", m.device)
+        .map((r) => String(r.name)))],
+    }));
     return {
       nowPlaying: this.nowPlaying(),
+      muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       settings: this.flags(),
       items: items.map((i) => ({
@@ -297,6 +303,9 @@ export class Party extends DurableObject<Env> {
         this.sql.exec("INSERT OR IGNORE INTO muted(device) VALUES(?)", a.device!);
         this.sql.exec(`UPDATE items SET status='deleted' WHERE status IN ('pending','preparing','ready')
           AND id IN (SELECT item_id FROM requesters GROUP BY item_id HAVING COUNT(*)=1 AND MAX(device)=?)`, a.device!);
+        return { ok: true };
+      case "unmute":
+        this.sql.exec("DELETE FROM muted WHERE device=?", a.device!);
         return { ok: true };
       case "settings":
         for (const [k, v] of Object.entries(a.settings ?? {})) {

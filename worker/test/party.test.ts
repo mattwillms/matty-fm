@@ -158,4 +158,16 @@ describe("party", () => {
     const st = await p.adminState();
     expect(st.nowPlaying).toMatchObject({ title: "Ventura Highway", artist: "America", soma: true });
   });
+
+  it("muted phones are listed by name and can be unmuted", async () => {
+    const p = stub("unmute");
+    await p.submit("phone1", { track: T("Lay All Your Love On Me"), name: "Cousin Ray" });
+    await p.adminAction({ action: "mute", device: "phone1" });
+    expect((await p.submit("phone1", { track: T("Eagle"), name: "Cousin Ray" })).ok).toBe(false);
+    const st = await p.adminState();
+    expect(st.muted).toEqual([{ device: "phone1", names: ["Cousin Ray"] }]);
+    await p.adminAction({ action: "unmute", device: "phone1" });
+    expect((await p.adminState()).muted).toEqual([]);
+    expect((await p.submit("phone1", { track: T("Eagle"), name: "Cousin Ray" })).ok).toBe(true);
+  });
 });

@@ -79,6 +79,11 @@
     <div id="up"></div>
   </section>
 
+  <section id="mutedBox" hidden>
+    <h2>Muted phones</h2>
+    <div id="muted"></div>
+  </section>
+
   <section class="history">
     <details id="historyBox">
       <summary><h2 id="histTitle" style="margin:0">Played</h2></summary>
@@ -119,7 +124,7 @@ async function call(path, body) {
   return r.json();
 }
 const DONE = { skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
-  mute: "Phone muted", settings: "Updated", break: "Bumper coming up" };
+  mute: "Phone muted", unmute: "Phone unmuted", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
   return busy(btn, async () => {
@@ -244,6 +249,16 @@ function render() {
     ...(i < waiting.length - 1 ? [["▼ Down", (e) => act({ action: "move", id: it.id, dir: 1 }, e)]] : []),
     ["Delete", (e) => act({ action: "delete", id: it.id }, e)],
   ])) : [el("div", "empty", "No requests waiting.")]));
+
+  const muted = state.muted || [];
+  $("mutedBox").hidden = !muted.length;
+  $("muted").replaceChildren(...muted.map((m) => {
+    const r = el("div", "row"); r.style.justifyContent = "space-between"; r.style.padding = "6px 0";
+    const b = el("button", "small", "Unmute");
+    b.onclick = (e) => act({ action: "unmute", device: m.device }, e);
+    r.append(el("span", null, m.names.length ? m.names.join(", ") : "A phone with no requests yet"), b);
+    return r;
+  }));
 
   const past = state.items.filter((i) => ["played", "failed"].includes(i.status));
   $("histTitle").textContent = `Played (${past.length})`;

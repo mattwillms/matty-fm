@@ -29,7 +29,8 @@
   /* ---- wordmark: chunky soft serif over the era's three stripes ---- */
   .mark { margin: 6px 0 18px; }
   .mark-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-  .hen { flex: none; width: clamp(84px, 26vw, 120px); aspect-ratio: 1; border-radius: 50%; overflow: hidden; }
+  /* same height as the OrrFM letters: their ink measures 0.71 of the font size at every width */
+  .hen { flex: none; width: calc(clamp(3.4rem, 17vw, 4.6rem) * .71); aspect-ratio: 1; border-radius: 50%; overflow: hidden; }
   .hen img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .mark h1 { font-family: Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
              font-weight: 900; font-size: clamp(3.4rem, 17vw, 4.6rem); line-height: .86; letter-spacing: -.02em; margin: 0; color: var(--cream); }
