@@ -161,17 +161,25 @@
   /* your picks and what you may send next: two record slots and one plain sentence */
   .h2row { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 12px; }
   .h2row h2 { margin: 0; }
-  .slots { display: flex; gap: 6px; flex: none; }
-  .slots i { width: 22px; height: 22px; border-radius: 50%; box-shadow: inset 0 0 0 2px #6b4a32;
-             background: radial-gradient(circle, #6b4a32 0 2px, transparent 2.5px); transition: background .25s, box-shadow .25s; }
-  .slots i.used { box-shadow: none; background: radial-gradient(circle, var(--cream) 0 2px, var(--orange) 2.5px 5px, #1f140e 5.5px 6.5px, #3a2617 7px 100%); }
-  .slots.locked i.used { background: radial-gradient(circle, var(--cream) 0 2px, var(--gold) 2.5px 5px, #1f140e 5.5px 6.5px, #3a2617 7px 100%); }
+  /* picks as arcade coins: a gold coin is a pick you can spend; a spent one is a dark hollow */
+  .slots { display: flex; gap: 7px; flex: none; }
+  .slots i { position: relative; width: 19px; height: 25px; border-radius: 50%;
+             background: radial-gradient(ellipse at 35% 30%, #fff3c4 0 12%, transparent 30%), linear-gradient(90deg, #f7c948, #f0a92b 55%, #c9781a);
+             box-shadow: inset 0 0 0 2px #a8620f, inset -2px -2px 0 2px #d8891e, 0 2px 0 #0006;
+             transition: background .3s, box-shadow .3s, transform .3s; }
+  .slots i::after { content: ""; position: absolute; left: 50%; top: 6px; bottom: 6px; width: 3px; margin-left: -1.5px;
+                    border-radius: 2px; background: #a8620f; box-shadow: 1px 0 0 #fff3c466; }
+  .slots i.used { background: #1f140e; box-shadow: inset 0 0 0 2px #6b4a32; transform: scale(.92); }
+  .slots i.used::after { background: #4a3324; box-shadow: none; }
   .allow { margin: -4px 0 12px; color: var(--cream-dim); font-size: .95rem; line-height: 1.35; }
   .allow b { color: var(--cream); font-weight: 600; }
-  .song .side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
-  .again { width: 40px; height: 40px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: transparent;
-           color: var(--gold); box-shadow: inset 0 0 0 2px #6b4a32; }
-  .again svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+  /* the status and its Request again, side by side at one height */
+  .song .side { flex: none; display: flex; align-items: center; gap: 6px; }
+  .song .side .chip { height: 30px; display: inline-flex; align-items: center; }
+  .again { position: relative; width: 30px; height: 30px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: #2f1f15;
+           color: var(--gold); box-shadow: inset 0 0 0 1.5px #6b4a32; }
+  .again::before { content: ""; position: absolute; inset: -7px; border-radius: 50%; }   /* a fingertip-sized target */
+  .again svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
   .again[aria-disabled="true"] { color: #8a6f52; opacity: .7; cursor: default; }
   .again.spent { color: #8a6f52; box-shadow: inset 0 0 0 2px #4a3324; cursor: default; }
   .again.spent:active, .again[aria-disabled="true"]:active { transform: none; }
@@ -1118,8 +1126,9 @@ function showLimits() {
   const free = limits.freePlay, sg = limits.songs, st = songState();
   $("slots").hidden = free;
   $("slots").classList.toggle("locked", !st.can);
-  [...$("slots").children].forEach((i, n) => i.classList.toggle("used", n < Math.min(sg.active, sg.max) || (st.locked && n < sg.max)));
-  $("slots").setAttribute("aria-label", free ? "" : `${Math.min(sg.active, 2)} of 2 song picks used`);
+  const usedN = st.locked ? sg.max : Math.min(sg.active, sg.max);   // coins are spent from the right
+  [...$("slots").children].forEach((i, n) => i.classList.toggle("used", n >= sg.max - usedN));
+  $("slots").setAttribute("aria-label", free ? "" : `${sg.max - usedN} of ${sg.max} song picks left`);
   const say = (id, html) => { $(id).hidden = !html; $(id).innerHTML = html || ""; };
   say("songAllow", free ? "<b>Free play:</b> request as many songs as you like."
     : st.locked ? (sg.active === 1 ? "<b>One to go.</b> Pick two more once your other song plays."
