@@ -198,9 +198,8 @@ class Engine:
         with self.lock:
             now = self.clock()
             for control, start, end, t0, dur in self.ramps:
-                lvl = level_at(now - t0, start, end, dur)
-                if self.mixer.level.get(control) != lvl:
-                    self.mixer.set(control, lvl)
+                # sent every step: a softvol control created mid-fade must not keep its default
+                self.mixer.set(control, level_at(now - t0, start, end, dur))
             self.ramps = [r for r in self.ramps if now - r[3] < r[4]]
             if self.pending_dj and now >= self.pending_dj[1]:
                 self.players.play("dj", self.pending_dj[0])
@@ -395,7 +394,11 @@ def main(conf_path: str) -> None:
                                 daemon=True, name="api")]
     for t in threads:
         t.start()
-    time.sleep(3)   # softvol controls exist once a decoder has opened each device
+    # A softvol control exists only once something has played through it, and starts at
+    # full volume: open every channel with a moment of silence first, then set levels.
+    for ch in CONTROLS:
+        subprocess.run(["aplay", "-q", "-D", ch, "-f", "cd", "-d", "1", "/dev/zero"], check=False)
+    time.sleep(1)
     for control, pct in (("SomaVol", 100), ("DeckAVol", 0), ("DeckBVol", 0), ("DjVol", 100)):
         mixer.set(control, pct)
     log("console ready: SomaVol 100, DeckAVol 0, DeckBVol 0, DjVol 100")
