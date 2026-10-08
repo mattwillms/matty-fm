@@ -1,8 +1,20 @@
 {
   "compilerOptions": {
-    "target": "es2024", "module": "es2022", "moduleResolution": "bundler",
-    "strict": true, "noEmit": true, "skipLibCheck": true,
-    "types": ["./worker-configuration.d.ts"]
+    "target": "es2024",
+    "module": "es2022",
+    "moduleResolution": "bundler",
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "types": [
+      "./worker-configuration.d.ts"
+    ],
+    "lib": [
+      "es2024"
+    ]
   },
-  "include": ["src", "test", "worker-configuration.d.ts"]
+  "include": [
+    "src",
+    "worker-configuration.d.ts"
+  ]
 }

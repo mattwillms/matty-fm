@@ -1,0 +1,13 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "mattyfm",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "routes": [{ "pattern": "fm.willms.co", "custom_domain": true }],
+  "assets": { "directory": "./public", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
+  "durable_objects": { "bindings": [{ "name": "PARTY", "class_name": "Party" }] },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["Party"] }],
+  "ai": { "binding": "AI", "remote": true },
+  "ratelimits": [{ "name": "SUBMIT_LIMIT", "namespace_id": "1011", "simple": { "limit": 5, "period": 60 } }],
+  "observability": { "enabled": true }
+}
