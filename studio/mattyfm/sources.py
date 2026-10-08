@@ -10,6 +10,7 @@ thenetaji/youtube-music-downloader, lurkapi/youtube-to-mp3-audio-downloader.
 """
 
 import html
+import os
 import json
 import logging
 import re
@@ -44,7 +45,13 @@ def safe_link(url: str) -> bool:
 class YouTubeSearch:
     def __init__(self, key: str, http: httpx.Client, cache_file: Path):
         self.key, self.http, self.cache_file = key, http, cache_file
-        self.cache = json.loads(cache_file.read_text()) if cache_file.exists() else {}
+        self.cache = self._read()
+
+    def _read(self) -> dict:
+        try:
+            return json.loads(self.cache_file.read_text())
+        except (OSError, ValueError):   # missing or unreadable: start empty, never crash the studio
+            return {}
 
     def __call__(self, query: str) -> list[Candidate]:
         if query in self.cache:
@@ -70,7 +77,12 @@ class YouTubeSearch:
                            duration=float(lengths.get(i["id"]["videoId"], 0)))
                  for i in items if lengths.get(i["id"]["videoId"])]
         self.cache[query] = [c.__dict__ for c in cands]
-        self.cache_file.write_text(json.dumps(self.cache))
+        # the studio and tools/precache.py share this file: merge what the other wrote, then
+        # swap the file in whole, so neither drops the other's entries or reads half a file
+        self.cache = {**self._read(), **self.cache}
+        tmp = self.cache_file.with_name(f"{self.cache_file.name}.{os.getpid()}.tmp")
+        tmp.write_text(json.dumps(self.cache))
+        tmp.replace(self.cache_file)
         return cands
 
 

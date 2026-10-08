@@ -141,3 +141,18 @@ def test_streamers_goes_first_and_only_its_apify_copy_is_fetched(tmp_path):
     assert dest.read_bytes() == b"ID3audio"
     assert "streamers" in seen[0] and len(seen) == 2
     assert not any("googlevideo" in u for u in seen)
+
+
+def test_two_processes_sharing_the_search_cache_keep_each_others_entries(tmp_path):
+    f = tmp_path / "search.json"
+    def handler(r):
+        if r.url.path.endswith("/search"):
+            return httpx.Response(200, json={"items": [{"id": {"videoId": "v1"}, "snippet": {"title": "t", "channelTitle": "c"}}]})
+        return httpx.Response(200, json={"items": [{"id": "v1", "contentDetails": {"duration": "PT3M"}}]})
+    studio = sources.YouTubeSearch("k", client(handler), f)
+    precache = sources.YouTubeSearch("k", client(handler), f)
+    studio("abba waterloo")
+    precache("abba sos")
+    assert set(json.loads(f.read_text())) == {"abba waterloo", "abba sos"}
+    f.write_text('{"half')   # a torn file never crashes a new reader
+    assert sources.YouTubeSearch("k", client(handler), f).cache == {}
