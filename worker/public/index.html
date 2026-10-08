@@ -99,21 +99,26 @@
   .vfd .s { color: #6fe3c8aa; }
   .vfd .idle { color: #6fe3c8aa; }
   /* the request module: a dark gunmetal plate (lamp, label, name screen), the script screen under it */
-  /* a sliver of brushed, patinated gold: lamp, engraved label and name screen in one thin strip */
+  /* a sliver of old, much-handled gold: dulled and grimy, rubbed bright where fingers land */
   .plate { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 4px 28px; border-radius: var(--glass-r);   /* 14px clear of each screw; corners match the screens */
-           background: linear-gradient(100deg, #fff0 20%, #fff5 42%, #fff0 62%),   /* the sheen brushed metal throws */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .7 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 300px 60px,   /* the brush strokes, all one way */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .25 0 0 0 0 .2 0 0 0 0 .05 0 0 0 1.1 -.35'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 220px,   /* patina: soft blotches where the shine has worn */
-                       linear-gradient(#f0c65a, #d6a33a 50%, #b9862a);   /* deep old gold */
-           background-blend-mode: soft-light, overlay, multiply, normal;
-           box-shadow: inset 0 1px 0 #fff4c2cc, inset 0 -1px 0 #e9bd5a, 0 1px 0 #fff8, 0 0 0 1px #c4922f; }   /* gold rim, no dark edge */
+           background: radial-gradient(ellipse 18% 70% at 30% 55%, #f3d58a38, #0000),   /* rubbed bright by hands */
+                       radial-gradient(ellipse 14% 60% at 74% 40%, #f3d58a2e, #0000),
+                       radial-gradient(ellipse 10% 55% at 52% 70%, #2a1a0640, #0000),   /* a greasy thumbprint */
+                       radial-gradient(ellipse 12% 50% at 88% 65%, #2a1a0638, #0000),
+                       linear-gradient(100deg, #fff0 25%, #fff2 45%, #fff0 62%),   /* a faint, tired sheen */
+                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='60'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .6 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 300px 60px,   /* brush strokes, worn shallow */
+                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='4' seed='7' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .16 0 0 0 0 .11 0 0 0 0 .03 0 0 0 1.6 -.55'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 240px,   /* grime in the low spots */
+                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.6' numOctaves='1' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .07 0 0 0 0 .02 0 0 0 2.2 -1.25'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 120px,   /* pitting */
+                       linear-gradient(#a07a34, #87652a 50%, #6e5019);   /* deep old gold */
+           background-blend-mode: normal, normal, normal, normal, soft-light, overlay, normal, normal, normal;
+           box-shadow: inset 0 1px 0 #e9c97a88, inset 0 -1px 0 #9c7633, 0 1px 0 #fff6, 0 0 0 1px #8d6b2c; }   /* gold rim, no black edge */
   .plate .lamp { flex: none; width: 9px; height: 9px; }
   .plate .screw { width: 8px; height: 8px; top: 50%; margin-top: -4px; box-shadow: 0 1px 0 #fff4c066, 0 0 0 1px #0006;   /* black */
                   background: radial-gradient(circle at 35% 35%, #7a7a7a, #2a2a2a 50%, #0b0b0b); }
   .plate .slit { top: 3px; height: 1.5px; background: #000; }
   .plate .screw.ml { left: 6px; } .plate .screw.mr { right: 6px; }
   .plate-label { font: 700 .55rem/1.05 Jost, sans-serif; letter-spacing: .08em; white-space: nowrap;   /* engraved: dark cut, lit lower edge */
-                 color: #4a3310; text-shadow: 0 1px 0 #fbe7aacc, 0 -1px 0 #3a280833; }
+                 color: #2e1f06; text-shadow: 0 1px 0 #d9b46a99, 0 -1px 0 #1a100333; }
   .lcd.name-screen { flex: 1; min-width: 0; padding: 2px 8px 3px; }   /* .lcd comes later in the file: match its weight to win */
   .msg-screen { margin-top: 12px; }
   /* the request VFD: dark glass, glowing teal dot-matrix, same family as the display above */
