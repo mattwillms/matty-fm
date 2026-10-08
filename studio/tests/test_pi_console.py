@@ -178,3 +178,34 @@ def test_backup_paths_resolve_against_the_file_server():
     eng.soma_up = lambda: False
     run(eng, clock, 2.5)
     assert ("deckA", "http://ws:8040/backup/a.mp3") in players.started
+
+
+def test_voice_break_dips_soma_under_the_dj_and_restores_it():
+    eng, clock, players, mixer = make()
+    run(eng, clock, 1)
+    assert eng.voice_break("http://ws:8040/breaks/id1.mp3", 3.0) is True
+    run(eng, clock, 0.6)
+    assert ("dj", "http://ws:8040/breaks/id1.mp3") in players.started
+    assert mixer.level["SomaVol"] == console.DUCK_PCT
+    run(eng, clock, 3.0 + console.RESTORE_S + 0.2)
+    assert mixer.level["SomaVol"] == 100
+    assert eng.status()["source"] == "soma"
+
+
+def test_voice_break_refused_during_a_transition_or_request():
+    eng, clock, players, mixer = make()
+    eng.push(item("r1"))
+    eng.tick()
+    assert eng.voice_break("http://ws:8040/breaks/x.mp3", 2.0) is False
+
+
+def test_skip_with_nothing_queued_plays_the_skip_bumper():
+    eng, clock, players, mixer = make()
+    eng.push(item("r1"))
+    eng.tick()
+    run(eng, clock, 20)
+    eng.skip(bumper=("http://ws:8040/breaks/skip1.mp3", 2.0))
+    run(eng, clock, 1)
+    assert ("dj", "http://ws:8040/breaks/skip1.mp3") in players.started
+    watch(eng, clock, 5, mixer, "SomaVol", "DeckAVol")
+    assert mixer.level["SomaVol"] == 100

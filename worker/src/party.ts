@@ -72,7 +72,7 @@ export class Party extends DurableObject<Env> {
       somaOnly: this.setting("somaOnly", "0") === "1",
     };
   }
-  private command(type: "skip" | "clear"): void {
+  private command(type: "skip" | "clear" | "break"): void {
     this.sql.exec("INSERT INTO commands(type,created_at) VALUES(?,?)", type, Date.now());
   }
   private newId(): string {
@@ -147,18 +147,22 @@ export class Party extends DurableObject<Env> {
     return { ok: true, id, position: this.display().findIndex((i) => i.id === id) + 1 };
   }
 
-  async guestState(device: string) {
+  private nowPlaying() {
     const playing = this.one("SELECT * FROM items WHERE status='playing' LIMIT 1");
+    const h = this.health() as unknown as Beat & { at: number };
+    if (playing) return this.pub(playing);
+    if (h.soma && h.source !== "requests")
+      return { id: "soma", title: String(h.soma.title), artist: String(h.soma.artist),
+               artwork: safeArtwork((h.soma as { artwork?: string }).artwork), names: "", soma: true };
+    return null;
+  }
+
+  async guestState(device: string) {
     const waiting = this.display();
     const mine = this.all(`SELECT DISTINCT i.* FROM items i JOIN requesters r ON r.item_id=i.id
       WHERE r.device=? ORDER BY i.created_at DESC LIMIT 6`, device);
-    const h = this.health() as unknown as Beat & { at: number };
-    const soma = !playing && h.soma && h.source !== "requests"
-      ? { id: "soma", title: String(h.soma.title), artist: String(h.soma.artist),
-          artwork: safeArtwork((h.soma as { artwork?: string }).artwork), names: "", soma: true }
-      : null;
     return {
-      nowPlaying: playing ? this.pub(playing) : soma,
+      nowPlaying: this.nowPlaying(),
       upNext: waiting.slice(0, 6).map((i) => this.pub(i)),
       mine: mine.map((i) => ({ ...this.pub(i), status: String(i.status),
         position: waiting.findIndex((w) => w.id === i.id) + 1 || null })),
@@ -236,6 +240,7 @@ export class Party extends DurableObject<Env> {
       ...this.all("SELECT * FROM items WHERE status IN ('failed','played') ORDER BY COALESCE(played_at,created_at) DESC LIMIT 15"),
     ];
     return {
+      nowPlaying: this.nowPlaying(),
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       settings: this.flags(),
       items: items.map((i) => ({
@@ -255,6 +260,9 @@ export class Party extends DurableObject<Env> {
     switch (a.action) {
       case "skip":
         this.command("skip");
+        return { ok: true };
+      case "break":
+        this.command("break");
         return { ok: true };
       case "delete":
         this.sql.exec("UPDATE items SET status='deleted' WHERE id=?", a.id!);

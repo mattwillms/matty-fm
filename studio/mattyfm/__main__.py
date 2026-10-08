@@ -3,6 +3,7 @@
 import json
 import logging
 import os
+import random
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
@@ -10,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor
 import anthropic
 import httpx
 
-from . import config, feed, mix, prepare, somafm, sources, tts
+from . import breaks, config, djline, feed, mix, prepare, somafm, sources, tts
 from .pilink import PiLink
 from .worker_api import WorkerAPI
 
@@ -46,6 +47,46 @@ def main() -> None:
                         search=sources.YouTubeSearch(yt_key, httpx.Client(), cfg.media_dir / "cache" / "search.json") if yt_key else None,
                         download=sources.ApifyDownload(apify, httpx.Client()) if apify else None)
     soma_np = somafm.NowPlaying(httpx.Client())
+    sched = breaks.Scheduler(now=time.monotonic())
+    clips = breaks.library(cfg.media_dir)
+    log.info("break clips: %s", {k: len(v) for k, v in clips.items()} or "none (run tools/make_breaks.py)")
+    on_break = threading.Event()   # one break at a time
+    break_pool = ThreadPoolExecutor(1)   # breaks never take a song-preparation worker
+
+    def run_break(kind: str) -> None:
+        try:
+            if kind == "backannounce" and soma_np.last:
+                line = djline.backannounce(soma_np.prev, soma_np.last, deps.claude)
+                stamp = int(time.time())
+                raw = cfg.media_dir / "breaks" / f"live-{stamp}.raw.mp3"
+                out = cfg.media_dir / "breaks" / f"live-{stamp}.mp3"
+                engine = tts.speak(line.script, line.tone, raw, http=deps.http, aura=deps.aura,
+                                   assets=cfg.media_dir / "assets", names=deps.names)
+                seconds = mix.prepare_voice(raw, out, cfg.sample_rate)
+                raw.unlink(missing_ok=True)
+                url, text = f"breaks/{out.name}", line.script
+                log.info("break back-announce via %s (%.1fs): %s", engine, seconds, text)
+            else:
+                pool_kind = kind if clips.get(kind) else next((k for k in ("id", "goof") if clips.get(k)), None)
+                if not pool_kind:
+                    log.warning("break %s skipped: no clips (run tools/make_breaks.py)", kind)
+                    return
+                clip = random.choice(clips[pool_kind])
+                url, seconds, text = f"breaks/{clip['file']}", clip["seconds"], clip["text"]
+            if station.voice(url, seconds):
+                log.info("break on air (%s): %s", kind, text)
+                sched.done(time.monotonic())
+            else:
+                log.info("break %s declined by the console (busy)", kind)
+        except Exception:
+            log.exception("break %s failed", kind)
+        finally:
+            on_break.clear()
+
+    def start_break(kind: str) -> None:
+        if not on_break.is_set():
+            on_break.set()
+            break_pool.submit(run_break, kind)
     pool = ThreadPoolExecutor(WORKERS)
     working: set[str] = set()
     lock = threading.Lock()
@@ -97,10 +138,20 @@ def main() -> None:
                 with lock:
                     working.add(job["id"])
                 pool.submit(run_job, job)
+            if any(c["type"] == "break" for c in reply["commands"]):
+                log.info("command: play a bumper now")
+                start_break(random.choice(["id", "goof"]))
+            soma = soma_np.last
+            soma_age = time.time() - soma["since"] if soma else None
+            kind = sched.due(status, time.monotonic(), soma_age)
+            if kind:
+                start_break(kind)
             for action in feed.decide(status, reply):
                 if action[0] == "skip":
                     log.info("command: skip")
-                    station.skip()
+                    skip_clips = clips.get("skip") or []
+                    clip = random.choice(skip_clips) if skip_clips else None
+                    station.skip(bumper={"url": f"breaks/{clip['file']}", "voiceS": clip["seconds"]} if clip else None)
                 elif action[0] == "clear":
                     log.info("command: clear station queue")
                     station.clear()

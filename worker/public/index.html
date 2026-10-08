@@ -31,6 +31,11 @@
   .row { display:flex; gap:10px; margin-top:10px; } .row > * { flex:1; }
   .notice { padding:10px 12px; border-radius:10px; background:#1f130a; margin-top:10px; }
   .err { color:var(--bad); } [hidden] { display:none !important; }
+  button.link { background:none; border:0; padding:0; font:inherit; font-weight:700; color:var(--gold); text-decoration:underline; text-underline-offset:3px; border-radius:0; }
+  .song .meta { flex:1; min-width:0; }
+  .song .t, .song .a { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chip { flex:none; font-size:.72rem; font-weight:700; padding:3px 9px; border-radius:999px; background:#563519; color:var(--muted); text-transform:uppercase; letter-spacing:.03em; }
+  .chip.playing { background:var(--hot); color:#1f130a; } .chip.up { background:#2f4a2a; color:#9fe09a; } .chip.bad { background:#5a2420; color:#ffb4a8; }
   label { display:block; margin:10px 0 4px; color:var(--muted); }
   .pick:hover .song { background:#4a2e18; } .pick:active .song { background:#563519; }
   .song { border-radius:10px; padding-left:6px; padding-right:6px; }
@@ -61,7 +66,7 @@
     <h2>Find a song</h2>
     <input id="q" type="search" placeholder="Song or artist…" autocomplete="off">
     <ul id="results"></ul>
-    <p class="small" style="margin-top:10px">Can't find it? <button class="ghost" id="freeBtn" type="button">Type it in</button></p>
+    <p class="small" style="margin:10px 0 0">Can't find it? <button class="link" id="freeBtn" type="button">Type it in</button></p>
     <p id="closed" class="notice" hidden>Requests are closed for tonight. Thanks for dancing!</p>
   </section>
 
@@ -103,14 +108,21 @@ try { if (k) localStorage.setItem("mfm_k", k); else k = localStorage.getItem("mf
 let chosen = null, timer = null;
 
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
-function songRow(s, extra) {
+function cleanTitle(t) {
+  return String(t || "")
+    .replace(/\s*[(\[][^)\]]*(remaster|version|edit|mono|stereo|mix|single|live|from)[^)\]]*[)\]]/gi, "")
+    .replace(/\s+-\s+.*(remaster|version|edit|mono|stereo).*$/i, "").trim();
+}
+function songRow(s, extra, chipClass) {
   const li = el("li", "song");
   if (s.artwork) { const img = el("img"); img.alt = ""; img.src = s.artwork; img.onerror = () => img.replaceWith(el("div", "art", "📻")); li.append(img); }
   else li.append(el("div", "art", "📻"));
-  const box = el("div"); box.append(el("div", "t", s.title), el("div", "a", s.artist));
-  if (s.names) box.append(el("div", "small", "for " + s.names));
-  if (extra) box.append(el("div", "small", extra));
-  li.append(box); return li;
+  const box = el("div", "meta");
+  box.append(el("div", "t", cleanTitle(s.title)));
+  box.append(el("div", "a", [s.artist, s.names ? "for " + s.names : ""].filter(Boolean).join(" · ")));
+  li.append(box);
+  if (extra) li.append(el("span", "chip " + (chipClass || ""), extra));
+  return li;
 }
 async function api(path, opts) {
   const sep = path.includes("?") ? "&" : "?";
@@ -118,8 +130,8 @@ async function api(path, opts) {
   if (r.status === 403) { $("gate").hidden = false; throw new Error("gate"); }
   return r.json();
 }
-const STATUS = { pending: "Getting it ready…", preparing: "Getting it ready…", ready: "In line", queued: "Up next!",
-  playing: "Playing now 🎶", played: "Played", failed: "Couldn't find that one, try another", deleted: "Removed by the DJ" };
+const STATUS = { pending: ["Getting ready", ""], preparing: ["Getting ready", ""], ready: ["In line", "up"], queued: ["Up next", "up"],
+  playing: ["On air", "playing"], played: ["Played", ""], failed: ["Not found", "bad"], deleted: ["Removed", "bad"] };
 
 async function refresh() {
   if (!k) { $("gate").hidden = false; return; }
@@ -127,10 +139,14 @@ async function refresh() {
     const s = await api("/api/state");
     $("onbreak").hidden = !s.djOnBreak;
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;
-    $("now").hidden = !s.nowPlaying; $("nowList").replaceChildren(...(s.nowPlaying ? [songRow(s.nowPlaying, s.nowPlaying.soma ? "SomaFM · Left Coast 70s" : "")] : []));
+    $("now").hidden = !s.nowPlaying;
+    $("nowList").replaceChildren(...(s.nowPlaying ? [songRow(s.nowPlaying.soma ? { ...s.nowPlaying, names: "SomaFM Left Coast 70s" } : s.nowPlaying)] : []));
     $("nextBox").hidden = !s.upNext.length; $("next").replaceChildren(...s.upNext.map((x) => songRow(x)));
     $("mineBox").hidden = !s.mine.length;
-    $("mine").replaceChildren(...s.mine.map((m) => songRow(m, (STATUS[m.status] || m.status) + (m.position ? " · #" + m.position + " in line" : ""))));
+    $("mine").replaceChildren(...s.mine.map((m) => {
+      const [label, cls] = STATUS[m.status] || [m.status, ""];
+      return songRow(m, m.position && ["ready", "pending", "preparing"].includes(m.status) ? `#${m.position} in line` : label, cls);
+    }));
   } catch {}
 }
 
@@ -145,7 +161,7 @@ $("q").addEventListener("input", () => {
     catch (e) { if (e.message !== "gate") toast("Search failed — try again", true); return; }
     if (!results.length) { $("results").replaceChildren(el("li", "small", "No matches. Try different words, or type it in below.")); return; }
     $("results").replaceChildren(...results.map((t) => {
-      const b = el("button", "pick"); b.type = "button"; b.append(songRow(t, t.explicit ? "Explicit" : ""));
+      const b = el("button", "pick"); b.type = "button"; b.append(songRow(t, t.explicit ? "Explicit" : "", "bad"));
       b.onclick = () => choose(t, false); const li = el("li"); li.append(b); return li;
     }));
   }, 400);

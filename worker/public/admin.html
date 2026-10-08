@@ -5,134 +5,226 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex">
 <title>OrrFM Booth</title>
+<link href="https://fonts.googleapis.com/css2?family=Righteous&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#16110c; --card:#2a1f15; --ink:#f6ead6; --muted:#c7a77c; --ok:#6cc070; --warn:#f5b829; --bad:#e85d4a; --hot:#f2711c; }
-  * { box-sizing:border-box; } body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 system-ui, sans-serif; }
-  main { max-width:640px; margin:0 auto; padding:12px 16px 40px; }
-  h1 { margin:.2em 0; font-size:1.5rem; } h2 { font-size:1.05rem; margin:0 0 .5em; color:var(--muted); }
-  section { background:var(--card); border-radius:12px; padding:12px; margin:12px 0; }
-  .health { display:flex; flex-wrap:wrap; gap:8px; } .pill { padding:4px 10px; border-radius:999px; background:#0005; }
-  .ok { color:var(--ok); } .warn { color:var(--warn); } .bad { color:var(--bad); }
-  button { font:inherit; border:0; border-radius:8px; padding:8px 12px; background:#4a3624; color:var(--ink); }
-  button.hot { background:var(--hot); color:#1a0f05; font-weight:700; } button.on { background:var(--bad); }
-  .switches { display:flex; flex-wrap:wrap; gap:8px; }
-  .item { border-top:1px solid #4a3624; padding:10px 0; } .item:first-child { border-top:0; }
-  .t { font-weight:700; } .small { color:var(--muted); font-size:.9rem; } .line { font-style:italic; margin:4px 0; }
-  .acts { display:flex; gap:6px; margin-top:6px; flex-wrap:wrap; }
-  button { transition: transform .08s ease, filter .15s ease, opacity .15s ease; -webkit-tap-highlight-color: transparent; cursor: pointer; }
-  button:hover { filter: brightness(1.15); }
-  button:active { transform: scale(.95); filter: brightness(.85); }
-  button:focus-visible { outline: 3px solid #f5b829; outline-offset: 2px; }
-  button:disabled, button.busy { opacity: .55; cursor: progress; }
-  #toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(20px); opacity: 0;
-           background: #fbeed5; color: #1f130a; padding: 12px 18px; border-radius: 999px; font-weight: 700;
-           box-shadow: 0 6px 24px #0008; transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
-  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-  #toast.err { background: #e85d4a; color: #fff; }
-  input { width:100%; font:inherit; padding:10px; border-radius:8px; border:1px solid #4a3624; background:#0006; color:var(--ink); margin:4px 0; }
+  :root { --bg:#16110c; --card:#2a1f15; --line:#3d2d1f; --ink:#f6ead6; --muted:#c7a77c; --ok:#6cc070; --warn:#f5b829; --bad:#e85d4a; --hot:#f2711c; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.4 Nunito, system-ui, sans-serif; }
+  main { max-width:640px; margin:0 auto; padding:12px 16px 48px; }
+  h1 { font:1.6rem Righteous, sans-serif; margin:.2em 0 .4em; color:var(--warn); }
+  h2 { font:1rem Righteous, sans-serif; margin:0 0 .6em; color:var(--muted); letter-spacing:.03em; }
+  section { background:var(--card); border-radius:14px; padding:12px 14px; margin:12px 0; }
+  .health { color:var(--muted); font-size:.85rem; display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; vertical-align:middle; }
+  .song { display:flex; gap:12px; align-items:center; }
+  .song img, .song .art { width:56px; height:56px; border-radius:8px; object-fit:cover; background:#4a3624; flex:none; }
+  .song .art { display:grid; place-items:center; font-size:26px; }
+  .t { font-weight:700; } .sub { color:var(--muted); font-size:.9rem; }
+  .controls { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:8px; }
+  button { font:inherit; font-weight:700; border:0; border-radius:10px; padding:10px 12px; background:#4a3624; color:var(--ink);
+           cursor:pointer; transition:transform .08s, filter .15s, opacity .15s; -webkit-tap-highlight-color:transparent; }
+  button:hover { filter:brightness(1.15); } button:active { transform:scale(.95); filter:brightness(.85); }
+  button:focus-visible { outline:3px solid var(--warn); outline-offset:2px; }
+  button:disabled, button.busy { opacity:.45; cursor:not-allowed; }
+  button.hot { background:var(--hot); color:#1a0f05; } button.on { background:var(--bad); color:#fff; }
+  button.small { padding:6px 10px; font-size:.85rem; }
+  ul { list-style:none; margin:0; padding:0; }
+  details { border-top:1px solid var(--line); }
+  details:first-child { border-top:0; }
+  summary { list-style:none; display:flex; align-items:center; gap:10px; padding:10px 2px; cursor:pointer; }
+  summary::-webkit-details-marker { display:none; }
+  summary .grow { flex:1; min-width:0; }
+  summary .t, summary .sub { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .chip { font-size:.72rem; font-weight:700; padding:3px 8px; border-radius:999px; background:#4a3624; color:var(--muted); flex:none; text-transform:uppercase; }
+  .chip.ready, .chip.queued { background:#2f4a2a; color:var(--ok); } .chip.failed { background:#4a2420; color:var(--bad); }
+  .chip.playing { background:var(--hot); color:#1a0f05; }
+  .detail { padding:0 2px 12px; display:grid; gap:8px; }
+  .quote { background:#1f1710; border-radius:8px; padding:8px 10px; font-size:.92rem; }
+  .quote b { color:var(--muted); font-weight:700; display:block; font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
+  .row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .empty { color:var(--muted); font-size:.92rem; padding:6px 2px; }
+  .history summary .t { font-weight:400; }
+  input { width:100%; font:inherit; padding:10px; border-radius:8px; border:1px solid var(--line); background:#0006; color:var(--ink); margin:4px 0; }
+  .pick { display:block; width:100%; text-align:left; margin:4px 0; font-weight:400; }
+  #auth { color:var(--bad); }
+  #toast { position:fixed; left:50%; bottom:20px; transform:translateX(-50%) translateY(20px); opacity:0; background:var(--ink); color:#1f130a;
+           padding:12px 18px; border-radius:999px; font-weight:700; box-shadow:0 6px 24px #0008; transition:opacity .2s, transform .2s;
+           pointer-events:none; max-width:90vw; text-align:center; z-index:10; }
+  #toast.show { opacity:1; transform:translateX(-50%) translateY(0); } #toast.err { background:var(--bad); color:#fff; }
 </style>
 </head>
 <body>
 <main>
   <h1>OrrFM Booth</h1>
-  <p id="auth" class="bad" hidden>Open this page from your admin link.</p>
-  <section><h2>Health</h2><div class="health" id="health"></div></section>
-  <section><h2>Switches</h2><div class="switches">
-    <button class="hot" id="skip">Skip current</button>
-    <button id="accepting"></button><button id="stopAfterCurrent"></button><button id="somaOnly"></button>
-  </div></section>
-  <section><h2>Queue</h2><div id="items"></div></section>
-  <section><h2>Add a request for someone</h2>
-    <input id="aq" placeholder="Search song…"><div id="aresults"></div>
-    <input id="aname" placeholder="Their name" maxlength="40"><input id="amsg" placeholder="Message (optional)" maxlength="280">
+  <p id="auth" hidden>Open this page from your admin link.</p>
+
+  <section>
+    <div class="health" id="health"></div>
+    <h2>Now playing</h2>
+    <div id="now"></div>
+  </section>
+
+  <section>
+    <div class="controls">
+      <button class="hot" id="skip">Skip current</button>
+      <button id="bumper">Play a bumper</button>
+      <button id="accepting"></button>
+      <button id="stopAfterCurrent"></button>
+      <button id="somaOnly"></button>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="upTitle">Up next</h2>
+    <div id="up"></div>
+  </section>
+
+  <section class="history">
+    <details id="historyBox">
+      <summary><h2 id="histTitle" style="margin:0">Played</h2></summary>
+      <div id="history"></div>
+    </details>
+  </section>
+
+  <section>
+    <h2>Add a request for someone</h2>
+    <input id="aq" placeholder="Search song…" autocomplete="off">
+    <div id="aresults"></div>
+    <input id="aname" placeholder="Their name" maxlength="40">
+    <input id="amsg" placeholder="Message (optional)" maxlength="280">
   </section>
 </main>
 <script>
 const $ = (id) => document.getElementById(id);
-function toast(msg, isErr) {
-  let t = document.getElementById("toast");
-  if (!t) { t = document.createElement("div"); t.id = "toast"; t.setAttribute("role", "status"); document.body.append(t); }
-  t.textContent = msg; t.className = "show" + (isErr ? " err" : "");
-  clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.className = isErr ? "err" : ""; }, 2600);
-}
-async function busy(btn, label, work) {
-  if (btn.disabled) return;
-  const old = btn.textContent; btn.disabled = true; btn.classList.add("busy"); if (label) btn.textContent = label;
-  try { return await work(); } finally { btn.disabled = false; btn.classList.remove("busy"); btn.textContent = old; }
-}
-
 const q = new URLSearchParams(location.search);
 let token = q.get("t") || "";
 try { if (token) { localStorage.setItem("mfm_t", token); history.replaceState(null, "", location.pathname); } else token = localStorage.getItem("mfm_t") || ""; } catch {}
 let state = null, timer = null;
+const openIds = new Set();   // keep expanded rows open across refreshes
+
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+function toast(msg, isErr) {
+  let t = $("toast"); if (!t) { t = el("div"); t.id = "toast"; t.setAttribute("role", "status"); document.body.append(t); }
+  t.textContent = msg; t.className = "show" + (isErr ? " err" : "");
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.className = isErr ? "err" : ""; }, 2600);
+}
+async function busy(btn, work) {
+  if (!btn || btn.disabled) return work();
+  btn.disabled = true; btn.classList.add("busy");
+  try { return await work(); } finally { btn.disabled = false; btn.classList.remove("busy"); render(); }
+}
 async function call(path, body) {
   const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "x-admin-token": token, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 401) { $("auth").hidden = false; throw new Error("auth"); }
   return r.json();
 }
-const DONE = { skip: "Skipped", delete: "Deleted", move: "Moved", retry: "Retrying", resend: "Back in line", add: "Added to the queue", mute: "Phone muted", settings: "Updated" };
-async function act(body, ev) {
+const DONE = { skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
+  mute: "Phone muted", settings: "Updated", break: "Bumper coming up" };
+function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
-  const run = async () => {
+  return busy(btn, async () => {
     try {
       const r = await call("/api/admin/action", body);
-      if (r && r.ok === false) toast(r.error || "That didn't work", true);
-      else toast(DONE[body.action] || "Done");
+      if (r && r.ok === false) toast(r.error || "That didn't work", true); else toast(DONE[body.action] || "Done");
     } catch (e) { if (e.message !== "auth") toast("Couldn't reach the server", true); }
     await load();
-  };
-  return btn ? busy(btn, "…", run) : run();
+  });
 }
-function pill(text, cls) { return el("span", "pill " + cls, text); }
+function art(src) {
+  if (!src) return el("div", "art", "📻");
+  const img = el("img"); img.alt = ""; img.src = src; img.onerror = () => img.replaceWith(el("div", "art", "📻")); return img;
+}
+function cleanTitle(t) {
+  return String(t || "")
+    .replace(/\s*[(\[][^)\]]*(remaster|version|edit|mono|stereo|mix|single|live|from)[^)\]]*[)\]]/gi, "")
+    .replace(/\s+-\s+.*(remaster|version|edit|mono|stereo).*$/i, "").trim();
+}
+function names(it) { return [...new Set(it.requesters.map((r) => r.name))].join(", ") || "the family"; }
+function dot(color) { const d = el("span", "dot"); d.style.background = color; return d; }
+
+function renderNow() {
+  const np = state.nowPlaying, box = el("div", "song");
+  if (!np) { $("now").replaceChildren(el("div", "empty", "Nothing on air yet.")); return; }
+  const text = el("div");
+  text.append(el("div", "t", cleanTitle(np.title)), el("div", "sub", np.artist));
+  text.append(el("div", "sub", np.soma ? "SomaFM · Left Coast 70s" : `for ${np.names || "the family"}`));
+  box.append(art(np.artwork), text);
+  $("now").replaceChildren(box);
+}
+
+function row(it, actions) {
+  const d = el("details"); if (openIds.has(it.id)) d.open = true;
+  d.addEventListener("toggle", () => d.open ? openIds.add(it.id) : openIds.delete(it.id));
+  const s = el("summary"), grow = el("div", "grow");
+  grow.append(el("div", "t", cleanTitle(it.title)), el("div", "sub", `${it.artist} · for ${names(it)}`));
+  const flags = [];
+  if (it.confidence != null && it.confidence < 50) flags.push("low match");
+  if (it.freeText) flags.push("typed-in");
+  s.append(grow, el("span", "chip " + it.status, it.status), ...(flags.length ? [el("span", "chip", flags.join(" · "))] : []));
+  const body = el("div", "detail");
+  for (const r of it.requesters) {
+    const qd = el("div", "quote"); qd.append(el("b", null, r.name), document.createTextNode(r.message || "(no message)"));
+    if (r.device !== "admin") {
+      const m = el("button", "small", "Mute this phone");
+      m.onclick = (e) => confirm(`Mute ${r.name}'s phone? Their waiting requests are removed.`) && act({ action: "mute", device: r.device }, e);
+      const rr = el("div", "row"); rr.style.marginTop = "6px"; rr.append(m); qd.append(rr);
+    }
+    body.append(qd);
+  }
+  if (it.djLine) { const qd = el("div", "quote"); qd.append(el("b", null, `DJ (${it.tone || "funny"}, ${it.voice || "voice"})`), document.createTextNode(it.djLine)); body.append(qd); }
+  if (it.error) { const qd = el("div", "quote"); qd.append(el("b", null, "Problem"), document.createTextNode(it.error)); body.append(qd); }
+  const btns = el("div", "row");
+  for (const [label, fn] of actions) { const b = el("button", "small", label); b.onclick = fn; btns.append(b); }
+  body.append(btns);
+  d.append(s, body);
+  return d;
+}
+
 function render() {
+  if (!state) return;
   const h = state.health, age = h.ageS;
-  const studio = age == null ? pill("Studio: never seen", "bad") : age > 60 ? pill(`Studio: silent ${age}s`, "bad") : pill("Studio: OK", "ok");
-  const src = { requests: ["Playing requests", "ok"], soma: ["Station idle", "ok"], backup: ["Station idle (backup ready)", "ok"], silence: ["SILENCE", "bad"] }[h.source] || ["Source: ?", "warn"];
+  const studioOk = age != null && age <= 60;
+  const hp = el("span"); hp.append(dot(studioOk ? "var(--ok)" : "var(--bad)"), document.createTextNode(studioOk ? "Studio OK" : age == null ? "Studio never seen" : `Studio silent ${age}s`));
+  const src = { requests: ["Request on air", "var(--ok)"], soma: ["SomaFM on air", "var(--ok)"], backup: ["Backup playlist (internet?)", "var(--warn)"] }[h.source] || ["Console unreachable", "var(--bad)"];
+  const sp = el("span"); sp.append(dot(src[1]), document.createTextNode(src[0]));
+  $("health").replaceChildren(hp, sp, ...(h.error ? [el("span", null, `⚠ ${h.error}`)] : []));
+  renderNow();
+
   const playing = state.items.find((i) => i.status === "playing");
-  $("skip").disabled = !playing;
-  $("skip").title = playing ? "Skip the request that is playing" : "Nothing to skip — no request is playing";
-  const onAir = playing ? `On air: ${playing.title} — ${playing.artist} (request)`
-    : h.soma ? `On air: ${h.soma.title} — ${h.soma.artist} (SomaFM)` : "On air: SomaFM";
-  $("health").replaceChildren(pill(onAir, "ok"), studio, pill(src[0], src[1]), ...(h.error ? [pill("Last error: " + h.error, "warn")] : []));
+  $("skip").disabled = !playing; $("skip").title = playing ? "Skip the request on air" : "No request is playing";
   const s = state.settings;
   const sw = (id, on, onText, offText) => { $(id).textContent = on ? onText : offText; $(id).className = on ? "on" : ""; $(id).onclick = (e) => act({ action: "settings", settings: { [id]: !on } }, e); };
-  sw("accepting", !s.accepting, "Requests closed — tap to reopen", "Close requests");
-  sw("stopAfterCurrent", s.stopAfterCurrent, "Stopping after current (tap to resume)", "Stop after current");
-  sw("somaOnly", s.somaOnly, "SomaFM only — requests paused (tap to resume)", "SomaFM only — pause requests");
-  $("items").replaceChildren(...state.items.map((it) => {
-    const d = el("div", "item");
-    const flags = [it.status.toUpperCase(), it.tone, it.voice, it.explicit ? "explicit" : "", it.freeText ? "typed-in" : "",
-      it.confidence != null && it.confidence < 50 ? "LOW CONFIDENCE" : ""].filter(Boolean).join(" · ");
-    d.append(el("div", "t", `${it.title} — ${it.artist}`), el("div", "small", flags));
-    for (const r of it.requesters) {
-      const who = el("div", "small", `${r.name}${r.message ? ": “" + r.message + "”" : ""}`);
-      const mute = el("button", "", "mute phone"); mute.style.marginLeft = "6px"; mute.onclick = (e) => confirm(`Mute ${r.name}'s phone?`) && act({ action: "mute", device: r.device }, e);
-      if (r.device !== "admin") who.append(mute);
-      d.append(who);
-    }
-    if (it.djLine) d.append(el("div", "line", "DJ: " + it.djLine));
-    if (it.error) d.append(el("div", "small bad", it.error));
-    const acts = el("div", "acts");
-    const b = (t, f) => { const x = el("button", "", t); x.onclick = (e) => f(e); acts.append(x); };
-    if (["pending", "preparing", "ready", "queued"].includes(it.status)) { b("▲ Up", (e) => act({ action: "move", id: it.id, dir: -1 }, e)); b("▼ Down", (e) => act({ action: "move", id: it.id, dir: 1 }, e)); }
-    if (it.status === "playing") b("Skip", (e) => act({ action: "skip" }, e));
-    if (["played", "failed", "deleted"].includes(it.status)) b("Resend", (e) => act({ action: "resend", id: it.id }, e));
-    if (!["played", "deleted"].includes(it.status)) b("Delete", (e) => act({ action: "delete", id: it.id }, e));
-    d.append(acts); return d;
-  }));
+  sw("accepting", !s.accepting, "Requests closed — reopen", "Close requests");
+  sw("stopAfterCurrent", s.stopAfterCurrent, "Stopping after this — resume", "Stop after current");
+  sw("somaOnly", s.somaOnly, "SomaFM only — resume requests", "SomaFM only");
+
+  const waiting = state.items.filter((i) => ["pending", "preparing", "ready", "queued"].includes(i.status));
+  $("upTitle").textContent = waiting.length ? `Up next (${waiting.length})` : "Up next";
+  $("up").replaceChildren(...(waiting.length ? waiting.map((it, i) => row(it, [
+    ...(i > 0 ? [["▲ Up", (e) => act({ action: "move", id: it.id, dir: -1 }, e)]] : []),
+    ...(i < waiting.length - 1 ? [["▼ Down", (e) => act({ action: "move", id: it.id, dir: 1 }, e)]] : []),
+    ["Delete", (e) => act({ action: "delete", id: it.id }, e)],
+  ])) : [el("div", "empty", "No requests waiting.")]));
+
+  const past = state.items.filter((i) => ["played", "failed"].includes(i.status));
+  $("histTitle").textContent = `Played (${past.length})`;
+  $("history").replaceChildren(...past.map((it) => row(it, [["Resend", (e) => act({ action: "resend", id: it.id }, e)]])));
 }
 async function load() { try { state = await call("/api/admin/state"); render(); } catch {} }
+
 $("skip").onclick = (e) => act({ action: "skip" }, e);
+$("bumper").onclick = (e) => act({ action: "break" }, e);
 $("aq").addEventListener("input", () => {
-  clearTimeout(timer); const text = $("aq").value.trim(); if (text.length < 3) return;
+  clearTimeout(timer); const text = $("aq").value.trim();
+  if (text.length < 3) { $("aresults").replaceChildren(); return; }
+  $("aresults").replaceChildren(el("div", "empty", "Searching…"));
   timer = setTimeout(async () => {
     const { results } = await call("/api/admin/search?q=" + encodeURIComponent(text));
-    $("aresults").replaceChildren(...results.slice(0, 6).map((t) => {
-      const x = el("button", "", `${t.title} — ${t.artist}`); x.style.display = "block"; x.style.margin = "4px 0";
+    $("aresults").replaceChildren(...(results.length ? results.slice(0, 6).map((t) => {
+      const x = el("button", "pick", `${t.title} — ${t.artist}`);
       x.onclick = async (e) => { await act({ action: "add", track: t, name: $("aname").value || "the family", message: $("amsg").value }, e); $("aq").value = $("amsg").value = ""; $("aresults").replaceChildren(); };
       return x;
-    }));
+    }) : [el("div", "empty", "No matches.")]));
   }, 400);
 });
 load(); setInterval(() => document.visibilityState === "visible" && load(), 3000);

@@ -145,4 +145,17 @@ describe("party", () => {
     expect(waiting.map((i) => i.id)).toEqual([b.id, a.id]);
     expect(st.items.find((i) => i.id === a.id)?.status).toBe("ready");
   });
+
+  it("the bumper button sends a break command to the studio", async () => {
+    const p = stub("bumper");
+    await p.adminAction({ action: "break" });
+    expect((await p.beat(beat)).commands.map((c) => c.type)).toContain("break");
+  });
+
+  it("admin now playing matches the guest page", async () => {
+    const p = stub("adminnp");
+    await p.beat({ ...beat, source: "soma", soma: { artist: "America", title: "Ventura Highway", since: 1 } });
+    const st = await p.adminState();
+    expect(st.nowPlaying).toMatchObject({ title: "Ventura Highway", artist: "America", soma: true });
+  });
 });

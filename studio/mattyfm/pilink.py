@@ -22,8 +22,14 @@ class PiLink:
     def push(self, item: dict) -> dict:
         return self._post("/push", item)
 
-    def skip(self) -> None:
-        self._post("/skip")
+    def skip(self, bumper: dict | None = None) -> None:
+        """bumper {url, voiceS}: played over the fade to SomaFM when nothing is queued."""
+        self._post("/skip", {"bumper": bumper} if bumper else None)
+
+    def voice(self, url: str, voice_s: float) -> bool:
+        """A DJ break over whatever is on air (SomaFM). False if the console is busy."""
+        r = self.http.post(f"{self.base}/voice", json={"url": url, "voiceS": voice_s}, headers=self.headers)
+        return r.status_code == 200
 
     def clear(self) -> None:
         self._post("/clear")

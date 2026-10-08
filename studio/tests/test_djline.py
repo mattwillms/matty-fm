@@ -120,3 +120,17 @@ def test_prompt_rules_short_no_assumed_relationships_ends_with_artist_and_song()
 def test_template_ends_with_artist_and_song():
     script = djline.template(item()).script
     assert script.endswith("Earth, Wind & Fire with September.")
+
+
+def test_backannounce_line_ends_with_the_new_song():
+    reply = json.dumps({"ok": True, "tone": "funny", "script": "That was Al Stewart. You're on OrrFM, here's America with Ventura Highway."})
+    client = FakeClient(reply)
+    line = djline.backannounce({"artist": "Al Stewart", "title": "On The Border"},
+                               {"artist": "America", "title": "Ventura Highway"}, client)
+    assert line.script.endswith("Ventura Highway.") and not line.fallback
+    assert "Ventura Highway" in client.calls[0]["messages"][0]["content"]
+
+
+def test_backannounce_falls_back_to_a_plain_id():
+    line = djline.backannounce(None, {"artist": "America", "title": "Ventura Highway"}, FakeClient(exc=TimeoutError()))
+    assert line.fallback and line.script.endswith("America with Ventura Highway.")

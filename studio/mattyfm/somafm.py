@@ -15,6 +15,7 @@ class NowPlaying:
     def __init__(self, http: httpx.Client, every_s: float = 30.0):
         self.http, self.every_s = http, every_s
         self.last: dict | None = None
+        self.prev: dict | None = None
         self.fetched = 0.0
 
     def get(self) -> dict | None:
@@ -30,6 +31,7 @@ class NowPlaying:
                 else:
                     now["artwork"] = self._artwork(now["artist"], now["title"])
                     log.info("SomaFM now: %s - %s", now["artist"], now["title"])
+                    self.prev = self.last
                 self.last = now
             except Exception as e:  # the feed is cosmetic: keep the last known song
                 log.debug("SomaFM feed failed: %s", e)

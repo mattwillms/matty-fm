@@ -1,4 +1,4 @@
-"""LAN file server for the Pi console: only ready/, voice/ and backup/ under media/.
+"""LAN file server for the Pi console: only ready/, voice/, backup/ and breaks/ under media/.
 
 Usage: python -m mattyfm.files   (binds 0.0.0.0:8040; the firewall allows the LAN only)
 """
@@ -9,7 +9,7 @@ import urllib.parse
 from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
-ALLOWED = ("ready", "voice", "backup")
+ALLOWED = ("ready", "voice", "backup", "breaks")
 
 
 class Handler(SimpleHTTPRequestHandler):

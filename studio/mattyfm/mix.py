@@ -72,3 +72,17 @@ def prepare_files(song: Path, voice: Path, song_out: Path, voice_out: Path, rate
         for f in work.iterdir():
             f.unlink()
         work.rmdir()
+
+
+def prepare_voice(voice: Path, out: Path, rate: int) -> float:
+    """A DJ-only clip (break or bumper): same voice chain and loudness as request intros."""
+    work = out.with_suffix(".work.wav")
+    try:
+        _normalize(voice, work, VOICE_LUFS, rate,
+                   pre=VOICE_CHAIN + ",silenceremove=start_periods=1:start_threshold=-45dB")
+        tmp = out.with_name(out.stem + ".tmp.mp3")
+        _ffmpeg("-i", str(work), "-ar", str(rate), "-c:a", "libmp3lame", "-b:a", "192k", str(tmp))
+        tmp.rename(out)
+        return duration(out)
+    finally:
+        work.unlink(missing_ok=True)

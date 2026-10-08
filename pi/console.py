@@ -42,6 +42,9 @@ PLAIN_UP_S = 1.5        # incoming fade without a voice
 PLAIN_FADE_S = DOWN_S   # kept for skips
 OUTRO_S = 3.0           # song -> SomaFM: the song fades out over its last seconds
 SOMA_UP_S = 2.0
+DUCK_PCT = 55           # voice breaks: the on-air channel dips to this (softvol %, ~-27 dB)
+DUCK_S = 0.5            # dip over this, then the DJ starts
+RESTORE_S = 1.0         # back to full over this after the DJ ends
 DEAD_AFTER_S = 1.0      # a deck that stopped this long after starting is treated as ended
 TICK_S = 0.1
 SOMA_STALL_S = 4.0
@@ -122,17 +125,41 @@ class Engine:
                 self.log(f"clear {self.queued['id']}")
             self.queued = None
 
-    def skip(self) -> None:
+    def skip(self, bumper: tuple[str, float] | None = None) -> None:
+        """Skip what is on air: straight into the queued request (its own DJ intro covers
+        it), or back to SomaFM with the skip bumper over the fade."""
         with self.lock:
             ch, it = self.on_air
             if ch == "soma":
                 self.log("skip ignored: nothing but SomaFM on air")
                 return
-            self.log(f"skip {it['id'] if it else ch}")
+            self.log(f"skip {it['id'] if it else ch}" + (" with bumper" if bumper else ""))
             if self.queued:
                 self._to_request()
+            elif bumper and self.soma_up():
+                self._transition("soma", None, bumper[0], bumper[1], down_s=PLAIN_FADE_S, up_s=SOMA_UP_S)
             else:
                 self._to_soma(PLAIN_FADE_S)
+
+    def voice_break(self, url: str, voice_s: float) -> bool:
+        """DJ over SomaFM (or a backup song): dip, talk, restore. Refused during a transition
+        or a request — those already have a DJ."""
+        with self.lock:
+            now = self.clock()
+            ch, it = self.on_air
+            if now < self.transition_until or (ch in DECKS and it and not it.get("backup")):
+                self.log("voice break refused: busy")
+                return False
+            control = CONTROLS[ch]
+            level = self.mixer.level[control]
+            back_at = now + DUCK_S + voice_s
+            self.ramps = [r for r in self.ramps if r[0] != control]
+            self.ramps.append((control, level, DUCK_PCT, now, DUCK_S))
+            self.ramps.append((control, DUCK_PCT, 100, back_at, RESTORE_S))
+            self.pending_dj = (url, now + DUCK_S)
+            self.transition_until = back_at + RESTORE_S
+            self.log(f"voice break on {ch}: {voice_s:.1f}s")
+            return True
 
     def status(self) -> dict:
         with self.lock:
@@ -150,6 +177,10 @@ class Engine:
                     "remaining": round(remaining, 1), "queued": 1 if self.queued else 0}
 
     # ----- transitions -----
+    def resolve(self, url: str) -> str:
+        """Relative paths (breaks/x.mp3) are on the workstation's file server."""
+        return url if url.startswith("http") else f"{self.files}/{url.lstrip('/')}"
+
     def _url(self, kind: str, item: dict) -> str:
         return item["url"] if kind == "ready" and item.get("url") else f"{self.files}/{kind}/{item['id']}.mp3"
 
@@ -202,9 +233,13 @@ class Engine:
     def tick(self) -> None:
         with self.lock:
             now = self.clock()
+            current: dict[str, int] = {}
             for control, start, end, t0, dur in self.ramps:
+                if now >= t0 or control not in current:   # a later-starting ramp waits its turn
+                    current[control] = level_at(now - t0, start, end, dur)
+            for control, lvl in current.items():
                 # sent every step: a softvol control created mid-fade must not keep its default
-                self.mixer.set(control, level_at(now - t0, start, end, dur))
+                self.mixer.set(control, lvl)
             self.ramps = [r for r in self.ramps if now - r[3] < r[4]]
             if self.pending_play and now >= self.pending_play[2]:
                 ch, url, _ = self.pending_play
@@ -380,7 +415,11 @@ def serve(engine: Engine, token: str, port: int) -> None:
             if self.path == "/push":
                 engine.push(body)
             elif self.path == "/skip":
-                engine.skip()
+                b = body.get("bumper")
+                engine.skip((engine.resolve(b["url"]), float(b["voiceS"])) if b else None)
+            elif self.path == "/voice":
+                if not engine.voice_break(engine.resolve(body["url"]), float(body["voiceS"])):
+                    return self._reply(409, {"error": "busy"})
             elif self.path == "/clear":
                 engine.clear()
             else:

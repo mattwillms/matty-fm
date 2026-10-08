@@ -6,7 +6,7 @@ from mattyfm import files
 
 
 def test_only_playout_folders_are_served(tmp_path):
-    for d in ("ready", "voice", "backup", "cache"):
+    for d in ("ready", "voice", "backup", "breaks", "cache"):
         (tmp_path / d).mkdir()
         (tmp_path / d / "x.mp3").write_bytes(b"ID3")
     (tmp_path / "qr-card.html").write_text("party code")
@@ -14,7 +14,7 @@ def test_only_playout_folders_are_served(tmp_path):
     threading.Thread(target=srv.serve_forever, daemon=True).start()
     base = f"http://127.0.0.1:{srv.server_address[1]}"
     try:
-        for ok in ("ready/x.mp3", "voice/x.mp3", "backup/x.mp3"):
+        for ok in ("ready/x.mp3", "voice/x.mp3", "backup/x.mp3", "breaks/x.mp3"):
             assert urllib.request.urlopen(f"{base}/{ok}").read() == b"ID3"
         for bad in ("cache/x.mp3", "qr-card.html", "ready/../qr-card.html", ""):
             try:
