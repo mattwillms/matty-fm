@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import djline, mix, songs, tts
+from . import apple, djline, mix, songs, tts
 
 log = logging.getLogger("mattyfm.prepare")
 
@@ -110,6 +110,10 @@ def prepare(item: dict, deps: Deps) -> dict:
         return {"id": item["id"], "status": "failed", "error": f"{type(e).__name__}: {e}"[:300]}
     log.info("%s files ready in %.1fs (song %.0fs, voice %.1fs); total %.1fs", rid, time.monotonic() - t1,
              seconds, voice_s, time.monotonic() - t0)
-    return {"id": item["id"], "status": "ready", "file": f"{item['id']}.mp3", "durationS": seconds,
+    # year, album and the Apple Music link for the guests' record sleeve (iPhones can't ask Apple themselves)
+    info = apple.release_info(item["artist"], item["title"], deps.http) if deps.http else {}
+    extra = {k2: info[k1] for k1, k2 in (("year", "year"), ("apple", "appleUrl"), ("album", "albumName"),
+                                          ("artwork", "artworkUrl")) if info.get(k1)}
+    return {**extra, "id": item["id"], "status": "ready", "file": f"{item['id']}.mp3", "durationS": seconds,
             "confidence": confidence, "matchNote": note, "djLine": line.script, "tone": line.tone, "voice": engine,
             "voiceS": voice_s}

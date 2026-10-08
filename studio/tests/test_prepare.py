@@ -109,3 +109,16 @@ def test_a_voice_failure_keeps_the_cached_song(tmp_path, monkeypatch):
     monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: (_ for _ in ()).throw(RuntimeError("tts down")))
     assert prepare.prepare(ITEM, deps(tmp_path))["status"] == "failed"
     assert cached.exists()
+
+
+def test_a_ready_song_carries_release_info_for_the_sleeve(tmp_path, monkeypatch):
+    monkeypatch.setattr(prepare.songs, "get_song", lambda item, cache, **k: SongFile(tmp_path / "s.mp3", 77.0, "v"))
+    monkeypatch.setattr(prepare.djline, "write_line", lambda item, c: DJLine(True, "sweet", "Hello Ann.", False))
+    monkeypatch.setattr(prepare.tts, "speak", lambda *a, **k: "eleven")
+    monkeypatch.setattr(prepare.mix, "prepare_files", lambda *a, **k: (201.5, 4.2))
+    monkeypatch.setattr(prepare.apple, "release_info",
+                        lambda artist, title, http: {"year": "1975", "album": "Arrival", "apple": "https://music.apple.com/x?app=music"})
+    d = deps(tmp_path)
+    d.http = object()
+    r = prepare.prepare(ITEM, d)
+    assert r["year"] == "1975" and r["appleUrl"] == "https://music.apple.com/x?app=music" and r["albumName"] == "Arrival"

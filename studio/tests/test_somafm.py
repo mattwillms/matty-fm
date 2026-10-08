@@ -41,3 +41,20 @@ def test_artwork_looked_up_once_per_song():
     assert np.get()["artwork"] == "https://is1-ssl.mzstatic.com/x/200x200bb.jpg"
     np.get()
     assert sum("itunes.apple.com" in u for u in seen) == 1
+
+
+def test_now_playing_carries_release_info_for_the_sleeve(monkeypatch):
+    import httpx
+    from mattyfm import somafm
+
+    def handler(req):
+        if "somafm.com" in str(req.url):
+            return httpx.Response(200, json={"songs": [{"artist": "Fleetwood Mac", "title": "Dreams", "date": "1700000000"}]})
+        return httpx.Response(200, json={"results": [
+            {"trackName": "Dreams", "artistName": "Fleetwood Mac", "releaseDate": "1977-02-04T08:00:00Z",
+             "collectionName": "Rumours", "trackViewUrl": "https://music.apple.com/us/album/r/1?i=7&uo=4",
+             "artworkUrl100": "https://is1-ssl.mzstatic.com/a/100x100bb.jpg"}]})
+
+    np = somafm.NowPlaying(httpx.Client(transport=httpx.MockTransport(handler))).get()
+    assert np["year"] == "1977" and np["album"] == "Rumours" and np["apple"].endswith("app=music")
+    assert np["artwork"].endswith("/200x200bb.jpg")
