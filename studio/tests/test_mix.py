@@ -39,10 +39,20 @@ def test_song_is_ducked_under_voice(parts):
     # 220 Hz band only: under the voice it must be much quieter than later.
     filt = parts / "low.wav"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(out), "-af", "lowpass=f=300", str(filt)], check=True)
-    assert mean_db(filt, 2, 2) < mean_db(filt, 30, 2) - 6
+    assert mean_db(filt, mix.LEAD_IN_S + 1.5, 2) < mean_db(filt, 30, 2) - 6
 
 
 def test_rejects_short_output(parts):
     tone(parts / "tiny.mp3", 220, 5)
     with pytest.raises(ValueError):
         mix.premix(parts / "tiny.mp3", parts / "voice.mp3", None, parts / "o.mp3", 44100)
+
+
+def test_music_leads_in_before_the_voice(parts):
+    # The Pi crossfades into the request over the first seconds: only music there,
+    # so the jingle and voice start after the fade, at full level.
+    out = parts / "out.mp3"
+    mix.premix(parts / "song.mp3", parts / "voice.mp3", parts / "sting.mp3", out, 44100)
+    voice_band = parts / "vb.wav"
+    subprocess.run(["ffmpeg", "-v", "error", "-y", "-i", str(out), "-af", "bandpass=f=880:w=80", str(voice_band)], check=True)
+    assert mean_db(voice_band, 0.2, 2.5) < mean_db(voice_band, mix.LEAD_IN_S + 3.0, 2.0) - 15

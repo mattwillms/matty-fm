@@ -28,7 +28,8 @@ def main() -> None:
     working: set[str] = set()
     lock = threading.Lock()
     pushed: list[str] = []
-    done_cmds: set[int] = set()   # executed locally; acked every beat until the Worker drops them
+    done_cmds: set[int] = set()
+    last_seen = None   # (source, current, queued) — logged whenever it changes   # executed locally; acked every beat until the Worker drops them
     last_error = ""
 
     def run_job(item: dict) -> None:
@@ -52,6 +53,11 @@ def main() -> None:
             except OSError as e:
                 status = {"source": "silence", "current": "", "remaining": -1.0, "queued": 0}
                 last_error = f"station unreachable: {e}"
+            seen = (status["source"], status["current"] if status["source"] == "requests" else "", status["queued"])
+            if seen != last_seen:
+                log.info("station: source=%s current=%s queued=%s remaining=%.0fs",
+                         seen[0], seen[1] or "-", seen[2], status["remaining"])
+                last_seen = seen
             with lock:
                 body = {**status, "pushed": pushed, "working": sorted(working),
                         "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error,
@@ -61,25 +67,34 @@ def main() -> None:
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]
             done_cmds = {c["id"] for c in reply["commands"]} | {c["id"] for c in fresh}
             reply = {**reply, "commands": fresh}
+            if reply["settings"]["somaOnly"] or reply["settings"]["stopAfterCurrent"]:
+                log.debug("settings: %s", reply["settings"])
             for job in reply["jobs"]:
+                log.info("job %s claimed: %s - %s (%d requester(s))", job["id"], job["artist"],
+                         job["title"], len(job["requesters"]))
                 with lock:
                     working.add(job["id"])
                 pool.submit(run_job, job)
             for action in feed.decide(status, reply):
                 if action[0] == "skip":
+                    log.info("command: skip")
                     station.skip()
                 elif action[0] == "clear":
+                    log.info("command: clear station queue")
                     station.clear()
                 elif action[0] == "push":
                     item = action[1]
                     station.push(f"{cfg.station_media_dir}/ready/{item['id']}.mp3",
                                  item["id"], item["title"], item["artist"])
                     pushed.append(item["id"])
-                    log.info("pushed %s", item["id"])
+                    log.info("pushed %s: %s - %s (station was source=%s remaining=%.0fs)", item["id"],
+                             item["artist"], item["title"], status["source"], status["remaining"])
             last_error = ""
         except Exception as e:
-            last_error = f"{type(e).__name__}: {e}"[:200]
-            log.warning("beat failed: %s", last_error)
+            msg = f"{type(e).__name__}: {e}"[:200]
+            if msg != last_error:
+                log.warning("beat failed: %s", msg)   # logged once per distinct error, not every 3 s
+            last_error = msg
         time.sleep(max(0.0, BEAT_S - (time.monotonic() - started)))
 
 

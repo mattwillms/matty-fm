@@ -6,6 +6,9 @@ import subprocess
 from pathlib import Path
 
 SONG_LUFS, VOICE_LUFS, TRUE_PEAK = -16, -14, -1.5
+# Seconds of music alone at the start: the Pi crossfades SomaFM into the request
+# over this, so the jingle and voice begin after the fade, at full level.
+LEAD_IN_S = 4.0
 VOICE_CHAIN = ("highpass=f=80,equalizer=f=3000:t=q:w=1:g=3,"
                "acompressor=threshold=-18dB:ratio=4:attack=5:release=100:makeup=2")
 
@@ -49,12 +52,13 @@ def premix(song: Path, voice: Path, sting: Path | None, dest: Path, rate: int) -
 
     fmt = f"aformat=sample_fmts=fltp:sample_rates={rate}:channel_layouts=stereo"
     inputs = ["-i", str(song_n), "-i", str(voice_n)]
-    voice_at = 0.5
+    voice_at = LEAD_IN_S + 0.5
     if sting:
         inputs += ["-i", str(sting)]
-        voice_at = duration(sting) + 0.2
+        voice_at = LEAD_IN_S + duration(sting) + 0.2
+    lead_ms = int(LEAD_IN_S * 1000)
     talk = (f"[1:a]{fmt},adelay={int(voice_at * 1000)}:all=1,apad=whole_dur={total}[v];"
-            + (f"[2:a]{fmt},apad=whole_dur={total}[st];[v][st]amix=inputs=2:normalize=0:duration=first,"
+            + (f"[2:a]{fmt},adelay={lead_ms}:all=1,apad=whole_dur={total}[st];[v][st]amix=inputs=2:normalize=0:duration=first,"
                if sting else "[v]anull,")
             + "asplit[talk][key];")
     graph = (talk + f"[0:a]{fmt}[song];"

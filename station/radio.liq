@@ -17,7 +17,11 @@ backup = playlist(id="backup", mode="randomize", reload_mode="watch", "/media/ba
 # Do not rebind `reqs`: wrapped sources lose push/skip/set_queue.
 reqs = request.queue(id="reqs")
 current = ref("")
-reqs.on_track(synchronous=true, fun (m) -> current := m["mattyfm_id"])
+reqs.on_track(synchronous=true, fun (m) -> begin
+  current := m["mattyfm_id"]
+  log.important(label="mattyfm", "request on air: #{m['mattyfm_id']} #{m['artist']} - #{m['title']}")
+end)
+backup.on_track(synchronous=false, fun (m) -> log.important(label="mattyfm", "backup track: #{m['artist']} - #{m['title']}"))
 played = crossfade(duration=6., fade_in=2., fade_out=4., reqs)
 
 def to_req(a, b) = sequence([fade.out(duration=1., a), fade.in(duration=0.1, b)]) end
