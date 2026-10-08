@@ -58,7 +58,10 @@
   .screw { position: absolute; width: 10px; height: 10px; border-radius: 50%;
            background: radial-gradient(circle at 35% 35%, #fff, #9a948a 60%, #6d675e);
            box-shadow: inset 0 0 0 1px #0003; }
-  .screw::after { content: ""; position: absolute; left: 1px; right: 1px; top: 4px; height: 2px; background: #5d574e; transform: rotate(35deg); }
+  .screw { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .screw::before { content: ""; position: absolute; inset: -12px; border-radius: 50%; }   /* a fingertip-sized tap target */
+  /* only the slit turns: the head's highlight is the room's light and stays put */
+  .slit { position: absolute; left: 1px; right: 1px; top: 4px; height: 2px; background: #5d574e; transform: rotate(var(--r)); }
   .screw.tl { top: 6px; left: 6px; } .screw.tr { top: 6px; right: 6px; } .screw.bl { bottom: 6px; left: 6px; } .screw.br { bottom: 6px; right: 6px; }
   .dial { position: relative; height: 54px; margin-top: 12px; border-radius: var(--glass-r); background: linear-gradient(#1b1410, #2a201a);
           box-shadow: inset 0 3px 8px #000d, 0 1px 0 #fff8; overflow: hidden; }
@@ -258,7 +261,8 @@
 
   <section class="cabinet" aria-label="On air">
     <div class="faceplate">
-      <i class="screw tl"></i><i class="screw tr"></i><i class="screw bl"></i><i class="screw br"></i>
+      <i class="screw tl"><b class="slit" style="--r: 23deg"></b></i><i class="screw tr"><b class="slit" style="--r: 142deg"></b></i>
+      <i class="screw bl"><b class="slit" style="--r: 81deg"></b></i><i class="screw br"><b class="slit" style="--r: 167deg"></b></i>
       <div class="glass" id="glass" role="button" tabindex="0" aria-label="Show the record sleeve">
         <div class="display" id="display"><div class="vfd"><div class="idle">Warming up…</div></div></div>
       </div>
@@ -492,6 +496,25 @@ function closeSleeve() {
 }
 $("sleeve").onclick = (e) => { if (!e.target.closest("a")) closeSleeve(); };   // tap anywhere but a link to put it back
 $("sleeve").addEventListener("cancel", (e) => { e.preventDefault(); closeSleeve(); });   // Escape fades too
+// ---- screws: tap one and it spins loose, slowing under friction, never past 1.5 s ----
+function slitAngle(slit) {
+  const m = new DOMMatrix(getComputedStyle(slit).transform);
+  return Math.atan2(m.b, m.a) * 180 / Math.PI;
+}
+for (const screw of document.querySelectorAll(".screw")) {
+  screw.addEventListener("click", () => {
+    const slit = screw.querySelector(".slit");
+    const from = slitAngle(slit);                       // mid-spin taps carry on from where it is
+    slit.getAnimations().forEach((a) => a.cancel());
+    const seconds = 0.6 + Math.random() * 0.9;          // 0.6 to 1.5 s
+    const speed = 500 + Math.random() * 900;            // launch speed, degrees per second
+    const to = from + (Math.random() < 0.5 ? -1 : 1) * speed * seconds / 2;   // steady friction: half of speed × time
+    slit.style.setProperty("--r", `${to}deg`);
+    if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    slit.animate([{ transform: `rotate(${from}deg)` }, { transform: `rotate(${to}deg)` }],
+                 { duration: seconds * 1000, easing: "cubic-bezier(.5, 1, .89, 1)" });   // ease-out quad = constant deceleration
+  });
+}
 function showNow(np) {
   const d = $("display");
   onAir = np;
