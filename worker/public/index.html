@@ -74,7 +74,12 @@
            background: repeating-linear-gradient(90deg, #cdb59188 0 1px, transparent 1px 10px); }
   .ticks::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--cream-dim) 0 2px, transparent 2px 50px); height: 12px; }
   .needle { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--orange);
-            box-shadow: 0 0 8px var(--orange); left: 50%; transition: left 1.1s cubic-bezier(.3, .7, .2, 1); }
+            box-shadow: 0 0 8px var(--orange); left: 0; will-change: transform; }   /* placed and moved by transform only (see the dial script) */
+  .dial { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  .spark { position: absolute; width: 3px; height: 3px; border-radius: 1px; background: #ffe2a0; pointer-events: none;
+           box-shadow: 0 0 4px #ffb347, 0 0 9px #ff7a1a; }
+  .snapflash { position: absolute; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; pointer-events: none;
+               background: radial-gradient(circle, #fff 0 15%, #ffd27acc 30%, #ff7a1a00 70%); }
   .glass { position: relative; border-radius: var(--glass-r); cursor: pointer; background: var(--glass); padding: 12px 14px;
            box-shadow: inset 0 3px 10px #000, 0 1px 0 #fff8; }
   .glass:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
@@ -421,10 +426,112 @@ function henSpin(on) {
 }
 
 // The dial: each song gets its own spot on the scale, and the needle swings there when it changes.
+// Tap it and it moves; keep tapping (each within TAP_RESET_MS) and it wobbles, then tilts, then
+// snaps and falls behind the faceplate, and a new needle drops in. One break per BREAK_COOLDOWN_MS;
+// inside that, taps top out at the tilt. Nothing on screen says when it can break again.
+const TAP_RESET_MS = 2500, BREAK_COOLDOWN_MS = 5 * 60 * 1000;
+const needle = { f: 0.5, rot: 0, broken: false, pendingF: null };   // f: 0..1 along the scale
+let taps = 0, lastTap = 0, breakReadyAt = 0;
+const calm = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+function dialPx(f) { const w = $("needle").parentElement.clientWidth; return 12 + f * (w - 24) - 1.5; }
+function needleAt(x, y = 0, r = 0) { return `translate(${x.toFixed(1)}px, ${y.toFixed(1)}px) rotate(${r.toFixed(2)}deg)`; }
+function placeNeedle() { $("needle").style.transform = needleAt(dialPx(needle.f), 0, needle.rot); }
+function freezeNeedle() {   // a tap mid-motion carries on from wherever the needle is now
+  const n = $("needle"), m = new DOMMatrix(getComputedStyle(n).transform);
+  n.getAnimations().forEach((a) => a.cancel());
+  const w = n.parentElement.clientWidth;
+  needle.f = Math.min(1, Math.max(0, (m.m41 + 1.5 - 12) / (w - 24)));
+  needle.rot = Math.atan2(m.b, m.a) * 180 / Math.PI;
+  placeNeedle();
+}
+// Swing to f. wobble 0: a clean move. wobble > 0: a damped spring past the target and back,
+// stronger with wobble; tilt: the angle it settles at (the needle's come loose).
+function swing(f, wobble = 0, tilt = 0) {
+  freezeNeedle();
+  const n = $("needle"), x0 = dialPx(needle.f), x1 = dialPx(f), r0 = needle.rot;
+  needle.f = f; needle.rot = tilt;
+  if (calm() || !wobble) {
+    n.animate([{ transform: needleAt(x0, 0, r0) }, { transform: needleAt(x1, 0, tilt) }],
+              { duration: 1100, easing: "cubic-bezier(.3, .7, .2, 1)" });
+    return placeNeedle();
+  }
+  const swings = wobble > 1 ? 7 : 4, amp = Math.min(wobble > 1 ? 70 : 34, Math.abs(x1 - x0) * (wobble > 1 ? .6 : .35));
+  const dir = Math.sign(x1 - x0) || 1, frames = [{ transform: needleAt(x0, 0, r0), offset: 0 }];
+  for (let i = 0; i <= swings; i++) {
+    const decay = Math.pow(wobble > 1 ? .62 : .45, i), side = i % 2 ? -1 : 1;
+    const x = x1 + dir * side * amp * decay;
+    const r = tilt + (wobble > 1 ? dir * side * 9 * decay : 0);   // big wobbles rock the needle too
+    frames.push({ transform: needleAt(x, 0, r), offset: .35 + .55 * i / swings, easing: "ease-in-out" });
+  }
+  frames.push({ transform: needleAt(x1, 0, tilt), offset: 1 });
+  n.animate(frames, { duration: wobble > 1 ? 2300 : 1600, easing: "linear" });
+  placeNeedle();
+}
+function sparks(x, y) {
+  const dial = $("needle").parentElement;
+  const flash = el("span", "snapflash"); flash.style.left = `${x}px`; flash.style.top = `${y}px`; dial.append(flash);
+  flash.animate([{ opacity: 1, transform: "scale(.4)" }, { opacity: 0, transform: "scale(1.8)" }], { duration: 260, easing: "ease-out" })
+    .finished.then(() => flash.remove());
+  for (let i = 0; i < 16; i++) {
+    const sp = el("span", "spark"); sp.style.left = `${x}px`; sp.style.top = `${y}px`; dial.append(sp);
+    const a = -Math.PI / 2 + (Math.random() - .5) * 2.6, v = 60 + Math.random() * 120, life = 450 + Math.random() * 450;
+    const frames = [];
+    for (let k = 0; k <= 8; k++) {   // ballistic: thrown out, then gravity pulls it down
+      const t = (k / 8) * life / 1000;
+      frames.push({ transform: `translate(${(Math.cos(a) * v * t).toFixed(1)}px, ${(Math.sin(a) * v * t + 260 * t * t).toFixed(1)}px)`,
+                    opacity: 1 - (k / 8) ** 2 });
+    }
+    sp.animate(frames, { duration: life, easing: "linear" }).finished.then(() => sp.remove());
+  }
+}
+async function breakNeedle(f) {
+  freezeNeedle();
+  needle.broken = true;
+  const n = $("needle"), dial = n.parentElement, h = dial.clientHeight;
+  const x0 = dialPx(needle.f), xSnap = x0 + (dialPx(f) - x0) * (.35 + Math.random() * .3);
+  await n.animate([{ transform: needleAt(x0, 0, needle.rot) }, { transform: needleAt(xSnap, 0, needle.rot) }],
+                  { duration: 380, easing: "ease-in", fill: "forwards" }).finished;
+  sparks(xSnap + 1.5, h * .45);
+  dial.animate([{ transform: "translate(0,0)" }, { transform: "translate(-2px,1px)" }, { transform: "translate(2px,-1px)" },
+                { transform: "translate(-1px,1px)" }, { transform: "translate(0,0)" }], { duration: 240 });
+  const spin = (Math.random() < .5 ? -1 : 1) * (50 + Math.random() * 80), drift = (Math.random() - .5) * 30;
+  await n.animate([{ transform: needleAt(xSnap, 0, needle.rot), filter: "brightness(1.6)" },
+                   { transform: needleAt(xSnap + drift * .3, h * .3, spin * .3), filter: "brightness(.8)", offset: .35 },
+                   { transform: needleAt(xSnap + drift, h + 30, spin), filter: "brightness(.5)" }],
+                  { duration: 650, easing: "cubic-bezier(.55, 0, 1, .45)", fill: "forwards" }).finished;   // gravity: ever faster
+  n.getAnimations().forEach((a) => a.cancel());
+  n.style.opacity = "0";
+  await new Promise((r) => setTimeout(r, 1200));   // a beat with no needle at all
+  needle.f = needle.pendingF ?? (.08 + Math.random() * .84); needle.rot = 0; needle.pendingF = null;
+  const x = dialPx(needle.f);
+  n.style.opacity = "";
+  placeNeedle();
+  await n.animate([{ transform: needleAt(x, -h - 20), easing: "cubic-bezier(.5, 0, 1, .5)" },
+                   { transform: needleAt(x, 0), offset: .55, easing: "cubic-bezier(0, .5, .5, 1)" },
+                   { transform: needleAt(x, -9), offset: .72, easing: "cubic-bezier(.5, 0, 1, .5)" },
+                   { transform: needleAt(x, 0), offset: .85, easing: "cubic-bezier(0, .5, .5, 1)" },
+                   { transform: needleAt(x, -2.5), offset: .93, easing: "cubic-bezier(.5, 0, 1, .5)" },
+                   { transform: needleAt(x, 0) }], { duration: 950 }).finished;
+  needle.broken = false;
+}
+$("needle").parentElement.addEventListener("click", () => {
+  if (needle.broken) return;
+  const now = Date.now();
+  if (now - lastTap > TAP_RESET_MS) taps = 0;
+  taps += 1; lastTap = now;
+  let f; do { f = .06 + Math.random() * .88; } while (Math.abs(f - needle.f) < .22);   // somewhere clearly else
+  const level = calm() ? 1 : Math.min(taps, now < breakReadyAt ? 3 : 4);
+  if (level === 4) { taps = 0; breakReadyAt = now + BREAK_COOLDOWN_MS; breakNeedle(f); }
+  else if (level === 3) swing(f, 2, (Math.random() < .5 ? -1 : 1) * (3 + Math.random() * 3));
+  else if (level === 2) swing(f, 1);
+  else swing(f);
+});
+addEventListener("resize", () => { if (!needle.broken) placeNeedle(); });
+placeNeedle();
 function tune(key) {
   let h = 0; for (const c of key) h = (h * 31 + c.charCodeAt(0)) >>> 0;
-  const pos = 6 + (h % 880) / 10;
-  $("needle").style.left = `calc(12px + ${pos.toFixed(1)}% * .97)`;
+  const f = .06 + (h % 880) / 1000;
+  if (needle.broken) needle.pendingF = f; else swing(f);   // a new song also straightens a tilted needle
 }
 // ---- record sleeve: tap the display for the cover, the year and the album ----
 let onAir = null;
