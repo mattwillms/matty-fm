@@ -137,7 +137,7 @@ describe("party", () => {
     await p.beat({ ...beat, want: 2 });
     await p.result({ id: a.id!, status: "ready", file: `${a.id}.mp3`, durationS: 200 });
     await runInDurableObject(p, async (_i: Party, state) => {
-      state.storage.sql.exec("UPDATE items SET status='played' WHERE id=?", a.id!);
+      state.storage.sql.exec("UPDATE items SET status='played', ended_at=? WHERE id=?", Date.now(), a.id!);   // as a real play records it
     });
     const copy = (await p.adminAction({ action: "resend", id: a.id })) as { id: string };   // a fresh copy: the original stays played
     const st = await p.adminState();

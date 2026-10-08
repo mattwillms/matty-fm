@@ -84,6 +84,19 @@ export class Party extends DurableObject<Env> {
         // column already exists
       }
     }
+    // Cloudflare bills every row a query looks at, and the beat and the admin page poll every 3 s:
+    // without these, each poll scanned whole tables (64,000 rows per admin poll on a full queue)
+    this.sql.exec(`
+      CREATE INDEX IF NOT EXISTS requesters_item ON requesters(item_id);
+      CREATE INDEX IF NOT EXISTS requesters_device ON requesters(device);
+      CREATE INDEX IF NOT EXISTS items_status ON items(status, rank);
+      CREATE INDEX IF NOT EXISTS items_key ON items(song_key);
+      CREATE INDEX IF NOT EXISTS items_ended ON items(ended_at);
+      CREATE INDEX IF NOT EXISTS jokes_status ON jokes(status, urgent, created_at);
+      CREATE INDEX IF NOT EXISTS jokes_device ON jokes(device, created_at);
+      CREATE INDEX IF NOT EXISTS jokes_ended ON jokes(ended_at);
+      CREATE INDEX IF NOT EXISTS airlog_at ON airlog(at);
+      CREATE INDEX IF NOT EXISTS commands_open ON commands(done, type);`);
   }
 
   // ---------- helpers ----------
@@ -515,7 +528,8 @@ export class Party extends DurableObject<Env> {
     const items = [
       ...this.all("SELECT * FROM items WHERE status='playing'"),
       ...this.display(),
-      ...this.all("SELECT * FROM items WHERE status IN ('failed','played') ORDER BY COALESCE(played_at,created_at) DESC LIMIT 15"),
+      // the last few finished, newest first ("+status": walk the ended_at index, stop after 15 rows)
+      ...this.all("SELECT * FROM items WHERE ended_at IS NOT NULL AND +status IN ('failed','played') ORDER BY ended_at DESC LIMIT 15"),
     ];
     const muted = this.all("SELECT device FROM muted ORDER BY device").map((m) => ({
       device: String(m.device),
@@ -528,7 +542,7 @@ export class Party extends DurableObject<Env> {
     const song = (i: Row) => ({ type: "song" as const, at: Number(i.ended_at), ...this.adminItem(i),
                                 status: Number(i.skipped) ? "skipped" : i.status === "deleted" ? "removed" : String(i.status) });
     const history = [
-      ...this.all("SELECT * FROM items WHERE ended_at IS NOT NULL AND status IN ('played','failed','deleted') ORDER BY ended_at DESC LIMIT 40").map(song),
+      ...this.all("SELECT * FROM items WHERE ended_at IS NOT NULL AND +status IN ('played','failed','deleted') ORDER BY ended_at DESC LIMIT 40").map(song),
       ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL ORDER BY ended_at DESC LIMIT 40").map((j) => ({ type: "joke" as const,
         at: Number(j.ended_at), ...this.adminJoke(j) })),
       ...this.all("SELECT * FROM airlog ORDER BY at DESC LIMIT 40").map((a) => ({ type: "break" as const, at: Number(a.at),
@@ -540,9 +554,10 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "livejokes-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "indexes-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
-      jokes: this.all("SELECT * FROM jokes WHERE status<>'deleted' ORDER BY CASE WHEN status IN ('pending','preparing','ready') THEN 0 ELSE 1 END, created_at DESC LIMIT 20")
+      jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, created_at"),
+              ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL AND +status<>'deleted' ORDER BY ended_at DESC LIMIT 10")]
         .map((j) => this.adminJoke(j)),
       items: items.map((i) => this.adminItem(i)),
     };
