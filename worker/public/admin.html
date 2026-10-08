@@ -27,7 +27,6 @@
   button:focus-visible { outline:3px solid var(--warn); outline-offset:2px; }
   button:disabled, button.busy { opacity:.45; cursor:not-allowed; }
   button.hot { background:var(--hot); color:#1a0f05; } button.on { background:var(--bad); color:#fff; }
-  button.small { padding:6px 10px; font-size:.85rem; }
   ul { list-style:none; margin:0; padding:0; }
   details { border-top:1px solid var(--line); }
   details:first-child { border-top:0; }
@@ -35,9 +34,15 @@
   summary::-webkit-details-marker { display:none; }
   summary .grow { flex:1; min-width:0; }
   summary .t, summary .sub { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-  .chip { font-size:.72rem; font-weight:700; padding:3px 8px; border-radius:999px; background:#4a3624; color:var(--muted); flex:none; text-transform:uppercase; }
-  .chip.ready, .chip.queued { background:#2f4a2a; color:var(--ok); } .chip.failed { background:#4a2420; color:var(--bad); }
-  .chip.playing { background:var(--hot); color:#1a0f05; }
+  /* chips (status) and small buttons share one size; chips are flat outlined labels, buttons are raised fills */
+  .chip, button.small { height:32px; padding:0 12px; font-size:.8rem; font-weight:700; border-radius:999px;
+                        display:inline-flex; align-items:center; flex:none; line-height:1; }
+  .chip { background:transparent; box-shadow:inset 0 0 0 1.5px #6b5238; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .chip.ready, .chip.queued { box-shadow:inset 0 0 0 1.5px #4f7a47; color:var(--ok); }
+  .chip.failed { box-shadow:inset 0 0 0 1.5px #7a3a30; color:var(--bad); }
+  .chip.playing { box-shadow:inset 0 0 0 1.5px var(--hot); color:var(--hot); }
+  button.small { background:#6b4a30; color:var(--ink); box-shadow:inset 0 1px 0 #ffffff26, 0 2px 0 #1a0f08, 0 3px 6px #0006; }
+  button.small:active { box-shadow:inset 0 1px 0 #ffffff1a, 0 1px 0 #1a0f08; transform:translateY(1px); }
   .detail { padding:0 2px 12px; display:grid; gap:8px; }
   .quote { background:#1f1710; border-radius:8px; padding:8px 10px; font-size:.92rem; }
   .quote b { color:var(--muted); font-weight:700; display:block; font-size:.75rem; text-transform:uppercase; letter-spacing:.04em; margin-bottom:2px; }
