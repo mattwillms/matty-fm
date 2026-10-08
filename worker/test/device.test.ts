@@ -48,4 +48,17 @@ describe("device cookie", () => {
     });
     expect(ok.status).toBe(200);
   });
+  it("only the page load hands out a phone id, so each phone costs the house one", async () => {
+    const ip = { "cf-connecting-ip": "198.51.100.9" };
+    const cached = await SELF.fetch("https://fm.test/api/cached?k=dev", { headers: ip });
+    const search = await SELF.fetch("https://fm.test/api/search?k=dev&q=abba", { headers: ip });
+    expect(cached.headers.get("set-cookie")).toBeNull();
+    expect(search.headers.get("set-cookie")).toBeNull();
+    let issued = 0;
+    for (let i = 0; i < 30; i++) {
+      await SELF.fetch("https://fm.test/api/cached?k=dev", { headers: ip });
+      if ((await SELF.fetch("https://fm.test/api/state?k=dev", { headers: ip })).headers.get("set-cookie")) issued++;
+    }
+    expect(issued).toBe(30);
+  });
 });

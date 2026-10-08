@@ -244,7 +244,8 @@ export class Party extends DurableObject<Env> {
     const f = this.flags();
     // Commands the studio missed while offline are dropped, not fired all at once on its return;
     // a skip meant for a song that's no longer on air is dropped too.
-    this.sql.exec("UPDATE commands SET done=1 WHERE done=0 AND created_at<?", now - COMMAND_TTL_MS);
+    // A clear is exempt: emptying the console late is always safe, and losing it plays a deleted song.
+    this.sql.exec("UPDATE commands SET done=1 WHERE done=0 AND type<>'clear' AND created_at<?", now - COMMAND_TTL_MS);
     if (!unknown)
       for (const c of this.all("SELECT id, target FROM commands WHERE done=0 AND type='skip' AND target IS NOT NULL"))
         if (!(b.source === "requests" && b.current === c.target)) this.sql.exec("UPDATE commands SET done=1 WHERE id=?", c.id);
@@ -295,6 +296,10 @@ export class Party extends DurableObject<Env> {
     if (b.source === "requests" && b.current) {
       this.sql.exec("UPDATE items SET status='played', played_at=? WHERE status='playing' AND id<>?", now, b.current);
       this.sql.exec("UPDATE items SET status='playing' WHERE id=? AND status IN ('queued','ready')", b.current);
+      // a song deleted after it was handed out started anyway (the clear came too late): skip it, once
+      if (this.one("SELECT 1 AS d FROM items WHERE id=? AND status='deleted'", b.current)
+          && !this.one("SELECT 1 AS s FROM commands WHERE type='skip' AND target=?", b.current))
+        this.command("skip", b.current);
     } else {
       this.sql.exec("UPDATE items SET status='played', played_at=? WHERE status='playing'", now);
     }

@@ -7,7 +7,7 @@ export { Party };
 // Bump whenever party.ts changes. A deployed Durable Object kept running its first
 // version all evening (deploys did not restart it), so each queue-code change gets a
 // fresh instance. Queue state resets on a bump: never bump on party day.
-const QUEUE_VERSION = 16;
+const QUEUE_VERSION = 17;
 
 const enc = new TextEncoder();
 
@@ -36,9 +36,12 @@ async function signedDevice(req: Request, env: Env): Promise<boolean> {
   return Boolean(m && same(m[2], await sign(m[1], env)));
 }
 
-async function device(req: Request, env: Env): Promise<{ id: string; cookie?: string }> {
+/** The phone's id. Only the page load (`mint`) hands a new phone one: the page also fetches
+ *  /api/cached at the same moment, and two ids per phone halved how many phones a house could add. */
+async function device(req: Request, env: Env, mint: boolean): Promise<{ id: string; cookie?: string }> {
   const m = /(?:^|;\s*)mfm_dev=([0-9a-f-]{36})\.([A-Za-z0-9_-]{22})(?:;|$)/.exec(req.headers.get("cookie") ?? "");
   if (m && same(m[2], await sign(m[1], env))) return { id: m[1] };
+  if (!mint) return { id: crypto.randomUUID() };
   // new phones are handed out at a human pace per address: a script minting hundreds of
   // identities (to dodge the 2-song cap or Mute) gets a few a minute
   const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
@@ -131,7 +134,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
     }
 
     if (!same(url.searchParams.get("k"), env.PARTY_CODE)) return json({ error: "Ask the host for the party QR code." }, 403);
-    const dev = await device(req, env);
+    const dev = await device(req, env, path === "/api/state");
     const extra: HeadersInit = dev.cookie ? { "set-cookie": dev.cookie } : {};
     if (path === "/api/search") {
       const q = (url.searchParams.get("q") ?? "").trim();

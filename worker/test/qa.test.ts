@@ -344,4 +344,28 @@ describe("QA round", () => {
     const r = await p.beat({ ...beat, source: "requests", current: id, remaining: 100 });
     expect(r.commands.filter((c) => c.type === "skip")).toHaveLength(1);
   });
+  it("a clear waits for the studio however long it is gone", async () => {
+    const p = stub("clear-late");
+    const id = await readyItem(p, "Voulez-Vous");
+    await p.beat({ ...beat, wantNext: true });
+    await p.beat({ ...beat, pushed: [id], queued: 1 });   // in the Pi's queue
+    await p.adminAction({ action: "delete", id });
+    await runInDurableObject(p, async (_i: Party, state) => {
+      state.storage.sql.exec("UPDATE commands SET created_at=?", Date.now() - 120_000);   // studio away 2 min
+    });
+    expect((await p.beat({ ...beat, queued: 1 })).commands.map((c) => c.type)).toContain("clear");
+  });
+
+  it("a deleted song that starts anyway is skipped, once", async () => {
+    const p = stub("deleted-plays");
+    const id = await readyItem(p, "Gimme Gimme");
+    await p.beat({ ...beat, wantNext: true });
+    await p.adminAction({ action: "delete", id });
+    await p.beat({ ...beat, queued: 1 });                 // the clear goes out, too late: the song started
+    const on = { ...beat, source: "requests", current: id, remaining: 150 };
+    const r1 = await p.beat(on);
+    expect(r1.commands.filter((c) => c.type === "skip")).toHaveLength(1);
+    const r2 = await p.beat({ ...on, ack: r1.commands.map((c) => c.id) });
+    expect(r2.commands.filter((c) => c.type === "skip")).toHaveLength(0);   // still fading out: no second skip
+  });
 });

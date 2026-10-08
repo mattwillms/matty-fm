@@ -33,8 +33,8 @@ Version 0.1.0 (semver = big.small.bug).
 - Pi: Model B Rev 1 (rev 0003, 256 MB), IP 192.168.86.31, `ssh mattyfm`. Logitech G PRO X DAC = ALSA card `X`, 44.1 kHz OK. Two mpg123 decodes ≈ 12% CPU.
 - **iPhones cannot use Apple's search API** (301 to musics://); the studio looks up year/album/cover/Apple link from home and hands them to the Worker (studio/mattyfm/apple.py). Apple's `uo=4` opens the iTunes Store; links use `app=music`.
 - **A beat with source "silence" means the studio couldn't reach the Pi**: the Worker changes no song state and hands nothing out. The Pi reports `recent` (requests it started, with age) so songs played while the studio was offline are marked played, not re-handed.
-- **Guests need the device cookie the page issues before they can request** (dropping it no longer dodges the 2-song cap or Mute). Rate limits: 20/min per phone, 120/min per IP, 40 waiting per IP.
-- **Commands expire after 20 s**; a skip names the song it targets. Privacy wipe is fixed at 2026-10-13 12:00 UTC (PURGE_AT in party.ts).
+- **Guests need the device cookie the page issues before they can request** (dropping it no longer dodges the 2-song cap or Mute). Rate limits: 20/min per phone, 120/min per IP, 30 new phone ids/min per IP (only the page-load `/api/state` hands them out). No cap on waiting songs per IP: the whole house shares one.
+- **Commands expire after 20 s, except clear** (running it late is safe; losing it played a deleted song); a skip names the song it targets. A deleted song the Pi starts anyway gets one targeted skip. Privacy wipe is fixed at 2026-10-13 12:00 UTC (PURGE_AT in party.ts).
 - **Reduce Motion is deliberately ignored** on the guest page: scrolling text, the lamp pulse and tap toys must work on iPhones with it on.
 - ElevenLabs free tier cannot use library voices or Voice Design via API (402/403).
 - SomaFM returns 200 to curl from this machine; a 403 seen from a subagent sandbox was not a block.
