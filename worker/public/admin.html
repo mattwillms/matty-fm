@@ -42,7 +42,10 @@
   .np-a { color: var(--muted); }
   .np-s { color: var(--faint); font-size: .92rem; }
   .quote { margin-top: 12px; background: var(--bg); border-radius: 10px; padding: 10px 12px; font-size: .95rem; }
-  .quote .replay { display: flex; margin-top: 8px; }
+  .quote .qhead { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 4px; }
+  .quote .qhead b { margin: 0; }
+  .quote button.replay { height: 28px; padding: 0 12px; border-radius: 14px; font-size: .82rem; font-weight: 600; flex: none;
+                         background: transparent; color: var(--gold); box-shadow: inset 0 0 0 1.5px var(--line); }
   .quote b { display: block; color: var(--faint); font-weight: 500; font-size: .85rem; margin-bottom: 2px; }
   .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 14px; }
   .timer { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-top: 12px;
@@ -288,9 +291,10 @@ function renderNow() {
     if (playing && !np.soma) {
       for (const r of playing.requesters) if (r.message) extra.push(quote(`${r.name} wrote`, r.message));
       const dj = quote(`DJ read (${playing.tone || "funny"} voice)`, playing.djLine || "No DJ line recorded.");
-      if (playing.djLine) {   // say it again over the PA; the music dips as for a break
-        const again = btn("sm ghost replay", "↻ Replay", (e) => act({ action: "replay", id: playing.id }, e), "Play this DJ read again on the speakers");
-        dj.append(again);
+      if (playing.djLine) {   // say it again over the PA (the music dips as for a break): in the label row, right
+        const head = el("div", "qhead"), label = dj.querySelector("b");
+        label.replaceWith(head);
+        head.append(label, btn("replay", "↻ Replay", (e) => act({ action: "replay", id: playing.id }, e), "Play this DJ read again on the speakers"));
       }
       extra.push(dj);
     } else if (state.health.lastDj) {
