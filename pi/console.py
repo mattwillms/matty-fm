@@ -203,11 +203,15 @@ class Engine:
                 self.log("voice break declined: not on settled SomaFM")
                 return False
             if ch in DECKS and it and not self.pending_play:
-                left = it.get("songS", 0) - (now - self.started_at.get(ch, now))
-                if left < DUCK_S + voice_s + RESTORE_S + DOWN_S:
+                # measured from when it can start: after a transition or a break already on
+                left = it.get("songS", 0) - (max(now, self.transition_until) - self.started_at.get(ch, now))
+                if left < DUCK_S + voice_s + RESTORE_S + DOWN_S + OUTRO_S:   # room for the song's own fade-out too
                     self.log(f"voice break declined: {left:.0f}s of the song left")
                     return False
             if now < self.transition_until:
+                if self.pending_break:   # one already waits: never drop it for this one (the studio retries)
+                    self.log("voice break declined: another is already waiting")
+                    return False
                 self.pending_break = (url, voice_s, speech)
                 self.log(f"voice break waits for the transition ({self.transition_until - now:.1f}s)")
                 return True

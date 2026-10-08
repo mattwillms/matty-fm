@@ -623,4 +623,11 @@ describe("QA round", () => {
     const h = (await p.adminState()).history.map((e) => `${e.type}:${e.status ?? e.kind}`);
     expect(h).toEqual(["song:failed", "joke:rejected", "break:id", "song:played"]);   // newest first
   });
+  it("the beat lists the messages still alive, so the studio can take a deleted one off a queued song", async () => {
+    const p = stub("live-jokes");
+    const { id } = await p.submitJoke("m", { name: "Matt", text: "Why did the chicken cross the road? Worms." });
+    expect((await p.beat({ ...beat, wantJokes: 1 })).liveJokes).toEqual([id]);
+    await p.adminAction({ action: "deleteJoke", id });
+    expect((await p.beat(beat)).liveJokes).toEqual([]);
+  });
 });

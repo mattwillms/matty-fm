@@ -8,6 +8,7 @@ import re
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor
+from pathlib import Path
 
 import anthropic
 import httpx
@@ -56,18 +57,17 @@ def main() -> None:
     last_dj: dict = {}             # the last thing the DJ said over SomaFM, for the admin page
     break_pool = ThreadPoolExecutor(1)   # breaks never take a song-preparation worker
 
-    def run_break(kind: str, soma_only: bool) -> None:
+    def run_break(kind: str, soma_only: bool, joke: dict | None = None) -> None:
         label = kind
         try:
             if kind == "joke":   # a guest's joke, written up and recorded when it came in
-                joke = dict(next_joke or {})
+                joke = dict(joke or {})
                 if not joke:
                     return
                 path = cfg.media_dir / "breaks" / str(joke.get("file", ""))
                 if not path.is_file():   # its recording is gone: let it go rather than stall every break
                     log.warning("joke %s has no recording; skipped", joke.get("id"))
-                    with lock:
-                        jokes_played.append(joke["id"])
+                    told_joke(joke["id"])
                     return
                 url, seconds, text = f"breaks/{path.name}", float(joke["seconds"]), joke.get("script", "")
                 label = joke.get("kind") or "joke"   # "announcement" or "joke": shown as such on the admin page
@@ -106,8 +106,7 @@ def main() -> None:
                     with lock:
                         aired.append({"kind": label, "text": text, "at": int(time.time() * 1000)})
                 if kind == "joke":
-                    with lock:
-                        jokes_played.append(joke["id"])   # sent with every beat until the Worker has it
+                    told_joke(joke["id"])   # sent with every beat until the Worker has it
                 elif not url.startswith("breaks/live-"):   # a fresh back-announce isn't a clip in the rotation
                     rotation.played(url.rsplit("/", 1)[-1])
                 last_dj.update({"kind": label, "text": text, "at": int(time.time() * 1000)})
@@ -119,12 +118,14 @@ def main() -> None:
         finally:
             on_break.clear()
 
-    def start_break(kind: str, soma_only: bool = True) -> None:
+    def start_break(kind: str, soma_only: bool = True, joke: dict | None = None) -> bool:
         """Scheduled breaks are soma_only (a back-announce names the SomaFM song); the admin's
         "Play a bumper" plays over whatever is on air."""
         if not on_break.is_set():
             on_break.set()
-            break_pool.submit(run_break, kind, soma_only)
+            break_pool.submit(run_break, kind, soma_only, joke)
+            return True
+        return False
     pool = ThreadPoolExecutor(WORKERS)
     working: set[str] = set()
     lock = threading.Lock()
@@ -137,10 +138,31 @@ def main() -> None:
     joke_working: set[str] = set()   # guests' jokes being written up and recorded
     writer_tries: dict[str, int] = {}   # messages the writer couldn't reach, per id (3 tries, then failed)
     jokes_played: list[str] = []     # told on air, not yet confirmed by the Worker
+    told: set[str] = set()           # every joke told (or handed to the console as a break) this run
+
+    def told_joke(jid: str) -> None:
+        with lock:
+            jokes_played.append(jid)
+            told.add(jid)
     aired: list[dict] = []           # bumpers played, for the admin's timeline (sent until the Worker has them)
     next_joke: dict | None = None    # the oldest recorded joke, from the last beat
-    joke_on: dict[str, tuple[str, int]] = {}   # request id -> (joke id, beat it was pushed): told when that song starts
+    joke_on: dict[str, tuple[str, int, float]] = {}   # request id -> (joke id, beat it was pushed): told when that song starts
     last_push: dict | None = None    # what the console holds queued (Skip may put a joke in front of it)
+    joke_on_file = cfg.media_dir / "breaks" / "joke_on.json"   # kept on disk: a restart must not tell it again
+    try:
+        joke_on.update({str(r): (str(v[0]), 0, float(v[2])) for r, v in json.loads(joke_on_file.read_text()).items()})
+    except (OSError, ValueError, TypeError, IndexError, AttributeError):
+        pass
+
+    joke_on_saved = dict(joke_on)
+
+    def save_joke_on() -> None:
+        try:
+            tmp = joke_on_file.with_suffix(".tmp")
+            tmp.write_text(json.dumps(joke_on))
+            tmp.replace(joke_on_file)
+        except OSError as e:
+            log.warning("joke_on not saved: %s", e)
     beat_no = 0
 
     def joke_file(j: dict | None) -> Path | None:
@@ -150,6 +172,7 @@ def main() -> None:
     def run_joke(job: dict) -> None:
         """Write the joke up in the DJ's voice, record it, and hand it back as a ready break."""
         jid = job["id"]
+        recorded = False
         try:
             line = djline.message_line(job, deps.claude)   # a joke or an announcement
             if not line.ok:
@@ -171,8 +194,17 @@ def main() -> None:
                     seconds = mix.duration(out)
             except Exception:
                 log.warning("joke %s pause stretch failed; using it as made", jid)
-            api.joke_result({"id": jid, "status": "ready", "file": out.name, "seconds": round(seconds, 2),
-                             "script": djline.display(line.script)})
+            recorded = True
+            body = {"id": jid, "status": "ready", "file": out.name, "seconds": round(seconds, 2),
+                    "script": djline.display(line.script)}
+            for attempt in range(5):   # a Worker blink must not turn a recorded joke into a failed one
+                try:
+                    api.joke_result(body)
+                    break
+                except httpx.HTTPError:
+                    if attempt == 4:
+                        raise
+                    time.sleep(2)
             log.info("joke %s ready via %s (%.1fs): %s", jid, engine, seconds, djline.display(line.script))
         except djline.WriterDown:   # say nothing: its lease lapses and it's written up once the writer is back...
             writer_tries[jid] = writer_tries.get(jid, 0) + 1
@@ -183,6 +215,8 @@ def main() -> None:
                 log.warning("joke %s waits: the writer is down (try %d)", jid, writer_tries[jid])
         except Exception:
             log.exception("joke %s failed", jid)
+            if recorded:   # only the post failed: its lease lapses and it's recorded again
+                return
             try:
                 api.joke_result({"id": jid, "status": "failed"})
             except Exception:
@@ -252,19 +286,31 @@ def main() -> None:
             pushed = []
             # a joke rode in front of a request's intro: told once that song is on air; dropped if the
             # console no longer holds the song (cleared or re-handed: the next push decides afresh)
-            for rid, (jid, at) in list(joke_on.items()):
-                if status["source"] == "requests" and status["current"] == rid:
-                    with lock:
-                        jokes_played.append(jid)
+            began = {r.get("id"): r.get("agoS") for r in status.get("recent") or [] if isinstance(r, dict)}
+            for rid, (jid, at, since) in list(joke_on.items()):
+                ago = began.get(rid)
+                if (status["source"] == "requests" and status["current"] == rid) or (
+                        isinstance(ago, (int, float)) and ago <= time.time() - since):
+                    told_joke(jid)
                     sched.joke_told(time.monotonic())
                     del joke_on[rid]
                     log.info("joke %s told in front of %s", jid, rid)
-                elif beat_no - at >= 2 and not status["queued"] and status["current"] != rid:
+                elif status["source"] != "silence" and beat_no - at >= 2 and not status["queued"] and status["current"] != rid:
                     del joke_on[rid]
             with lock:   # the Worker has these now (marking played twice is harmless)
                 del jokes_played[:len(body["jokesPlayed"])]
                 del aired[:len(body["aired"])]
+            live = reply.get("liveJokes")
+            if isinstance(live, list):   # deleted (or muted) since it was attached: take it off the queued song
+                for rid, (jid, _, _) in list(joke_on.items()):
+                    if jid not in live and jid not in told and last_push and last_push["id"] == rid and status["queued"]:
+                        last_push = {**last_push, "voiceS": feed.detach_joke(cfg.media_dir, rid)}
+                        station.push(last_push)
+                        del joke_on[rid]
+                        log.info("joke %s was removed: %s gets its own intro back", jid, rid)
             next_joke = reply.get("nextJoke")
+            if next_joke and next_joke.get("id") in told:   # told this beat or last: the Worker hears next beat
+                next_joke = None
             for j in reply.get("jokeJobs") or []:
                 log.info("joke %s claimed from %s", j["id"], j["name"])
                 with lock:
@@ -304,28 +350,32 @@ def main() -> None:
             soma = soma_np.last
             soma_age = time.time() - soma["since"] if soma else None
             kind = sched.due(status, time.monotonic(), soma_age, joke_ready=bool(next_joke))
-            if next_joke and next_joke.get("urgent") and joke_file(next_joke):
+            attached = {j for j, _, _ in joke_on.values()}
+            if next_joke and next_joke.get("urgent") and joke_file(next_joke) and next_joke["id"] not in attached:
                 # urgent (and every host announcement): read now, over whatever is on air; the console
                 # declines near a song's end, so it's tried again each beat until it's on
-                start_break("joke", soma_only=False)
+                if start_break("joke", soma_only=False, joke=next_joke):
+                    next_joke = None   # it's this beat's break: not in front of a song too
             elif kind:
-                start_break(kind)
+                if start_break(kind, joke=next_joke if kind == "joke" else None) and kind == "joke":
+                    next_joke = None
             for action in feed.decide(status, reply):
                 if action[0] == "skip":
                     log.info("command: skip")
                     skip_clips = clips.get("skip") or []
                     clip = rotation.pick(skip_clips) if skip_clips else None
-                    jf = joke_file(next_joke) if next_joke and next_joke["id"] not in [j for j, _ in joke_on.values()] else None
+                    jf = joke_file(next_joke) if next_joke and next_joke["id"] not in [j for j, _, _ in joke_on.values()] else None
+                    if jf and status["queued"] and not last_push:
+                        jf = None   # a song is queued that this run didn't push: its intro covers the skip
                     if jf and status["queued"] and last_push:   # a joke waiting: told in front of the song skipped to
                         voice_s = feed.attach_joke(cfg.media_dir, last_push["id"], jf)
                         station.push({**last_push, "voiceS": voice_s})
-                        joke_on[last_push["id"]] = (next_joke["id"], beat_no)
+                        joke_on[last_push["id"]] = (next_joke["id"], beat_no, time.time())
                         station.skip()
                         log.info("skip: joke %s in front of %s", next_joke["id"], last_push["id"])
                     elif jf:                                      # back to SomaFM: the joke is the skip bumper
                         station.skip(bumper={"url": f"breaks/{jf.name}", "voiceS": float(next_joke["seconds"])})
-                        with lock:
-                            jokes_played.append(next_joke["id"])
+                        told_joke(next_joke["id"])
                         sched.joke_told(time.monotonic())
                         log.info("skip: joke %s as the bumper", next_joke["id"])
                     else:
@@ -344,16 +394,23 @@ def main() -> None:
                     try:
                         song_s = mix.duration(song)
                         jf = joke_file(next_joke) if next_joke and not next_joke.get("urgent") else None   # urgent goes as a break
-                        told_elsewhere = next_joke and any(j == next_joke["id"] and r != item["id"] for r, (j, _) in joke_on.items())
+                        told_elsewhere = next_joke and any(j == next_joke["id"] and r != item["id"] for r, (j, _, _) in joke_on.items())
                         has_message = any(r.get("message") for r in item.get("requesters") or [])
+                        if jf and voice.exists() and not told_elsewhere:
+                            try:   # a broken joke file must never fail the song it rides on
+                                mix.decoded_duration(jf)
+                            except Exception:
+                                log.warning("joke %s unreadable; dropped", next_joke["id"])
+                                told_joke(next_joke["id"])
+                                jf = None
                         if voice.exists() and jf and not told_elsewhere and not has_message:
                             # no shout-out to read: the joke stands in for the intro (no 5-minute wait: it replaces talk)
                             voice_s = feed.attach_joke(cfg.media_dir, item["id"], jf, replace=True)
-                            joke_on[item["id"]] = (next_joke["id"], beat_no)
+                            joke_on[item["id"]] = (next_joke["id"], beat_no, time.time())
                             log.info("joke %s stands in for %s's intro", next_joke["id"], item["id"])
                         elif voice.exists() and jf and not told_elsewhere and sched.joke_due(time.monotonic()):
                             voice_s = feed.attach_joke(cfg.media_dir, item["id"], jf)   # joke, then the shout-out
-                            joke_on[item["id"]] = (next_joke["id"], beat_no)
+                            joke_on[item["id"]] = (next_joke["id"], beat_no, time.time())
                             log.info("joke %s rides in front of %s", next_joke["id"], item["id"])
                         elif voice.exists():
                             joke_on.pop(item["id"], None)
@@ -370,6 +427,9 @@ def main() -> None:
                     pushed.append(item["id"])
                     log.info("pushed %s: %s - %s (station was source=%s remaining=%.0fs)", item["id"],
                              item["artist"], item["title"], status["source"], status["remaining"])
+            if joke_on != joke_on_saved:   # which queued song carries which joke: survives a studio restart
+                save_joke_on()
+                joke_on_saved = dict(joke_on)
             last_error = ""
         except Exception as e:
             msg = f"{type(e).__name__}: {e}"[:200]

@@ -421,6 +421,8 @@ export class Party extends DurableObject<Env> {
       jobs,
       jokeJobs,
       nextJoke,   // the oldest recorded joke: the studio plays it as the next break
+      // every message still on its way: one attached to a queued song but deleted since comes off it
+      liveJokes: this.all("SELECT id FROM jokes WHERE status IN ('pending','preparing','ready')").map((j) => String(j.id)),
     };
   }
 
@@ -538,7 +540,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "timeline-2",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "livejokes-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: this.all("SELECT * FROM jokes WHERE status<>'deleted' ORDER BY CASE WHEN status IN ('pending','preparing','ready') THEN 0 ELSE 1 END, created_at DESC LIMIT 20")
         .map((j) => this.adminJoke(j)),

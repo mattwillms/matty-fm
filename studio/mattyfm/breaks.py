@@ -109,7 +109,7 @@ class Rotation:
         try:
             data = json.loads(path.read_text())
             self.counts = {str(k): int(v) for k, v in data.items()} if isinstance(data, dict) else {}
-        except (OSError, ValueError, TypeError):
+        except (OSError, ValueError, TypeError, OverflowError):
             self.counts = {}
 
     def pick(self, clips: list[dict]) -> dict:

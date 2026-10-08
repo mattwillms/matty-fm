@@ -111,6 +111,7 @@ def prepare(item: dict, deps: Deps) -> dict:
         try:
             seconds, voice_s = mix.prepare_files(song.path, raw_voice, media / "ready" / f"{rid}.mp3",
                                                  media / "voice" / f"{rid}.mp3", deps.cfg.sample_rate)
+            raw_voice.unlink(missing_ok=True)   # mixed into voice/<rid>.mp3: the raw take isn't needed
             try:
                 if mix.lengthen_pauses(media / "voice" / f"{rid}.mp3"):   # +0.5 s on a pause, as for bumpers
                     voice_s = mix.duration(media / "voice" / f"{rid}.mp3")
