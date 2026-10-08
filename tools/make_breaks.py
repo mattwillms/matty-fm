@@ -20,15 +20,15 @@ from mattyfm.djline import STATION  # noqa: E402
 
 S = STATION
 CLIPS = [
-    # kind, tone, sound effect prompt, line
-    ("id", "funny", "short bright vintage radio station jingle swoosh with a sparkle", f"You're tuned to {S}. All requests, all night long."),
+    # kind, tone, sound effect prompt, line ([long pause]: ElevenLabs v4 pauses ~1.7 s; the console swells the music in it)
+    ("id", "funny", "short bright vintage radio station jingle swoosh with a sparkle", f"You're tuned to {S}. [long pause] All requests, all night long."),
     ("id", "funny", "retro radio station ident, quick rising synth sweep", f"Got a song in your head? Just scan the code and request it. Stuck? Ask Matt. This is {S}."),
-    ("id", "funny", "vinyl record needle drop and crackle", f"Seventies gold and your requests. You're listening to {S}."),
+    ("id", "funny", "vinyl record needle drop and crackle", f"Seventies gold and your requests. [long pause] You're listening to {S}."),
     ("id", "funny", "quick brass fanfare sting, 1970s TV style", f"{S}, broadcasting live from the backyard. Turn it up."),
-    ("id", "sweet", "soft warm electric piano chime", f"Good music, good people. This is {S}."),
+    ("id", "sweet", "soft warm electric piano chime", f"Good music, good people. [long pause] This is {S}."),
     ("id", "sweet", "gentle wind chimes, short", f"Thanks for being here, everybody. You're listening to {S}."),
-    ("goof", "funny", "comedic slide whistle going up", f"{S} traffic report: heavy congestion by the desserts. Proceed with caution."),
-    ("goof", "funny", "old radio news teletype beeping", f"{S} weather: a hundred percent chance of dancing, with scattered high fives."),
+    ("goof", "funny", "comedic slide whistle going up", f"{S} traffic report: [long pause] heavy congestion by the desserts. Proceed with caution."),
+    ("goof", "funny", "old radio news teletype beeping", f"{S} weather: a hundred percent chance of dancing, [long pause] with scattered high fives."),
     ("goof", "funny", "cartoon boing spring sound", "A friendly reminder from your DJ: drink some water. Punch counts. Probably."),
     ("goof", "funny", "small crowd cheering briefly", f"Breaking news on {S}: the dance floor is open, and nobody is judging. Much."),
     ("goof", "funny", "game show ding ding ding correct answer", f"If you can hear this, congratulations. You're already having fun on {S}."),
