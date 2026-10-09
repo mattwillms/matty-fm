@@ -205,7 +205,7 @@ export class Party extends DurableObject<Env> {
     if (!title) return { ok: false, error: "Add the song title." };
     if (!artist) return { ok: false, error: "Add the artist, or your best guess." };
     if (!asAdmin && s.track?.explicit === true && this.flags().familyMode)
-      return { ok: false, error: "Family mode is on: that's the explicit version. Pick the clean one, or another song." };
+      return { ok: false, error: "Family mode is on: pick the clean version." };
     if (!asAdmin && !this.flags().freePlay) {
       const lim = this.songLimit(device);
       if (lim.locked)
@@ -217,7 +217,7 @@ export class Party extends DurableObject<Env> {
     if (!asAdmin && !this.flags().freePlay && this.asks(device, key) >= MAX_ASKS_PER_SONG
         && !this.one(`SELECT 1 AS m FROM requesters r JOIN items i ON i.id=r.item_id WHERE r.device=? AND i.song_key=?
                       AND i.status IN ${WAITING}`, device, key))   // asking again for one already waiting is harmless
-      return { ok: false, error: "You've asked for this one twice tonight. Pick another?" };
+      return { ok: false, error: "You've asked for this one twice tonight." };
     if (this.one("SELECT 1 AS p FROM items WHERE song_key=? AND status='playing'", key))
       return { ok: false, error: "That one is playing right now! Pick another?" };
     const dup = this.one(`SELECT id,status FROM items WHERE song_key=? AND status IN ${WAITING} ORDER BY rank LIMIT 1`, key);
@@ -296,7 +296,7 @@ export class Party extends DurableObject<Env> {
     const kind = j?.kind === "announcement" ? "announcement" : "joke";
     const urgent = kind === "announcement" && j?.urgent === true;
     const anon = j?.anon === true;   // read on air as "a mystery guest"; the host still sees the name and phone
-    if (anon && urgent) return { ok: false, error: "An urgent announcement can't be anonymous. Send it with your name?" };
+    if (anon && urgent) return { ok: false, error: "An urgent one can't be anonymous." };
     if (!this.flags().accepting) return { ok: false, error: "The DJ isn't taking jokes right now." };
     if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
     const name = clean(j?.name, 40), text = clean(j?.text, 400);
@@ -306,15 +306,15 @@ export class Party extends DurableObject<Env> {
     if (!this.flags().freePlay) {
       const lim = this.messageLimit(device);
       if (!urgent && lim.waiting)
-        return { ok: false, error: "Yours is still waiting to be read. Once it's on air, send another!" };
+        return { ok: false, error: "Yours is still waiting to be read." };
       if (urgent && lim.urgentInS)
-        return { ok: false, error: `One urgent announcement an hour: the next one in ${Math.ceil(lim.urgentInS / 60)} min. Send it as a regular one?` };
+        return { ok: false, error: `One urgent an hour: the next one in ${Math.ceil(lim.urgentInS / 60)} min.` };
       // and one urgent guest announcement per 10 minutes for the whole party: a new phone id is cheap,
       // so the per-phone limit alone would let one person keep cutting into the music
       if (urgent && lim.partyUrgentInS)
-        return { ok: false, error: "Another urgent announcement just went out. Send this one as a regular announcement?" };
+        return { ok: false, error: "An urgent one just went out. Send it as regular?" };
       if (anon && !lim.anonLeft)
-        return { ok: false, error: "You've sent your anonymous one tonight. Send this one with your name?" };
+        return { ok: false, error: "You've used your anonymous one tonight." };
     }
     const id = "j" + this.newId().slice(1);
     this.sql.exec("INSERT INTO jokes(id,device,name,text,status,created_at,ip,kind,urgent,source,anon) VALUES(?,?,?,?, 'pending', ?, ?, ?, ?, 'guest', ?)",
@@ -345,7 +345,7 @@ export class Party extends DurableObject<Env> {
     if (!this.flags().freePlay) {
       const lim = this.padLimit(device);
       if (lim.padInS) return { ok: false, error: `One sound a minute: the next in ${lim.padInS} s.` };
-      if (lim.partyPadInS) return { ok: false, error: "Someone just pressed one. Try again in a few seconds." };
+      if (lim.partyPadInS) return { ok: false, error: "Someone just pressed one. Try again." };
     }
     const now = Date.now();
     this.sql.exec("INSERT INTO pad_presses(device, pad, at) VALUES(?,?,?)", device, n, now);
@@ -683,7 +683,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "off-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "msgs-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, created_at"),
               ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL AND +status<>'deleted' ORDER BY ended_at DESC LIMIT 10")]
