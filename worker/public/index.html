@@ -120,6 +120,7 @@
   .vfd .t { font-size: 1.75rem; line-height: 1.15; }
   .vfd .a { font-size: var(--small); line-height: 1.15; }   /* the artist: same size and baseline as the time beside it */
   .vfd .t, .vfd .a { white-space: nowrap; overflow: hidden; }   /* a VFD never wraps: it scrolls */
+  .vfd .t.ticking, .vfd .a.ticking { touch-action: pan-y; cursor: grab; }   /* a scrolling line can be flicked sideways */
   .vfd .s { color: #6fe3c8aa; }
   /* the time left, a deck's counter: on the artist's line, at the right */
   :root { --small: 1.12rem; }
@@ -635,31 +636,37 @@ function setLine(id, text, always, speed = SCROLL_PX_S, holdMs = 0) {
     scrollers.set(track, { dist: one.offsetWidth, holdMs, moveMs: (w / speed) * 1000, t0: performance.now() });
   }
 }
-// Drag the message left or right; let go and it coasts, then the scroll carries on after a beat.
-(() => {
-  const box = document.querySelector(".msg-screen"), SCALE = 0.8;   // the line is drawn squeezed to 80%: a finger's px are 1/0.8 track px
-  let id = null;
+// Drag a scrolling line left or right; let go and it coasts, then the scroll carries on after a beat.
+// The message line, and the title and artist on the screen when they're long enough to scroll.
+// A drag on the screen never counts as the tap that opens the record sleeve.
+function flick(box, lineOf) {
+  const SCALE = 0.8;   // lines are drawn squeezed to 80%: a finger's px are 1/0.8 track px
+  let id = null, h = null, moved = 0;
   box.addEventListener("pointerdown", (e) => {
-    const sc = scrollers.get($("lcdMsg"));
-    if (!sc) return;
+    moved = 0;   // every touch starts as a tap (a drag that ended without a click must not eat the next tap)
+    const line = lineOf(e.target), track = line && line.querySelector(".track"), sc = track && scrollers.get(track);
+    if (!sc) return;   // not scrolling: a plain tap
     const now = performance.now();
-    sc.hand = { down: true, x: sc.hand ? sc.hand.x : loopX(sc, now), v: 0, last: now, px: e.clientX, restAt: null };
-    id = e.pointerId; box.setPointerCapture(id);
+    sc.hand = h = { down: true, x: sc.hand ? sc.hand.x : loopX(sc, now), v: 0, last: now, px: e.clientX, restAt: null };
+    id = e.pointerId;
   });
   box.addEventListener("pointermove", (e) => {
-    const sc = scrollers.get($("lcdMsg")), h = sc && sc.hand;
     if (!h || !h.down || e.pointerId !== id) return;
     const now = performance.now(), dx = (e.clientX - h.px) / SCALE, dt = Math.max(1, now - h.last);
+    moved += Math.abs(e.clientX - h.px);
+    if (moved > 6 && !box.hasPointerCapture(id)) box.setPointerCapture(id);
     h.x += dx; h.v = h.v * 0.5 + (dx / dt) * 0.5; h.px = e.clientX; h.last = now;
   });
   const up = (e) => {
-    const sc = scrollers.get($("lcdMsg")), h = sc && sc.hand;
     if (!h || e.pointerId !== id) return;
     if (performance.now() - h.last > 80) h.v = 0;   // held still before letting go: no flick
-    h.down = false; h.last = performance.now(); id = null;
+    h.down = false; h.last = performance.now(); id = null; h = null;
   };
   box.addEventListener("pointerup", up); box.addEventListener("pointercancel", up);
-})();
+  box.addEventListener("click", (e) => { if (moved > 6) { e.stopPropagation(); e.preventDefault(); } moved = 0; }, true);
+}
+flick(document.querySelector(".msg-screen"), (t) => t.closest(".lcd-line"));
+flick($("display"), (t) => t.closest(".vfd .t, .vfd .a"));
 function lcd(np) {
   const req = np && !np.soma;
   const said = req ? (shoutout(np.djLine, np) || "Turn it up.") : "Got a song in your head? Request it below.";
