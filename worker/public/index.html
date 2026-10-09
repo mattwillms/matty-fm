@@ -1336,7 +1336,7 @@ const JOKE_STATUS = { pending: ["The DJ is reading it over", "prep"], preparing:
 // ---- the vacuum tubes ----
 // Their glow breathes: a few slow waves added together (never quite repeating), each tube on its own;
 // the circuit board behind the buttons follows their average, subdued, as if a hidden tube lights it.
-// The cables: one fairly direct with a natural sag, one throwing a loop before it plugs in. Striped cloth
+// The cable: it throws a loop before it plugs in. A striped cloth
 // jackets (a dashed stroke over the base colour), chrome plugs with grip ridges and a spring strain relief.
 function layCables() {
   const cab = document.querySelector(".cabinet"), riser = document.querySelector(".tubes"); if (!cab || !riser) return;
@@ -1369,7 +1369,7 @@ function layCables() {
       <linearGradient id="plugChrome" x1="0" x2="1"><stop offset="0" stop-color="#6f6c66"/><stop offset=".3" stop-color="#f4f2ee"/><stop offset=".55" stop-color="#a9a59d"/><stop offset=".8" stop-color="#e2dfd8"/><stop offset="1" stop-color="#5d5a55"/></linearGradient>
       <radialGradient id="jackRing" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#111"/><stop offset=".55" stop-color="#2a2724"/><stop offset=".7" stop-color="#cfcbc3"/><stop offset="1" stop-color="#6d6962"/></radialGradient>
     </defs>
-    ${wire(d1, "#2b2420", "#cdb68c", "1.4 2.2")}${wire(d2, "#6e1a12", "#ead9b6", "1 2.6")}${plug(p1)}${plug(p2)}`;
+    ${wire(d2, "#6e1a12", "#ead9b6", "1 2.6")}${plug(p2)}`;   // one cable now: the curled one on the right
 }
 addEventListener("load", layCables); addEventListener("resize", layCables);
 // Each visit racks them one tall and one short, the tall one on either side.
