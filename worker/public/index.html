@@ -235,6 +235,22 @@
     50% { transform: translateY(-14px) rotateY(360deg); } 75% { transform: translateY(-8px) rotateY(540deg); }
     88% { transform: translateY(0) rotateY(720deg); } 94% { transform: translateY(-2px) rotateY(720deg); }
     100% { transform: rotateY(720deg); } }
+  /* station off: the set goes dark and the request panel hangs a CLOSED sign */
+  .closed-sign { display: none; position: relative; width: max-content; margin: 26px auto 8px; padding: 8px 22px 9px; text-align: center;
+                 background: linear-gradient(#c9341f, #9e2414); color: #f6e9cc; border-radius: 6px; transform: rotate(-3deg);
+                 box-shadow: inset 0 0 0 2px #f6e9cc, inset 0 0 0 4px #9e2414, 0 4px 8px #0008; }
+  .closed-sign b { display: block; font: 900 1.6rem/1 Fraunces, Georgia, serif; letter-spacing: .12em; }
+  .closed-sign span { display: block; margin-top: 3px; font: 600 .78rem/1.2 Jost, sans-serif; letter-spacing: .04em; }
+  .closed-sign::before { content: ""; position: absolute; left: 50%; top: -24px; width: 60%; height: 24px; transform: translateX(-50%);
+                         background: linear-gradient(to bottom right, transparent calc(50% - .7px), #d8cfbd 50%, transparent calc(50% + .7px)) left / 50% 100% no-repeat,
+                                     linear-gradient(to bottom left, transparent calc(50% - .7px), #d8cfbd 50%, transparent calc(50% + .7px)) right / 50% 100% no-repeat; }   /* the string, corners up to the nail */
+  .closed-sign::after { content: ""; position: absolute; left: 50%; top: -28px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%;
+                        background: radial-gradient(circle at 35% 35%, #e6e1d8, #7b766d); box-shadow: 0 1px 1px #0008; }   /* the nail */
+  body.off-air .closed-sign { display: block; }
+  .vfd.dark .dark-art { width: 100%; aspect-ratio: 1; margin: 2px 0 10px; border-radius: 3px; background: #0a0f0e; box-shadow: inset 0 0 0 1px #ffffff08; }
+  body.off-air #find #slots, body.off-air #find #songAllow, body.off-air #find #q, body.off-air #find #results,
+  body.off-air #find .hint, body.off-air #find #closed, body.off-air #form, body.off-air #jokeBox { display: none !important; }
+  body.off-air .presets .preset { cursor: default; }
   .allow { margin: -4px 0 12px; color: var(--cream-dim); font-size: .95rem; line-height: 1.35; }
   .allow b { color: var(--cream); font-weight: 600; }
   .allow:has(+ #q[hidden]) { margin-bottom: 0; }   /* no search box under it: no gap either */
@@ -568,7 +584,6 @@
     </div>
   </section>
   <p id="onbreak" class="notice" hidden>The DJ is on a short break. Your request is saved and will play.</p>
-  <p id="offair" class="notice" hidden>OrrFM is off the air for now. Requests still save and play when it's back on.</p>
 
   <dialog class="sleeve-box" id="sleeve" aria-label="Record sleeve">
     <button class="sleeve-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
@@ -606,6 +621,7 @@
   <section class="panel" id="find">
     <div class="h2row"><h2>Request a song</h2>
       <span class="slots" id="slots" role="img" aria-label="Song picks"><i></i><i></i></span></div>
+    <div class="closed-sign" aria-label="Closed: OrrFM is off the air"><b>CLOSED</b><span>OrrFM is off the air</span></div>
     <p class="allow" id="songAllow" hidden></p>
     <input id="q" type="search" autocomplete="off" aria-label="Search for a song or artist">
     <ul id="results"></ul>
@@ -794,6 +810,11 @@ function flick(box, lineOf) {
 flick(document.querySelector(".msg-screen"), (t) => t.closest(".lcd-line"));
 flick($("display"), (t) => t.closest(".vfd .t, .vfd .a"));
 function lcd(np) {
+  if (offAir) {
+    const msg = "OrrFM is off the air. Requests open again when it's back.";
+    if (msg !== lcdKey) { lcdKey = msg; setLine("lcdMsg", msg, true, SCROLL_PX_S); }
+    return;
+  }
   const req = np && !np.soma;
   const said = req ? (shoutout(np.djLine, np) || "Turn it up.") : "Got a song in your head? Request it below.";
   const named = req && np.names && !said.toLowerCase().startsWith(String(np.names).toLowerCase());
@@ -1178,6 +1199,9 @@ function showNow(np, force) {
   const key = np ? `${np.title}|${np.artist}|${np.artwork}` : "";
   if (key === screenKey && !force) return;
   screenKey = key;
+  if (!np && offAir) {   // off: the screen keeps its shape, but nothing on it is lit
+    const v = el("div", "vfd dark"); v.append(el("div", "dark-art"), el("div", "t", "\u00a0"), el("div", "a", "\u00a0")); d.replaceChildren(v); return;
+  }
   if (!np) { const v = el("div", "vfd"); v.append(el("div", "idle", "Between songs")); d.replaceChildren(v); return; }
   const v = el("div", "vfd");
   const tl = el("div", "t"), al = el("div", "a");
@@ -1363,8 +1387,10 @@ addEventListener("load", layCables); addEventListener("resize", layCables);
   seats.forEach((seat, i) => seat.querySelector(".tube").replaceWith(fresh[i]));
 })();
 const tubeEls = [...document.querySelectorAll(".tube")], boardEl = $("presets");
+let tubePower = 1;   // eases to 0 when the station is switched off, back to 1 when it's on
 function tubeFrame(now) {
   const t = now / 1000;
+  tubePower += ((offAir ? 0 : 1) - tubePower) * .03;
   const g = [.72 + .14 * Math.sin(t * 1.61) + .08 * Math.sin(t * 4.07 + 1.3) + .04 * Math.sin(t * 9.3 + .4),
              .72 + .14 * Math.sin(t * 1.23 + 2.1) + .08 * Math.sin(t * 3.51 + .2) + .04 * Math.sin(t * 8.1 + 2.6)];
   tubeEls.forEach((el, i) => {
@@ -1373,9 +1399,9 @@ function tubeFrame(now) {
       const k = (now - el._warmAt) / (el._warmMs || 2000);
       if (k >= 1) el._warmAt = 0; else v *= Math.max(0, k) * (k < .5 && !el._smooth ? (Math.random() < .3 ? .2 : 1) : 1);
     }
-    el.style.setProperty("--g", el.classList.contains("gone") ? 0 : v.toFixed(3));
+    el.style.setProperty("--g", el.classList.contains("gone") ? 0 : (v * tubePower).toFixed(3));
   });
-  boardEl.style.setProperty("--g", ((g[0] + g[1]) / 2).toFixed(3));
+  boardEl.style.setProperty("--g", ((g[0] + g[1]) / 2 * tubePower).toFixed(3));
 }
 const fxBit = (cls, x, y, css = {}) => { const e = el("i", "fx " + cls); Object.assign(e.style, { left: x + "px", top: y + "px", ...css }); document.body.append(e); return e; };
 function sparks(x, y, n, opts = {}) {   // thrown out, then pulled down by gravity
@@ -1759,6 +1785,7 @@ $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
   const b = el("button", "preset"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl} on the speakers`);
   b.append(el("span", "ico", ico));
   b.onclick = async () => {
+    if (offAir) { toast("OrrFM is off the air."); return; }
     const wait = padUntil - Date.now();
     if (wait > 0) { toast(`One sound a minute: the next in ${Math.ceil(wait / 1000)} s.`); return; }
     padDown = i; padUntil = Date.now() + 60000; showPresets();   // latches down at once, like the real thing
@@ -1775,7 +1802,14 @@ $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
 }));
 $("urgent").addEventListener("change", showLimits);
 $("anon").addEventListener("change", () => { if ($("anon").checked) $("urgent").checked = false; showLimits(); });
-let accepting = true, familyMode = true;
+let accepting = true, familyMode = true, offAir = false;
+// Station off: the screen goes dark, the ticker says so, the tubes and board fade out, requests close.
+function setOffAir(off) {
+  if (off === offAir) return;
+  offAir = off;
+  document.body.classList.toggle("off-air", off);
+  screenKey = null; lcdKey = "";   // redraw the screen and the ticker for the new state
+}
 
 // Request again: one tap, once per song. Spent (asked twice): a circle with a slash.
 const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>';
@@ -1817,8 +1851,8 @@ async function refresh() {
   try {
     const s = await api("/api/state", { signal: AbortSignal.timeout(8000) });   // a hung poll never piles up
     if (!s || !Array.isArray(s.upNext)) return;   // an error reply is not "requests closed": keep what's shown
-    $("offair").hidden = !s.stationOff;
-    $("onbreak").hidden = !s.djOnBreak || Boolean(s.stationOff);   // off air says it better
+    setOffAir(Boolean(s.stationOff));
+    $("onbreak").hidden = !s.djOnBreak || offAir;   // off air says it better
     accepting = s.accepting; spent = s.spent || []; familyMode = s.familyMode !== false;
     if (s.limits) { limits = s.limits; limitsAt = Date.now(); }
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;
@@ -1826,8 +1860,8 @@ async function refresh() {
     $("jokeBox").hidden = !s.accepting && !(s.myJokes || []).length;
     showJokes(s.myJokes);
     showLimits();   // after "closed" is set: picks, the search box, the Send button (never mid-send)
-    showNow(s.nowPlaying);
-    $("nextBox").hidden = !s.upNext.length;
+    showNow(offAir ? null : s.nowPlaying);
+    $("nextBox").hidden = !s.upNext.length || offAir;
     const waiting = s.waitingCount ?? s.upNext.length;
     const nextKey = JSON.stringify([s.upNext.slice(0, 4), waiting]);
     if (nextKey !== lastNextKey) {

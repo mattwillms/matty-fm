@@ -287,3 +287,17 @@ describe("station off", () => {
     expect(await st(a.id!)).toBe("playing");   // the Pi's "off" says nothing about it: left as it was
   });
 });
+
+describe("station off closes the door", () => {
+  it("refuses guests' songs, messages and sounds while off; the host can still add; back on, they're welcome", async () => {
+    const p = stub("off-3");
+    await p.adminAction({ action: "settings", settings: { stationOff: true } });
+    const s = await p.submit("d1", T("Waterloo"));
+    expect(s.ok).toBe(false); expect(s.error).toMatch(/off the air/);
+    expect((await p.submitJoke("d1", { name: "Ann", text: "Why did the hen cross the road twice?" })).ok).toBe(false);
+    expect((await p.guestPad("d1", 1)).ok).toBe(false);
+    expect((await p.submit("admin", T("SOS"), true)).ok).toBe(true);
+    await p.adminAction({ action: "settings", settings: { stationOff: false } });
+    expect((await p.submit("d1", T("Waterloo"))).ok).toBe(true);
+  });
+});

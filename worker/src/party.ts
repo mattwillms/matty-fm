@@ -196,6 +196,7 @@ export class Party extends DurableObject<Env> {
 
   // ---------- guests ----------
   async submit(device: string, s: SubmitIn, asAdmin = false, ip = "") {
+    if (!asAdmin && this.flags().stationOff) return { ok: false, error: "OrrFM is off the air. Requests open again when it's back." };
     if (!asAdmin && !this.flags().accepting) return { ok: false, error: "Requests are closed for tonight." };
     if (!asAdmin && this.one("SELECT 1 AS m FROM muted WHERE device=?", device))
       return { ok: false, error: "Requests are paused for this phone." };
@@ -297,6 +298,7 @@ export class Party extends DurableObject<Env> {
     const urgent = kind === "announcement" && j?.urgent === true;
     const anon = j?.anon === true;   // read on air as "a mystery guest"; the host still sees the name and phone
     if (anon && urgent) return { ok: false, error: "An urgent one can't be anonymous." };
+    if (this.flags().stationOff) return { ok: false, error: "OrrFM is off the air. Requests open again when it's back." };
     if (!this.flags().accepting) return { ok: false, error: "The DJ isn't taking jokes right now." };
     if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
     const name = clean(j?.name, 40), text = clean(j?.text, 400);
@@ -341,6 +343,7 @@ export class Party extends DurableObject<Env> {
   async guestPad(device: string, pad: unknown) {
     const n = typeof pad === "number" ? pad : NaN;
     if (!Number.isInteger(n) || n < 1 || n > 5) return { ok: false, error: "No such button." };
+    if (this.flags().stationOff) return { ok: false, error: "OrrFM is off the air. Requests open again when it's back." };
     if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
     if (!this.flags().freePlay) {
       const lim = this.padLimit(device);
@@ -683,7 +686,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "msgs-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "off-2",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, created_at"),
               ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL AND +status<>'deleted' ORDER BY ended_at DESC LIMIT 10")]
