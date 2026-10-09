@@ -53,18 +53,12 @@
      a lit top surface and a darker front face; each tube plugs into a socket in the deck, empty when it's gone */
   .tubes { position: absolute; left: 61%; bottom: 100%; transform: translateX(-50%); z-index: 3;   /* centred in the gap between the logo and the hen */
            display: flex; align-items: flex-end; gap: 14px; padding: 0 14px 8px; }
-  /* the riser: walnut like the cabinet it grows out of, topped by a strip of brushed aluminium like the faceplate,
-     held by a brass screw at each end; the sockets sit in the strip */
+  /* the riser: walnut like the cabinet it grows out of, the chrome-collared sockets set straight into the wood */
   .tubes { isolation: isolate; }
   .tubes::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 14px; border-radius: 6px 6px 0 0; z-index: 0;
                    background: linear-gradient(#ffffff1c, #fff0 45%),
                                repeating-linear-gradient(92deg, #5a3520 0 2px, #4a2b19 2px 5px, #63402a 5px 6px, #4f2e1b 6px 11px);
                    box-shadow: inset 0 1px 0 #ffffff2e, inset 0 -2px 3px #0005; }
-  .tubes::after { content: ""; position: absolute; left: 6px; right: 6px; bottom: 5px; height: 6px; border-radius: 2px; z-index: 0;
-                  background: radial-gradient(circle at 5px 50%, #cdb984 0 1.6px, #45391c 2.2px, transparent 2.6px),
-                              radial-gradient(circle at calc(100% - 5px) 50%, #cdb984 0 1.6px, #45391c 2.2px, transparent 2.6px),
-                              linear-gradient(#efebe3, #c4beb2 50%, #a39c8f);
-                  box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #0003, 0 1px 1px #000a; }
   .seat { z-index: 1; }
   .tube { position: relative; display: block; cursor: pointer; transform-origin: 50% 100%; --g: .8; -webkit-tap-highlight-color: transparent; }
   .tube svg { position: relative; display: block; overflow: visible; }
