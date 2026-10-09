@@ -1,6 +1,8 @@
 #!/bin/sh
 # Restart the receiver if the USB card's stream is not RUNNING or its hardware pointer stopped moving.
 . /etc/mattyfm.conf
+# switched off by the host: silence is expected, nothing to restart
+[ -e /run/mattyfm-off ] && exit 0
 f="/proc/asound/$CARD/pcm0p/sub0/status"
 state=$(awk '/^state:/ {print $2}' "$f" 2>/dev/null)
 hw=$(awk '/^hw_ptr/ {print $3}' "$f" 2>/dev/null)

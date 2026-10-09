@@ -449,3 +449,12 @@ def test_while_off_nothing_plays_and_power_on_brings_somafm_back():
     assert eng.status()["source"] == "soma" and mixer.level["SomaVol"] == 100 and mixer.level["DjVol"] == 100
     eng.push(item("r3")); run(eng, clock, 8)
     assert eng.status()["source"] == "requests"   # requests play again
+
+
+def test_power_tells_the_watchdog_marker_when_it_switches():
+    eng, clock, players, mixer = make()
+    seen = []
+    eng.on_power = seen.append
+    eng.power(False); eng.power(False)   # already off: no second call
+    eng.power(True)
+    assert seen == [True, False]

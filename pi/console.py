@@ -26,6 +26,7 @@ Logs: journalctl -u mattyfm-pi (every push, transition, level ramp, stall, exit)
 """
 
 import fcntl
+import os
 import json
 import math
 import random
@@ -45,7 +46,8 @@ PLAIN_UP_S = 1.5        # incoming fade without a voice
 PLAIN_FADE_S = DOWN_S   # kept for skips
 OUTRO_S = 3.0           # song -> SomaFM: the song fades out over its last seconds
 SOMA_UP_S = 2.0
-OFF_FADE_S = 3.0        # station off: everything fades to silence over this, then every player stops
+OFF_FADE_S = 3.0
+OFF_MARK = "/run/mattyfm-off"   # present while the station is off: the watchdog leaves a silent card alone        # station off: everything fades to silence over this, then every player stops
 DUCK_PCT = 75           # voice breaks: the on-air channel dips to this (softvol %, -60..0 dB: 75 = -15 dB, the music stays faintly under the voice)
 DUCK_S = 0.5            # dip over this, then the DJ starts
 RESTORE_S = 1.0         # back to full over this after the DJ ends
@@ -135,6 +137,7 @@ class Engine:
         self.soma_down_since: float | None = None
         self.soma_up_since: float | None = None
         self.off = False                          # the host switched the station off (SomaFM disconnects too)
+        self.on_power = None                      # told True/False when it switches off/on (the watchdog's marker)
         self.stop_all_at: float | None = None     # when the off fade ends and the players stop
 
     def soma_up(self) -> bool:   # replaced at runtime by the SomaFM reader's health
@@ -188,6 +191,8 @@ class Engine:
                 self.stop_all_at = now + OFF_FADE_S + 0.2
                 self.on_air = ("off", None)
                 self.log(f"power off: fading to silence over {OFF_FADE_S:.0f}s")
+                if self.on_power:
+                    self.on_power(True)
             elif on and self.off:
                 self.off, self.stop_all_at, self.ramps = False, None, []
                 for c in self.mixer.level:
@@ -197,6 +202,8 @@ class Engine:
                 self.soma_down_since = self.soma_up_since = None
                 self.transition_until = now + 1.0 + SOMA_UP_S
                 self.log("power on: SomaFM back")
+                if self.on_power:
+                    self.on_power(False)
 
     def clear(self) -> None:
         with self.lock:
@@ -629,6 +636,18 @@ def main(conf_path: str) -> None:
     players = Players()
     engine = Engine(conf["FILES_URL"], clock=time.monotonic, players=players, mixer=mixer)
     # off: SomaFM keeps flowing through the fade, and hangs up once it's silent
+    # Off is silent on purpose: a marker tells the watchdog not to "fix" it by restarting us, and a restart
+    # while off (the watchdog, a crash) comes back off, never with a few seconds of SomaFM first.
+    def mark_off(off: bool) -> None:
+        try:
+            open(OFF_MARK, "w").close() if off else os.path.exists(OFF_MARK) and os.remove(OFF_MARK)
+        except OSError as e:
+            log(f"off marker: {e}")
+    engine.on_power = mark_off
+    if os.path.exists(OFF_MARK):
+        engine.power(False)
+        engine.stop_all_at = None   # already silent: nothing to fade or stop, and SomaFM never connects
+        log("started off (the station was switched off)")
     soma = SomaReader(conf["SOMA_URLS"].split(), wanted=lambda: not (engine.off and engine.stop_all_at is None))
     engine.soma_up = soma.health.up
     engine.backup = load_backup(conf["FILES_URL"])
