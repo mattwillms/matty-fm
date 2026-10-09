@@ -287,3 +287,10 @@ def test_family_mode_sets_the_djs_rating_in_every_prompt():
         assert "PG-13" in djline.rated(djline.SYSTEM)
     finally:
         djline.set_family(True)
+
+
+def test_the_joke_and_announcement_writers_never_make_up_a_sender():
+    # the example name in the prompt was once read on air for an anonymous joke ("Uncle Ray sent this one in")
+    assert "Uncle Ray" not in djline.JOKE_SYSTEM
+    assert "invent a name" in djline.JOKE_SYSTEM and "invent a name" in djline.ANNOUNCE_SYSTEM
+    assert "mystery guest" in djline.JOKE_SYSTEM and "mystery guest" in djline.ANNOUNCE_SYSTEM
