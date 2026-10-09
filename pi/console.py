@@ -44,7 +44,7 @@ PLAIN_UP_S = 1.5        # incoming fade without a voice
 PLAIN_FADE_S = DOWN_S   # kept for skips
 OUTRO_S = 3.0           # song -> SomaFM: the song fades out over its last seconds
 SOMA_UP_S = 2.0
-DUCK_PCT = 55           # voice breaks: the on-air channel dips to this (softvol %, ~-27 dB)
+DUCK_PCT = 75           # voice breaks: the on-air channel dips to this (softvol %, -60..0 dB: 75 = -15 dB, the music stays faintly under the voice)
 DUCK_S = 0.5            # dip over this, then the DJ starts
 RESTORE_S = 1.0         # back to full over this after the DJ ends
 # Auto-duck, following the speech (segments measured by the studio): down as each word lands,
