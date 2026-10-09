@@ -269,7 +269,7 @@
     </div>
     <div class="slider-row">
       <div class="what">Bumper every <output id="breakEveryOut" for="breakEvery">10</output> min</div>
-      <div class="why">Station IDs, goofs and back-announces over SomaFM, timed to the start of a song. Guests' jokes run on their own 5-minute clock.</div>
+      <div class="why">Station IDs, goofs and back-announces over SomaFM, timed to the start of a song. Guests' jokes don't wait for this: one at most every 5 minutes, and during requests they go in at a song change.</div>
       <input type="range" id="breakEvery" min="5" max="30" step="5" value="10" aria-label="Minutes between bumpers">
       <div class="ticks" aria-hidden="true"><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
     </div>
@@ -438,7 +438,12 @@ function renderTimer() {
   $("nextWhat").textContent = jokeWaits ? "Next joke" : "Next bumper";   // a recorded joke runs on its own 5-minute clock
   const wait = (text) => { out.textContent = text; out.className = "when wait"; };
   if (!h || h.nextBreakS == null || h.ageS == null || h.ageS > 60) return wait("Studio not reporting");
-  if (h.source === "requests") return wait(`${state.settings.breakEveryMin ?? 10} min after the requests end`);
+  if (h.source === "requests") {
+    if (!jokeWaits) return wait(`${state.settings.breakEveryMin ?? 10} min after the requests end`);
+    // a joke rides in at a song change: at once in place of an intro, or before a shout-out once its 5-minute clock is up
+    const left = Math.max(0, Math.round(h.nextBreakS - h.ageS - (Date.now() - state.loadedAt) / 1000));
+    return wait(left ? `At a song change (shout-outs wait ${Math.ceil(left / 60)} min)` : "At the next song change");
+  }
   if (h.source !== "soma") return wait("Waits for SomaFM");
   const left = Math.max(0, Math.round(h.nextBreakS - h.ageS - (Date.now() - state.loadedAt) / 1000));   // server age, not this phone's clock
   if (!left) return wait(h.queued ? "Due: waits for the queue" : h.breakHold ? "Due: at the next song's intro" : "Due now");
