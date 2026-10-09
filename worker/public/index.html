@@ -39,22 +39,20 @@
   [hidden] { display: none !important; }
 
   /* ---- wordmark: chunky soft serif in the 70s offset stack ---- */
-  .mark { margin: 6px 0 18px; }
+  /* the logo sits 18px from the top and from the radio below: the same gap as between panels */
+  .mark { --logo: calc(clamp(3.4rem, 17vw, 4.6rem) * .8); margin: calc(var(--logo) * .08) 0 18px; }
   .mark-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   /* same height as the OrrFM letters: their ink measures 0.71 of the font size at every width */
-  .hen { flex: none; width: calc(clamp(3.4rem, 17vw, 4.6rem) * 1.125); aspect-ratio: 1; border-radius: 50%; overflow: hidden;
-         margin-top: calc(clamp(3.4rem, 17vw, 4.6rem) * -.08); }   /* top of the hen = top of the letters */
+  .hen { flex: none; width: calc(var(--logo) * 1.125); aspect-ratio: 1; border-radius: 50%; overflow: hidden;
+         margin-top: calc(var(--logo) * -.08); }   /* top of the hen = top of the letters */
   .hen img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .hen { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .mark h1 { font-family: Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
-             font-weight: 900; font-size: clamp(3.4rem, 17vw, 4.6rem); line-height: .86; letter-spacing: -.02em; margin: 0; color: var(--cream);
+             font-weight: 900; font-size: var(--logo); line-height: .86; letter-spacing: -.02em; margin: 0; color: var(--cream);
              /* the 70s offset stack: stepped copies in the stripe colours */
              text-shadow: .022em .022em 0 var(--cocoa), .05em .05em 0 var(--gold), .072em .072em 0 var(--cocoa),
                           .1em .1em 0 var(--orange), .122em .122em 0 var(--cocoa), .15em .15em 0 #B2361F;
              padding: 0 .15em .15em 0; }
-  /* one line at every width: measured 23.4em in Jost (fonttools); /25 leaves ~7% to spare */
-  .tag { margin: 10px 0 0; color: var(--cream-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-         font-size: min(.98rem, calc((min(100vw, 560px) - 32px) / 25)); }
 
   /* ---- the receiver: walnut cabinet, brushed aluminium faceplate ---- */
   .cabinet { position: relative; margin-bottom: 26px; padding: 0 14px; border-radius: 12px;
@@ -392,7 +390,6 @@
       <h1>OrrFM</h1>
       <picture class="hen"><source srcset="/hen.webp" type="image/webp"><img src="/hen.png" alt="" width="180" height="180"></picture>
     </div>
-    <p class="tag">Pick a song, add a shout-out, and the DJ reads it on air.</p>
   </header>
 
   <p id="gate" class="notice err" hidden>Scan the party QR code to open the request line. Stuck? Ask Matt.</p>
