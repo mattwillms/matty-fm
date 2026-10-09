@@ -67,7 +67,7 @@
                 background: radial-gradient(circle, #ff8c26d0, #e2620f55 38%, #c44a0800 70%); opacity: calc(var(--g) * .9); }   /* deep amber */
   .tube .fil { opacity: var(--g); } .tube .warm { opacity: calc(var(--g) * .5); }
   /* the socket in the deck: a chrome ring round a dark hole with its pin holes; the tube's collar hides it */
-  .seat { position: relative; display: block; }   /* the socket stays put; only the tube in it moves */
+  .seat { position: relative; display: flex; justify-content: center; width: 32px; }   /* a fixed seat: the socket never moves, whichever tube is in it */
   .seat .sock { position: absolute; left: 50%; bottom: -3px; width: 26px; height: 7px; margin-left: -13px; border-radius: 50%;
                 background: radial-gradient(circle at 30% 50%, #000 0 .8px, transparent 1.2px), radial-gradient(circle at 50% 42%, #000 0 .8px, transparent 1.2px),
                             radial-gradient(circle at 70% 50%, #000 0 .8px, transparent 1.2px), radial-gradient(circle at 50% 66%, #000 0 .8px, transparent 1.2px),
@@ -1422,20 +1422,22 @@ function replaceTube(tube, ms) {   // only ever one replacement on its way per t
   tube._arriving = true;
   setTimeout(() => arrive(tube, true), ms);
 }
-// how often each happens: drop in 35%, teleport 27%, a drop that misses 18%, the sneaky rise 12%, a puff of smoke 8%
+// how often each happens (relative weights): drop in 35, teleport 27, a drop that misses 18, the sneaky rise 12,
+// a puff of smoke 8, a spit of sparks and smoke 6
 // (after a miss, the next one always makes it: the same odds without the misses)
 // bakelite, ceramic and painted collars: a new one each time a tube goes in
 const COLLARS = ["#121010", "#3a2216", "#e8e3d6", "#d2c3a0", "#6e1a12", "#2f3a24", "#1d2740", "#6b4a26"];
 const paintCollar = (t) => t.style.setProperty("--collar", COLLARS[Math.floor(Math.random() * COLLARS.length)]);
 tubeEls.forEach(paintCollar);
-const ARRIVALS = [["drop", 35], ["teleport", 27], ["miss", 18], ["rise", 12], ["puff", 8]];
+const ARRIVALS = [["drop", 35], ["teleport", 27], ["miss", 18], ["rise", 12], ["puff", 8], ["sparks", 6]];
 function arrive(tube, mayMiss) {
   paintCollar(tube);
-  const pool = ARRIVALS.filter(([k]) => mayMiss || (k !== "miss" && k !== "puff"));
+  const pool = ARRIVALS.filter(([k]) => mayMiss || !["miss", "puff", "sparks"].includes(k));
   let r = Math.random() * pool.reduce((n, [, w]) => n + w, 0), pick = pool[0][0];
   for (const [k, w] of pool) { if ((r -= w) < 0) { pick = k; break; } }
   if (pick === "miss") return missDrop(tube, () => setTimeout(() => arrive(tube, false), 1500));
   if (pick === "puff") return puffSocket(tube, () => setTimeout(() => arrive(tube, false), 1300));
+  if (pick === "sparks") return sparkSocket(tube, () => setTimeout(() => arrive(tube, false), 1500));
   const go = () => {
     (pick === "drop" ? dropIn : pick === "teleport" ? beamIn : riseIn)(tube);
     setTimeout(() => { tube._arriving = false; tube._busy = false; }, { drop: 1150, teleport: 1350, rise: 3450 }[pick]);   // landed: tappable again
@@ -1480,6 +1482,13 @@ function missDrop(tube, then) {   // drops in, clips the rim, bounces off and fa
     { transform: `translate(${dir * 90}px, ${innerHeight - r.top + 80}px) rotate(${dir * 320}deg)` }], { duration: 2000 });
   setTimeout(() => { const s = sockAt(tube); sparks(s.x + dir * 6, s.y - 2, 5, { speed: 50, kick: 0 }); }, 840);   // the clink on the rim
   fall.onfinish = () => { c.remove(); then(); };
+}
+function sparkSocket(tube, then) {   // the empty socket spits: a crackle of sparks, then smoke
+  const s = sockAt(tube);
+  sparks(s.x, s.y - 1, 12, { speed: 110 });
+  setTimeout(() => sparks(s.x, s.y - 1, 6, { speed: 80 }), 180);
+  setTimeout(() => smoke(s.x, s.y, 4, 50, 1), 120);
+  setTimeout(then, 700);
 }
 function puffSocket(tube, then) {   // nothing comes, just a cough of smoke out of the empty socket
   const s = sockAt(tube);
