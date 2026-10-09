@@ -1297,7 +1297,7 @@ const fxBit = (cls, x, y, css = {}) => { const e = el("i", "fx " + cls); Object.
 function sparks(x, y, n, opts = {}) {   // thrown out, then pulled down by gravity
   for (let k = 0; k < n; k++) {
     const a = Math.random() * Math.PI * 2, sp = (opts.speed || 140) * (.4 + Math.random() * .9);
-    const vx = Math.cos(a) * sp, vy = Math.sin(a) * sp - 60;   // a little upward kick before gravity wins
+    const vx = Math.cos(a) * sp, vy = Math.sin(a) * sp - (opts.kick ?? 60);   // an explosion kicks them up first; a snap doesn't
     const life = 450 + Math.random() * 500, frames = [];
     for (let f = 0; f <= 8; f++) {
       const s = (life / 1000) * f / 8;
@@ -1367,10 +1367,14 @@ function breakOff(tube) {   // it snaps at the socket and falls down the screen,
     document.body.append(clone);
     tube.classList.add("gone");
     const bx = r.left + r.width / 2, by = r.bottom - 3;
-    sparks(bx, by, 16, { speed: 120 }); smoke(bx, by, 3, 40);
-    const tilt = tube._tilt || 0, spin = (Math.random() < .5 ? -1 : 1) * (220 + Math.random() * 300), drop = innerHeight - r.top + 80, dx = (Math.random() - .5) * 120;
-    const fall = clone.animate([{ transform: `rotate(${tilt}deg)` }, { transform: `translate(${dx * .2}px, -14px) rotate(${tilt + spin * .1}deg)`, offset: .12 },
-                                { transform: `translate(${dx}px, ${drop}px) rotate(${tilt + spin}deg)` }], { duration: 1500, easing: "cubic-bezier(.45,0,.9,.55)" });
+    sparks(bx, by, 14, { speed: 70, kick: 0 }); smoke(bx, by, 3, 40);
+    // a snap, not a launch: it tips over on its broken base, then drops, faster and faster; nothing goes up
+    const tilt = tube._tilt || 0, dir = tilt ? Math.sign(tilt) : (Math.random() < .5 ? -1 : 1);
+    const lean = tilt + dir * 38, spin = dir * (160 + Math.random() * 200), drop = innerHeight - r.top + 80, dx = dir * (20 + Math.random() * 60);
+    const fall = clone.animate([
+      { transform: `rotate(${tilt}deg)`, easing: "cubic-bezier(.5,0,1,1)" },
+      { transform: `translate(${dir * 3}px, 1px) rotate(${lean}deg)`, offset: .2, easing: "cubic-bezier(.55,0,1,1)" },
+      { transform: `translate(${dx}px, ${drop}px) rotate(${lean + spin}deg)` }], { duration: 1500 });
     setTimeout(() => clone.style.setProperty("--g", .15), 250);
     const trail = setInterval(() => { const q = clone.getBoundingClientRect(); smoke(q.left + q.width / 2, q.top + q.height / 2, 1, 30, .7); }, 110);
     fall.onfinish = () => { clearInterval(trail); clone.remove(); };
