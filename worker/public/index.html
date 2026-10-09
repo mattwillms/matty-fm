@@ -64,6 +64,12 @@
   .seat { z-index: 1; }
   /* two old cloth-covered cables from the riser to the set, each ending in a mono 1/4" plug pushed into a jack on
      the top edge of the faceplate; drawn by layCables() so they follow the riser wherever the layout puts it */
+  .cables .plug { pointer-events: all; cursor: pointer; transform-box: fill-box; transform-origin: 50% 100%; -webkit-tap-highlight-color: transparent; }
+  /* the old-TV flicker over the screen: scanlines and a rolling band of static */
+  .tvfx { position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none; z-index: 3; mix-blend-mode: screen;
+          background: repeating-linear-gradient(0deg, #ffffff1c 0 1px, transparent 1px 3px),
+                      linear-gradient(transparent 0 40%, #ffffff40 46%, #ffffff10 52%, transparent 58%);
+          background-size: 100% 100%, 100% 140%; }
   .cables { position: absolute; left: 0; top: -60px; width: 100%; height: 64px; overflow: visible; pointer-events: none; z-index: 2; }
   .tube { position: relative; display: block; cursor: pointer; transform-origin: 50% 100%; --g: .8; -webkit-tap-highlight-color: transparent; }
   .tube svg { position: relative; display: block; overflow: visible; }
@@ -1345,7 +1351,7 @@ function layCables() {
   const edge = Y(face.top), ry = Y(r.bottom - 7), L = X(r.left), R = X(r.right);
   const p1 = Math.max(X(face.left) + 30, L - 22), p2 = Math.min(X(face.right) - 30, R + 26), top1 = edge - 20, top2 = edge - 20;
   const plug = (x) => `
-    <g>
+    <g class="plug"><rect x="${x - 9}" y="${edge - 24}" width="18" height="27" fill="transparent"/>
       <ellipse cx="${x}" cy="${edge + .4}" rx="5.2" ry="1.7" fill="url(#jackRing)"/>
       <rect x="${x - 2.3}" y="${edge - 3}" width="4.6" height="3.2" fill="#8d8a84"/>
       <rect x="${x - 3.3}" y="${edge - 13.5}" width="6.6" height="10.8" rx="1.4" fill="url(#plugChrome)"/>
@@ -1370,8 +1376,27 @@ function layCables() {
       <radialGradient id="jackRing" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#111"/><stop offset=".55" stop-color="#2a2724"/><stop offset=".7" stop-color="#cfcbc3"/><stop offset="1" stop-color="#6d6962"/></radialGradient>
     </defs>
     ${wire(d2, "#6e1a12", "#ead9b6", "1 2.6")}${plug(p2)}`;   // one cable now: the curled one on the right
+  svg.querySelector(".plug").addEventListener("click", jiggle);
 }
 addEventListener("load", layCables); addEventListener("resize", layCables);
+// Tap the plug: it jiggles in its jack, and the screen flickers like an old TV with a loose connection.
+function jiggle(e) {
+  const g = e.currentTarget, glass = $("glass");
+  if (glass._flicker) return;
+  glass._flicker = true;
+  g.animate([0, -9, 7, -6, 5, -3, 2, 0].map((d) => ({ transform: `rotate(${d}deg)` })), { duration: 480, easing: "ease-out" });
+  const fx = el("div", "tvfx"); glass.append(fx);
+  const frames = [];
+  for (let k = 0; k <= 14; k++) {
+    const on = k === 14 ? 1 : [1.8, .25, 1.4, .1, 2.2, .6, 1, .15, 1.6, .4, 1.2, .3, 1.5, .8][k];
+    frames.push({ filter: `brightness(${on}) contrast(${k === 14 ? 1 : 1.3}) saturate(${k === 14 ? 1 : .6})`,
+                  transform: k === 14 ? "none" : `translate(${(Math.random() - .5) * 6}px, ${k % 4 === 1 ? -6 : (Math.random() - .5) * 3}px) skewX(${(Math.random() - .5) * 4}deg)` });
+  }
+  const disp = $("display");
+  disp.animate(frames, { duration: 850, easing: "steps(15)" });
+  fx.animate([{ opacity: .9, backgroundPositionY: "0px, 0px" }, { opacity: .7, backgroundPositionY: "40px, 120px", offset: .5 }, { opacity: 0, backgroundPositionY: "80px, 260px" }],
+             { duration: 850, easing: "linear" }).onfinish = () => { fx.remove(); glass._flicker = false; };
+}
 // Each visit racks them one tall and one short, the tall one on either side.
 (() => {
   const proto = { tall: document.querySelector(".tube.t1"), short: document.querySelector(".tube.t2") };
