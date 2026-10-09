@@ -40,8 +40,8 @@
   [hidden] { display: none !important; }
 
   /* ---- wordmark: chunky soft serif in the 70s offset stack ---- */
-  /* the logo sits 13px from the top (main's 18px top padding, less 5px) and 16px from the radio below */
-  .mark { --logo: calc(clamp(3.4rem, 17vw, 4.6rem) * .648); margin: calc(var(--logo) * .08 - 5px) 0 16px; }
+  /* the logo sits 5px from the top (main's 18px top padding, less 13px) and 10px from the radio below */
+  .mark { --logo: calc(clamp(3.4rem, 17vw, 4.6rem) * .648); margin: calc(var(--logo) * .08 - 13px) 0 10px; }
   .mark-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   /* same height as the OrrFM letters: their ink measures 0.71 of the font size at every width */
   .hen { flex: none; width: calc(var(--logo) * 1.125); aspect-ratio: 1; border-radius: 50%; overflow: hidden;
@@ -49,11 +49,11 @@
   .hen img { display: block; width: 100%; height: 100%; object-fit: cover; }
   .hen { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .mark h1 { font-family: Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
-             font-weight: 900; font-size: var(--logo); line-height: .86; letter-spacing: -.02em; margin: 0; color: var(--cream);
-             /* the 70s offset stack: stepped copies in the stripe colours */
-             text-shadow: .022em .022em 0 var(--cocoa), .05em .05em 0 var(--gold), .072em .072em 0 var(--cocoa),
-                          .1em .1em 0 var(--orange), .122em .122em 0 var(--cocoa), .15em .15em 0 #B2361F;
-             padding: 0 .15em .15em 0; }
+             font-weight: 900; font-size: var(--logo); line-height: .86; letter-spacing: -.02em; margin: 0; color: var(--l0, var(--cream));
+             /* the 70s offset stack: stepped copies in the stripe colours (--l0..--l3: the five-tap colour roll moves them) */
+             text-shadow: .022em .022em 0 var(--cocoa), .05em .05em 0 var(--l1, var(--gold)), .072em .072em 0 var(--cocoa),
+                          .1em .1em 0 var(--l2, var(--orange)), .122em .122em 0 var(--cocoa), .15em .15em 0 var(--l3, #B2361F);
+             padding: 0 .15em .15em 0; cursor: default; -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; }
 
   /* ---- the receiver: walnut cabinet, brushed aluminium faceplate ---- */
   .cabinet { position: relative; margin-bottom: 26px; padding: 0 14px; border-radius: 12px;
@@ -834,6 +834,27 @@ function dropEgg(layer, h) {
       .finished.then(() => egg.remove());
   }
 }
+// Five quick taps on the OrrFM logo: its colours roll back through the stack, like an old TV show's
+// title card: each step moves every colour one layer outward (red to the face, cream to the first copy...);
+// eight steps is twice round, ending on the cream face it started with.
+(() => {
+  const h1 = document.querySelector(".mark h1"), PAL = ["var(--cream)", "var(--gold)", "var(--orange)", "#B2361F"];
+  let taps = [], rolling = false;
+  h1.addEventListener("click", () => {
+    const now = Date.now();
+    taps = taps.filter((t) => now - t < 1500).concat(now);   // five within a second and a half
+    if (taps.length < 5 || rolling) return;
+    taps = []; rolling = true;
+    let k = 0;
+    const step = () => {
+      k++;
+      PAL.forEach((_, i) => h1.style.setProperty(`--l${i}`, PAL[(((i - k) % 4) + 4) % 4]));
+      if (k < 8) setTimeout(step, 130);
+      else { ["--l0", "--l1", "--l2", "--l3"].forEach((v) => h1.style.removeProperty(v)); rolling = false; }
+    };
+    step();
+  });
+})();
 document.querySelector(".hen").addEventListener("click", () => {
   if (hen.wild) return;
   const now = Date.now();
