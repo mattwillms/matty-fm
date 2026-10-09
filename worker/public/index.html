@@ -23,6 +23,7 @@
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
+  html { touch-action: manipulation; }   /* no double-tap zoom anywhere (taps on the radio stay taps); pinch zoom still works */
   body { margin: 0; background: var(--cocoa); color: var(--cream); font: 17px/1.5 Jost, system-ui, sans-serif;
          padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
   main { position: relative; z-index: 1; max-width: 560px; margin: 0 auto; padding: 18px 16px 40px; }
@@ -50,7 +51,7 @@
   .hen { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   .mark h1 { font-family: Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
              font-weight: 900; font-size: var(--logo); line-height: .86; letter-spacing: -.02em; margin: 0; color: var(--l0, var(--cream));
-             /* the 70s offset stack: stepped copies in the stripe colours (--l0..--l3: the five-tap colour roll moves them) */
+             /* the 70s offset stack: stepped copies in the stripe colours (--l0..--l3: the three-tap colour roll moves them) */
              text-shadow: .022em .022em 0 var(--cocoa), .05em .05em 0 var(--l1, var(--gold)), .072em .072em 0 var(--cocoa),
                           .1em .1em 0 var(--l2, var(--orange)), .122em .122em 0 var(--cocoa), .15em .15em 0 var(--l3, #B2361F);
              padding: 0 .15em .15em 0; cursor: default; -webkit-tap-highlight-color: transparent; touch-action: manipulation; user-select: none; }
@@ -834,22 +835,22 @@ function dropEgg(layer, h) {
       .finished.then(() => egg.remove());
   }
 }
-// Five quick taps on the OrrFM logo: its colours roll back through the stack, like an old TV show's
+// Three quick taps on the OrrFM logo: its colours roll back through the stack, like an old TV show's
 // title card: each step moves every colour one layer outward (red to the face, cream to the first copy...);
-// eight steps is twice round, ending on the cream face it started with.
+// twelve steps is three times round, ending on the cream face it started with.
 (() => {
   const h1 = document.querySelector(".mark h1"), PAL = ["var(--cream)", "var(--gold)", "var(--orange)", "#B2361F"];
   let taps = [], rolling = false;
   h1.addEventListener("click", () => {
     const now = Date.now();
-    taps = taps.filter((t) => now - t < 1500).concat(now);   // five within a second and a half
-    if (taps.length < 5 || rolling) return;
+    taps = taps.filter((t) => now - t < 1000).concat(now);   // three within a second
+    if (taps.length < 3 || rolling) return;
     taps = []; rolling = true;
     let k = 0;
     const step = () => {
       k++;
       PAL.forEach((_, i) => h1.style.setProperty(`--l${i}`, PAL[(((i - k) % 4) + 4) % 4]));
-      if (k < 8) setTimeout(step, 130);
+      if (k < 12) setTimeout(step, 130);
       else { ["--l0", "--l1", "--l2", "--l3"].forEach((v) => h1.style.removeProperty(v)); rolling = false; }
     };
     step();
