@@ -1512,18 +1512,17 @@ function breakOff(tube) {   // it snaps at the socket and falls down the screen,
     tube.classList.add("gone");
     const bx = r.left + r.width / 2, by = r.bottom - 3;
     sparks(bx, by, 14, { speed: 70, kick: 0 }); smoke(bx, by, 3, 40);
-    // a snap, not a launch: it tips over on its broken base, then drops, faster and faster; nothing goes up
+    // a snap, not a launch: it drops at once, faster and faster, turning over as it goes; nothing goes up
     const tilt = tube._tilt || 0, dir = tilt ? Math.sign(tilt) : (Math.random() < .5 ? -1 : 1);
     const lean = tilt + dir * 38, spin = dir * (160 + Math.random() * 200), drop = innerHeight - r.top + 80, dx = dir * (20 + Math.random() * 60);
-    const fall = clone.animate([
-      { transform: `rotate(${tilt}deg)`, easing: "cubic-bezier(.5,0,1,1)" },
-      { transform: `translate(${dir * 3}px, 1px) rotate(${lean}deg)`, offset: .2, easing: "cubic-bezier(.55,0,1,1)" },
-      { transform: `translate(${dx}px, ${drop}px) rotate(${lean + spin}deg)` }], { duration: 1500 });
+    const fall = clone.animate([   // falling from the first frame, gravity speeding it up as it turns over
+      { transform: `rotate(${tilt}deg)` },
+      { transform: `translate(${dx}px, ${drop}px) rotate(${lean + spin}deg)` }], { duration: 1300, easing: "cubic-bezier(.5,0,1,1)" });
     setTimeout(() => clone.style.setProperty("--g", .15), 250);
     const trail = setInterval(() => { const q = clone.getBoundingClientRect(); smoke(q.left + q.width / 2, q.top + q.height / 2, 1, 30, .7); }, 110);
     fall.onfinish = () => { clearInterval(trail); clone.remove(); };
     replaceTube(tube, 2500);
-  }, 330);
+  }, 180);
 }
 function explode(tube) {   // the rarest: it blows: a flash, sparks, glass, fire, arcs and smoke
   const r = tube.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height * .45;
