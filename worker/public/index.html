@@ -338,6 +338,13 @@
                 color: var(--gold); text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
   .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; } .row > * { flex: 1 1 7.5em; padding-inline: 12px; }   /* wraps at big zoom, never off-screen */
   .hint { margin: 12px 0 0; color: var(--cream-dim); font-size: .95rem; }
+  /* who's listening: asked once, then every request and message goes out under that name */
+  #who { display: none; } body.anon #who { display: block; }
+  body.anon #find, body.anon #form, body.anon #jokeBox, body.anon #mineBox { display: none; }
+  #who h2 { margin-bottom: 4px; }
+  #who form { display: flex; gap: 10px; margin-top: 12px; } #who input { flex: 1; min-width: 0; } #who button { flex: none; }
+  .as { margin: 14px 0 0; color: var(--cream-dim); font-size: .95rem; }
+  .as b { color: var(--cream); } .as button.link { margin-left: 6px; }
   .fine { color: #a88d6a; font-size: .85rem; margin: 22px 2px 0; }
 
   /* ---- song rows ---- */
@@ -440,6 +447,14 @@
     <ol id="next"></ol>
   </section>
 
+  <section class="panel" id="who" aria-labelledby="whoH">
+    <h2 id="whoH">Who's listening?</h2>
+    <p class="hint" style="margin-top:0">Your first name goes on your requests, so the DJ can give you a shout-out.</p>
+    <form id="whoForm"><input id="whoName" maxlength="40" autocomplete="given-name" placeholder="First name" aria-label="Your first name" required>
+      <button type="submit">That's me</button></form>
+    <p class="hint" id="whoBack" hidden><button class="link" id="whoKeep" type="button">Keep my name</button></p>
+  </section>
+
   <section class="panel" id="find">
     <div class="h2row"><h2>Request a song</h2>
       <span class="slots" id="slots" role="img" aria-label="Song picks"><i></i><i></i></span></div>
@@ -457,7 +472,7 @@
       <label for="ft">Song title</label><input id="ft" maxlength="200">
       <label for="fa">Artist (your best guess is fine)</label><input id="fa" maxlength="200">
     </div>
-    <label for="name">Your name</label><input id="name" maxlength="40" autocomplete="given-name">
+    <p class="as">Requesting as <b class="myName"></b><button class="link rename" type="button">Change</button></p>
     <label for="msg">Message for the DJ (optional)</label>
     <textarea id="msg" maxlength="280"></textarea>
     <div class="row"><button class="quiet" id="cancel" type="button">Back</button><button id="send" type="button">Send to the DJ</button></div>
@@ -478,7 +493,7 @@
     <label for="joke" id="jokeLabel">Your joke</label><textarea id="joke" maxlength="400"></textarea>
     <label class="check" id="urgentRow" hidden><input type="checkbox" id="urgent">
       <span>Urgent: read it as soon as it's ready <small id="urgentNote">(one an hour)</small></span></label>
-    <label for="jname">Your name</label><input id="jname" maxlength="40" autocomplete="given-name">
+    <p class="as">Sending as <b class="myName"></b><button class="link rename" type="button">Change</button></p>
     <div class="row"><button id="jsend" type="button">Send to the DJ</button></div>
     <p id="jokeErr" class="hint" style="color:var(--bad)"></p>
     <p class="jokes-head" id="myJokesHead" hidden>Yours</p>
@@ -1053,7 +1068,30 @@ let pollTimer = null, lastNextKey = "", lastMineKey = "";
 const JOKE_STATUS = { pending: ["The DJ is reading it over", "prep"], preparing: ["The DJ is reading it over", "prep"],
   ready: ["Coming up on air", "up"], played: ["Told on air", "playing"], rejected: ["The DJ passed on this one", "bad"],
   failed: ["Didn't make it on air", "bad"] };
-try { $("jname").value = localStorage.getItem("mfm_name") || ""; } catch {}
+// The guest's name: asked once by the "Who's listening?" card, then sent with every request and message.
+let nameHere = "";   // the fallback when the browser won't store it (some private modes): asked again next visit
+function myName() { try { return (localStorage.getItem("mfm_name") || nameHere).trim(); } catch { return nameHere; } }
+function showName() {
+  const n = myName();
+  document.body.classList.toggle("anon", !n);
+  document.querySelectorAll(".myName").forEach((b) => b.textContent = n);
+}
+$("whoForm").onsubmit = (e) => {
+  e.preventDefault();
+  const n = $("whoName").value.trim();
+  if (!n) { $("whoName").focus(); return; }
+  nameHere = n;
+  try { localStorage.setItem("mfm_name", n); } catch {}
+  showName();
+  window.scrollTo({ top: 0, behavior: "smooth" });
+};
+document.querySelectorAll(".rename").forEach((b) => b.onclick = () => {
+  $("whoName").value = myName(); $("whoBack").hidden = false;
+  document.body.classList.add("anon");
+  $("who").scrollIntoView({ behavior: "smooth", block: "center" }); $("whoName").focus({ preventScroll: true });
+});
+$("whoKeep").onclick = showName;
+showName();
 let lastJokesKey = "";
 function showJokes(list) {
   const key = JSON.stringify(list || []);
@@ -1081,10 +1119,9 @@ $("jsend").onclick = () => busy($("jsend"), "Sending…", async () => {
   try {
     const urgent = sendKind === "announcement" && $("urgent").checked;
     const r = await api("/api/joke", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: $("jname").value, text: $("joke").value, kind: sendKind, urgent }), signal: AbortSignal.timeout(15000) });
+      body: JSON.stringify({ name: myName(), text: $("joke").value, kind: sendKind, urgent }), signal: AbortSignal.timeout(15000) });
     if (!r.ok) { $("jokeErr").textContent = r.error; toast(r.error, true); return; }
     $("jokeErr").textContent = "";
-    try { localStorage.setItem("mfm_name", $("jname").value); } catch {}
     toast(urgent ? "Sent! The DJ will read it as soon as it's ready." : "Sent! The DJ will read it between songs.");
     $("joke").value = ""; $("urgent").checked = false; refresh();   // the next poll brings the new limits
   } catch (e) {
@@ -1170,7 +1207,7 @@ function againButton(m) {
   b.onclick = async (e) => {
     e.stopPropagation();   // the row itself opens the record sleeve
     if (!songState().can) { toast($("songAllow").textContent, true); return; }
-    let name = ""; try { name = localStorage.getItem("mfm_name") || ""; } catch {}
+    const name = myName();
     const track = { title: m.title, artist: m.artist, album: m.album || "", artwork: m.artwork || "", source: "itunes", ...(m.track || {}) };
     if (!name) { choose(track, false); return; }   // no name yet: the usual form, already filled in
     b.disabled = true;
@@ -1287,7 +1324,6 @@ $("q").addEventListener("input", () => {
 function choose(t, free) {
   chosen = t; $("freeFields").hidden = !free; $("chosen").hidden = free; $("chosen").replaceChildren(...(free ? [] : [songRow(t)]));
   $("find").hidden = true; $("form").hidden = false; $("formErr").textContent = "";
-  try { $("name").value = localStorage.getItem("mfm_name") || ""; } catch {}
   $("form").scrollIntoView({ behavior: "smooth", block: "start" });
   if (!history.state?.form) history.pushState({ form: 1 }, "");   // Back closes the form, not the site
 }
@@ -1324,7 +1360,7 @@ $("send").onclick = () => busy($("send"), "Sending…", async () => {
     track.title = title || t;
   }
   const send = () => api("/api/request", { method: "POST", headers: { "content-type": "application/json" },
-    body: JSON.stringify({ track, name: $("name").value, message: $("msg").value, freeText: free }),
+    body: JSON.stringify({ track, name: myName(), message: $("msg").value, freeText: free }),
     signal: AbortSignal.timeout(15000) });   // a stalled send gives up and says so (a repeat is merged, not doubled)
   try {
     let r = await send();
@@ -1334,7 +1370,6 @@ $("send").onclick = () => busy($("send"), "Sending…", async () => {
       if (!r.ok && /reload/i.test(r.error ?? "")) r = { ok: false, error: "Busy moment. Tap Send again in a minute." };
     }
     if (!r.ok) { $("formErr").textContent = r.error; toast(r.error, true); return; }
-    try { localStorage.setItem("mfm_name", $("name").value); } catch {}
     toast(r.late ? "Added your name! It's already lined up, so the DJ may not read your message."
           : r.position ? `Sent to the DJ. You're #${r.position} in line.` : "Sent to the DJ.");
     $("msg").value = ""; $("q").value = ""; $("results").replaceChildren();
