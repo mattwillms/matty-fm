@@ -1451,7 +1451,7 @@ function breakOff(tube) {   // it snaps at the socket and falls down the screen,
     setTimeout(() => clone.style.setProperty("--g", .15), 250);
     const trail = setInterval(() => { const q = clone.getBoundingClientRect(); smoke(q.left + q.width / 2, q.top + q.height / 2, 1, 30, .7); }, 110);
     fall.onfinish = () => { clearInterval(trail); clone.remove(); };
-    replaceTube(tube, 7000);
+    replaceTube(tube, 2500);
   }, 330);
 }
 function explode(tube) {   // the rarest: it blows: a flash, sparks, glass, fire, arcs and smoke
@@ -1459,7 +1459,7 @@ function explode(tube) {   // the rarest: it blows: a flash, sparks, glass, fire
   tube.classList.add("gone");
   flash(x, y); sparks(x, y, 26, { speed: 170 }); sparks(x, y, 7, { speed: 110, cls: "shard" }); fire(x, y, 9); zap(r);
   setTimeout(() => smoke(x, y, 7, 70, 1.3), 120);
-  replaceTube(tube, 9000);
+  replaceTube(tube, 3500);
 }
 tubeEls.forEach((tube) => tube.addEventListener("click", () => {
   if (tube.classList.contains("gone")) return;
