@@ -1319,9 +1319,9 @@ function tubeFrame(now) {
              .72 + .14 * Math.sin(t * 1.23 + 2.1) + .08 * Math.sin(t * 3.51 + .2) + .04 * Math.sin(t * 8.1 + 2.6)];
   tubeEls.forEach((el, i) => {
     let v = g[i];
-    if (el._warmAt) {   // a new tube warming up: flickers, then comes up to full over two seconds
-      const k = (now - el._warmAt) / 2000;
-      if (k >= 1) el._warmAt = 0; else v *= k * (k < .5 ? (Math.random() < .3 ? .2 : 1) : 1);
+    if (el._warmAt) {   // a new tube warming up: flickers (unless it's rising smoothly), then comes up to full
+      const k = (now - el._warmAt) / (el._warmMs || 2000);
+      if (k >= 1) el._warmAt = 0; else v *= Math.max(0, k) * (k < .5 && !el._smooth ? (Math.random() < .3 ? .2 : 1) : 1);
     }
     el.style.setProperty("--g", el.classList.contains("gone") ? 0 : v.toFixed(3));
   });
@@ -1399,7 +1399,7 @@ function beamColumn(r, ms) {
   }
 }
 function beamIn(tube) {
-  tube._tilt = 0; tube.style.transform = ""; tube.classList.remove("gone"); tube._warmAt = performance.now();
+  tube._tilt = 0; tube.style.transform = ""; tube.classList.remove("gone"); warm(tube, 0, 2000, false);
   beamColumn(tube.getBoundingClientRect(), 1300);
   tube.animate([
     { opacity: 0, clipPath: "inset(100% 0 0 0)", filter: "brightness(3) blur(1.5px)" },
@@ -1407,24 +1407,74 @@ function beamIn(tube) {
     { opacity: .85, clipPath: "inset(8% 0 0 0)", offset: .62 }, { opacity: .3, clipPath: "inset(0 0 0 0)", offset: .72 },
     { opacity: .9, offset: .84 }, { opacity: .55, offset: .9 }, { opacity: 1, clipPath: "inset(0 0 0 0)", filter: "none" }], { duration: 1300, easing: "linear" });
 }
-function beamOut(tube, ms = 650) {
-  beamColumn(tube.getBoundingClientRect(), ms + 200);
-  tube.animate([{ opacity: 1, clipPath: "inset(0 0 0 0)", filter: "none" }, { opacity: .4, offset: .3 }, { opacity: .8, offset: .45 },
-                { opacity: 0, clipPath: "inset(0 0 100% 0)", filter: "brightness(3) blur(1.5px)" }], { duration: ms, easing: "linear" })
-    .onfinish = () => tube.classList.add("gone");
+function warm(tube, delay, ms, smooth) { tube._warmAt = performance.now() + delay; tube._warmMs = ms; tube._smooth = smooth; }
+const sockAt = (tube) => { const r = tube.parentElement.querySelector(".sock").getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+// How a new tube arrives, picked each time: it beams in, drops in from above, or rises slowly up through the hole.
+// Sometimes it doesn't go to plan first (a drop that bounces off the rim, or just a puff of smoke from the empty
+// socket), and another one arrives a few seconds later.
+function replaceTube(tube, ms) { setTimeout(() => arrive(tube, true), ms); }
+// how often each happens: drop in 35%, teleport 27%, a drop that misses 18%, the sneaky rise 12%, a puff of smoke 8%
+// (after a miss, the next one always makes it: the same odds without the misses)
+const ARRIVALS = [["drop", 35], ["teleport", 27], ["miss", 18], ["rise", 12], ["puff", 8]];
+function arrive(tube, mayMiss) {
+  const pool = ARRIVALS.filter(([k]) => mayMiss || (k !== "miss" && k !== "puff"));
+  let r = Math.random() * pool.reduce((n, [, w]) => n + w, 0), pick = pool[0][0];
+  for (const [k, w] of pool) { if ((r -= w) < 0) { pick = k; break; } }
+  if (pick === "miss") return missDrop(tube, () => setTimeout(() => arrive(tube, false), 1500));
+  if (pick === "puff") return puffSocket(tube, () => setTimeout(() => arrive(tube, false), 1300));
+  const go = () => (pick === "drop" ? dropIn : pick === "teleport" ? beamIn : riseIn)(tube);
+  const other = tubeEls.find((t) => t !== tube);
+  // now and then the survivor shuffles over into the empty socket first, and the new one takes the socket it left
+  if (other && !other.classList.contains("gone") && !other._busy && Math.random() < .3) hopOver(other, tube, go); else go();
 }
-function replaceTube(tube, ms) {
-  setTimeout(() => {
-    const other = tubeEls.find((t) => t !== tube);
-    if (other && !other.classList.contains("gone") && Math.random() < .35) {   // swap sockets: the other beams out, both beam back in
-      beamOut(other);
-      setTimeout(() => {
-        const [a, b] = [tube.parentElement, other.parentElement];
-        a.append(other); b.append(tube);
-        beamIn(tube); setTimeout(() => beamIn(other), 250);
-      }, 700);
-    } else beamIn(tube);
-  }, ms);
+function hopOver(other, tube, then) {
+  const from = other.parentElement, to = tube.parentElement, dx = sockAt(tube).x - sockAt(other).x;
+  other._busy = true; other._tilt = 0; other.style.transform = "";
+  other.animate([{ transform: "translate(0,0)" }, { transform: "translate(0,-12px) rotate(-4deg)", offset: .3 },
+                 { transform: `translate(${dx}px,-12px) rotate(4deg)`, offset: .75 }, { transform: `translate(${dx}px,0)` }],
+                { duration: 750, easing: "ease-in-out" }).onfinish = () => {
+    to.append(other); from.append(tube); other._busy = false;
+    other.animate([{ transform: "rotate(3deg)" }, { transform: "rotate(-2deg)" }, { transform: "rotate(0)" }], { duration: 300 });
+    setTimeout(then, 250);
+  };
+}
+function dropIn(tube) {   // from above the screen, straight into the socket: a wobble on landing, then it stands up straight
+  const r = tube.getBoundingClientRect(), d = r.bottom + 30;
+  tube._tilt = 0; tube.style.transform = ""; tube.classList.remove("gone"); warm(tube, 650, 1800, false);
+  tube.animate([
+    { transform: `translateY(${-d}px)`, easing: "cubic-bezier(.5,0,1,1)" },
+    { transform: "translateY(0) rotate(0)", offset: .58, easing: "ease-out" },
+    { transform: "translateY(-5px) rotate(5deg)", offset: .7, easing: "ease-in" },
+    { transform: "translateY(0) rotate(-3.5deg)", offset: .8 }, { transform: "rotate(2deg)", offset: .9 }, { transform: "rotate(0)" }], { duration: 1100 });
+  setTimeout(() => { const s = sockAt(tube); smoke(s.x, s.y, 2, 18, .6); }, 640);   // a little dust where it lands
+}
+function riseIn(tube) {   // sneaky: up through the hole, a peek, a pause, then slowly the rest, lighting as it climbs
+  const h = tube.getBoundingClientRect().height;
+  tube._tilt = 0; tube.style.transform = ""; tube.classList.remove("gone"); warm(tube, 300, 3200, true);
+  const at = (k) => ({ transform: `translateY(${(h * k).toFixed(1)}px)`, clipPath: `inset(0 0 ${(h * k).toFixed(1)}px 0)` });
+  tube.animate([{ ...at(1), easing: "ease-out" }, { ...at(.8), offset: .16 }, { ...at(.8), offset: .36, easing: "ease-in-out" },
+                { ...at(.72), offset: .44 }, { ...at(.74), offset: .5, easing: "ease-in-out" }, at(0)], { duration: 3400 });
+}
+function missDrop(tube, then) {   // drops in, clips the rim, bounces off and falls away; this one never makes it
+  const r = tube.getBoundingClientRect(), d = r.bottom + 30, dir = Math.random() < .5 ? -1 : 1;
+  const c = tube.cloneNode(true);
+  c.classList.remove("gone"); c.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
+  Object.assign(c.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px",
+                           margin: 0, zIndex: 61, pointerEvents: "none", transform: "" });
+  c.style.setProperty("--g", 0);
+  document.body.append(c);
+  const fall = c.animate([
+    { transform: `translateY(${-d}px)`, easing: "cubic-bezier(.5,0,1,1)" },
+    { transform: `translate(${dir * 4}px, -3px) rotate(${dir * 6}deg)`, offset: .42, easing: "cubic-bezier(.2,.6,.4,1)" },
+    { transform: `translate(${dir * 22}px, -22px) rotate(${dir * 40}deg)`, offset: .52, easing: "cubic-bezier(.5,0,1,1)" },
+    { transform: `translate(${dir * 90}px, ${innerHeight - r.top + 80}px) rotate(${dir * 320}deg)` }], { duration: 2000 });
+  setTimeout(() => { const s = sockAt(tube); sparks(s.x + dir * 6, s.y - 2, 5, { speed: 50, kick: 0 }); }, 840);   // the clink on the rim
+  fall.onfinish = () => { c.remove(); then(); };
+}
+function puffSocket(tube, then) {   // nothing comes, just a cough of smoke out of the empty socket
+  const s = sockAt(tube);
+  smoke(s.x, s.y, 4, 45, .9);
+  setTimeout(then, 600);
 }
 // on arrival the tubes fade up rather than popping in
 tubeEls.forEach((t, i) => t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 150 + i * 250, easing: "ease-out", fill: "backwards" }));
