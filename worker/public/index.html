@@ -49,19 +49,24 @@
   .mark { --logo: calc(clamp(3.4rem, 17vw, 4.6rem) * .648); margin: calc(var(--logo) * .08 - 13px) 0 10px; }
   .mark-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
   /* two vacuum tubes on top of the set, glowing amber; the glow (--g) breathes, driven by tubeFrame() */
-  /* the tubes stand on a dark steel chassis plate set into the top of the cabinet, each in a chrome socket */
-  .tubes { position: absolute; left: 61%; bottom: calc(100% - 5px); transform: translateX(-50%);   /* centred in the gap between the logo and the hen */ z-index: 3;
-           display: flex; align-items: flex-end; gap: 12px; padding: 0 12px; }
-  .tubes::before { content: ""; position: absolute; left: 0; right: 0; bottom: -2px; height: 9px; border-radius: 4px 4px 1px 1px;
-                   background: linear-gradient(#77716a, #4a463f 45%, #2d2a26); box-shadow: inset 0 1px 0 #ffffff55, 0 2px 3px #000a; }
+  /* the tubes stand on a little steel deck sitting on top of the cabinet (never over the faceplate):
+     a lit top surface and a darker front face; each tube plugs into a socket in the deck, empty when it's gone */
+  .tubes { position: absolute; left: 61%; bottom: 100%; transform: translateX(-50%); z-index: 3;   /* centred in the gap between the logo and the hen */
+           display: flex; align-items: flex-end; gap: 14px; padding: 0 14px 8px; }
+  .tubes::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 13px; border-radius: 3px 3px 0 0;
+                   background: linear-gradient(#8a857c, #6b665e 40%, #4a463f 42%, #2f2c27); box-shadow: inset 0 1px 0 #ffffff66, 0 -1px 2px #0006; }
   .tube { position: relative; display: block; cursor: pointer; transform-origin: 50% 100%; --g: .8; -webkit-tap-highlight-color: transparent; }
   .tube svg { position: relative; display: block; overflow: visible; }
-  .tube.t1 svg { width: 31px; height: 44px; } .tube.t2 svg { width: 28px; height: 35px; }
-  .tube .halo { position: absolute; left: 50%; top: 45%; width: 50px; height: 50px; margin: -25px 0 0 -25px; border-radius: 50%; pointer-events: none;
-                background: radial-gradient(circle, #ffa94dcc, #ff8a2a4d 35%, #ff8a2a00 70%); opacity: calc(var(--g) * .85); }
+  .tube.t1 svg { width: 29px; height: 51px; } .tube.t2 svg { width: 22px; height: 40px; }
+  .tube .halo { position: absolute; left: 50%; top: 55%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; pointer-events: none;
+                background: radial-gradient(circle, #ff8c26d0, #e2620f55 38%, #c44a0800 70%); opacity: calc(var(--g) * .9); }   /* deep amber */
   .tube .fil { opacity: var(--g); } .tube .warm { opacity: calc(var(--g) * .5); }
-  .tube .sock { position: absolute; left: 50%; bottom: -1px; width: 22px; height: 6px; margin-left: -11px; border-radius: 50%;
-                background: radial-gradient(ellipse at 50% 40%, #0b0806 45%, #8e8a82 58%, #d8d4cc 68%, #5a5650 82%); box-shadow: 0 1px 1px #000c; }
+  /* the socket in the deck: a chrome ring round a dark hole with its pin holes; the tube's collar hides it */
+  .tube .sock { position: absolute; left: 50%; bottom: -3px; width: 26px; height: 7px; margin-left: -13px; border-radius: 50%;
+                background: radial-gradient(circle at 30% 50%, #000 0 .8px, transparent 1.2px), radial-gradient(circle at 50% 42%, #000 0 .8px, transparent 1.2px),
+                            radial-gradient(circle at 70% 50%, #000 0 .8px, transparent 1.2px), radial-gradient(circle at 50% 66%, #000 0 .8px, transparent 1.2px),
+                            radial-gradient(ellipse at 50% 50%, #2a2622 0 52%, #a9a59c 60%, #e9e6df 70%, #6d6962 86%);
+                box-shadow: 0 1px 0 #ffffff40; }
   .tube.gone svg, .tube.gone .halo { visibility: hidden; }   /* broken or blown: an empty socket until it's replaced */
   /* what a tapped tube can do: sparks, fire, smoke, a flash and arcs of electricity, drawn over everything */
   .fx { position: fixed; pointer-events: none; z-index: 60; border-radius: 50%; }
@@ -491,27 +496,39 @@
 
   <section class="cabinet" aria-label="On air">
     <div class="tubes" aria-hidden="true">
-      <span class="tube t1"><span class="halo"></span><span class="sock"></span><svg viewBox="0 0 28 40" aria-hidden="true">
-          <defs><linearGradient id="shA" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".22" stop-color="#fff" stop-opacity=".5"/><stop offset=".45" stop-color="#fff" stop-opacity=".05"/><stop offset=".8" stop-color="#fff" stop-opacity=".26"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></linearGradient>
-            <radialGradient id="wA" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffb24a"/><stop offset="1" stop-color="#ff8a2a" stop-opacity="0"/></radialGradient></defs>
-          <path d="M9.5 35V31.5C9.5 29.5 5 27.5 5 20C5 10 8.5 4.5 14 4.5C19.5 4.5 23 10 23 20C23 27.5 18.5 29.5 18.5 31.5V35Z" fill="#20180f" fill-opacity=".35"/>
-          <ellipse class="warm" cx="14" cy="20" rx="8" ry="11" fill="url(#wA)"/>
-          <path d="M7.2 11.5C8.5 6.8 19.5 6.8 20.8 11.5C17 10.2 11 10.2 7.2 11.5Z" fill="#2a2724" opacity=".55"/>
-          <path d="M8.5 13H19.5M8.5 27H19.5" stroke="#d8cfb8" stroke-width=".55" opacity=".55"/><rect x="10.3" y="13.8" width="7.4" height="12.6" rx=".6" fill="#4b4741" stroke="#29261f" stroke-width=".5"/><rect x="12.6" y="15.5" width="2.8" height="9.4" fill="#15120e"/>
-          <ellipse class="fil" cx="14" cy="20.2" rx="1.4" ry="4.4" fill="#ffc46b"/>
-          <path d="M9.5 35V31.5C9.5 29.5 5 27.5 5 20C5 10 8.5 4.5 14 4.5C19.5 4.5 23 10 23 20C23 27.5 18.5 29.5 18.5 31.5V35Z" fill="url(#shA)" stroke="#ffffff6e" stroke-width=".6"/>
-          <rect x="8.5" y="34.5" width="11" height="5" rx="1.2" fill="#17120f"/><path d="M9 35.6H19" stroke="#ffffff24" stroke-width=".5"/>
+      <span class="tube t1"><span class="sock"></span><span class="halo"></span><svg viewBox="0 0 26 46" aria-hidden="true">
+          <defs>
+            <linearGradient id="glA" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".18" stop-color="#fff" stop-opacity=".6"/><stop offset=".34" stop-color="#fff" stop-opacity=".08"/><stop offset=".78" stop-color="#fff" stop-opacity=".05"/><stop offset=".9" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity=".12"/></linearGradient>
+            <linearGradient id="miA" x1="0" x2="1"><stop offset="0" stop-color="#5d5a55"/><stop offset=".25" stop-color="#f2f0ec"/><stop offset=".5" stop-color="#8d8a84"/><stop offset=".8" stop-color="#d9d6d0"/><stop offset="1" stop-color="#4c4945"/></linearGradient>
+            <linearGradient id="bkA" x1="0" x2="1"><stop offset="0" stop-color="#050404"/><stop offset=".3" stop-color="#2a2522"/><stop offset=".55" stop-color="#121010"/><stop offset="1" stop-color="#050404"/></linearGradient>
+            <radialGradient id="amA" cx=".5" cy=".62" r=".55"><stop offset="0" stop-color="#ff9a2e"/><stop offset=".55" stop-color="#e2620f" stop-opacity=".55"/><stop offset="1" stop-color="#c44a08" stop-opacity="0"/></radialGradient>
+          </defs>
+          <path d="M5 36V14Q5 6 13.0 6Q21 6 21 14V36Z" fill="#1d1309" fill-opacity=".45"/>
+          <path class="warm" d="M5 36V14Q5 6 13.0 6Q21 6 21 14V36Z" fill="url(#amA)"/>
+          <path d="M6.5 15H19.5M6.5 31H19.5" stroke="#d8cfb8" stroke-width=".55" opacity=".6"/><rect x="8" y="16" width="10" height="14" rx=".5" fill="#6a655d" stroke="#3a3631" stroke-width=".5"/><path d="M10.2 16.5V29.5M13 16.5V29.5M15.8 16.5V29.5" stroke="#3a3631" stroke-width=".7"/>
+          <ellipse class="fil" cx="13" cy="25.5" rx="3.6" ry="2.6" fill="#ffb347"/>
+          <path d="M5.6 14Q5.6 6.6 13.0 6.6Q20.4 6.6 20.4 14Q13.0 12 5.6 14Z" fill="url(#miA)"/>
+          <path d="M11.7 6.4L13.0 2L14.3 6.4Z" fill="url(#miA)"/>
+          <path d="M5 36V14Q5 6 13.0 6Q21 6 21 14V36Z" fill="url(#glA)" stroke="#ffffff80" stroke-width=".5"/>
+          <rect x="4" y="35" width="18" height="11" rx="1.2" fill="url(#bkA)"/>
+          <path d="M4.5 36.2H21.5" stroke="#ffffff30" stroke-width=".5"/>
         </svg></span>
-      <span class="tube t2"><span class="halo"></span><span class="sock"></span><svg viewBox="0 0 26 32" aria-hidden="true">
-          <defs><linearGradient id="shB" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".16"/><stop offset=".22" stop-color="#fff" stop-opacity=".5"/><stop offset=".45" stop-color="#fff" stop-opacity=".05"/><stop offset=".8" stop-color="#fff" stop-opacity=".26"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></linearGradient>
-            <radialGradient id="wB" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#ffb24a"/><stop offset="1" stop-color="#ff8a2a" stop-opacity="0"/></radialGradient></defs>
-          <path d="M9 28.5V26.5C5.5 24.8 4 21.5 4 16.5C4 9.5 8 5 13 5C18 5 22 9.5 22 16.5C22 21.5 20.5 24.8 17 26.5V28.5Z" fill="#20180f" fill-opacity=".35"/>
-          <ellipse class="warm" cx="13" cy="17" rx="7.5" ry="9" fill="url(#wB)"/>
-          <path d="M6.6 11C8.4 7 17.6 7 19.4 11C16.4 10 9.6 10 6.6 11Z" fill="#2a2724" opacity=".55"/>
-          <path d="M7.5 12.5H18.5" stroke="#d8cfb8" stroke-width=".5" opacity=".55"/><rect x="9.8" y="13.2" width="6.4" height="9.6" rx="3.1" fill="#56514a" stroke="#2c2924" stroke-width=".5"/><rect x="12" y="14.5" width="2" height="7.2" rx="1" fill="#15120e"/>
-          <ellipse class="fil" cx="13" cy="18" rx="1" ry="3.2" fill="#ffc46b"/>
-          <path d="M9 28.5V26.5C5.5 24.8 4 21.5 4 16.5C4 9.5 8 5 13 5C18 5 22 9.5 22 16.5C22 21.5 20.5 24.8 17 26.5V28.5Z" fill="url(#shB)" stroke="#ffffff6e" stroke-width=".6"/>
-          <rect x="8" y="28" width="10" height="4" rx="1.1" fill="#1a1411"/><path d="M8.5 29H17.5" stroke="#ffffff22" stroke-width=".5"/>
+      <span class="tube t2"><span class="sock"></span><span class="halo"></span><svg viewBox="0 0 20 36" aria-hidden="true">
+          <defs>
+            <linearGradient id="glB" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".18" stop-color="#fff" stop-opacity=".6"/><stop offset=".34" stop-color="#fff" stop-opacity=".08"/><stop offset=".78" stop-color="#fff" stop-opacity=".05"/><stop offset=".9" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity=".12"/></linearGradient>
+            <linearGradient id="miB" x1="0" x2="1"><stop offset="0" stop-color="#5d5a55"/><stop offset=".25" stop-color="#f2f0ec"/><stop offset=".5" stop-color="#8d8a84"/><stop offset=".8" stop-color="#d9d6d0"/><stop offset="1" stop-color="#4c4945"/></linearGradient>
+            <linearGradient id="bkB" x1="0" x2="1"><stop offset="0" stop-color="#050404"/><stop offset=".3" stop-color="#2a2522"/><stop offset=".55" stop-color="#121010"/><stop offset="1" stop-color="#050404"/></linearGradient>
+            <radialGradient id="amB" cx=".5" cy=".62" r=".55"><stop offset="0" stop-color="#ff9a2e"/><stop offset=".55" stop-color="#e2620f" stop-opacity=".55"/><stop offset="1" stop-color="#c44a08" stop-opacity="0"/></radialGradient>
+          </defs>
+          <path d="M4 29V14Q4 6 10.0 6Q16 6 16 14V29Z" fill="#1d1309" fill-opacity=".45"/>
+          <path class="warm" d="M4 29V14Q4 6 10.0 6Q16 6 16 14V29Z" fill="url(#amB)"/>
+          <path d="M5.4 13.5H14.6M5.4 25.5H14.6" stroke="#d8cfb8" stroke-width=".5" opacity=".6"/><rect x="7" y="14.2" width="6" height="10.6" rx="2.6" fill="#77716a" stroke="#3a3631" stroke-width=".5"/>
+          <ellipse class="fil" cx="10" cy="21.5" rx="2.4" ry="1.8" fill="#ffb347"/>
+          <path d="M4.6 14Q4.6 6.6 10.0 6.6Q15.4 6.6 15.4 14Q10.0 12 4.6 14Z" fill="url(#miB)"/>
+          <path d="M8.7 6.4L10.0 3L11.3 6.4Z" fill="url(#miB)"/>
+          <path d="M4 29V14Q4 6 10.0 6Q16 6 16 14V29Z" fill="url(#glB)" stroke="#ffffff80" stroke-width=".5"/>
+          <rect x="3" y="28" width="14" height="8" rx="1.2" fill="url(#bkB)"/>
+          <path d="M3.5 29.2H16.5" stroke="#ffffff30" stroke-width=".5"/>
         </svg></span>
     </div>
     <div class="faceplate">
