@@ -62,7 +62,7 @@
   .seat { z-index: 1; }
   .tube { position: relative; display: block; cursor: pointer; transform-origin: 50% 100%; --g: .8; -webkit-tap-highlight-color: transparent; }
   .tube svg { position: relative; display: block; overflow: visible; }
-  .tube.t1 svg { width: 29px; height: 51px; } .tube.t2 svg { width: 22px; height: 40px; }
+  .tube.t1 svg { width: 29px; height: 51px; } .tube.t2 svg { width: 19px; height: 42px; }   /* an octal power tube, and a slim 9-pin miniature */
   .tube .halo { position: absolute; left: 50%; top: 55%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; pointer-events: none;
                 background: radial-gradient(circle, #ff8c26d0, #e2620f55 38%, #c44a0800 70%); opacity: calc(var(--g) * .9); }   /* deep amber */
   .tube .fil { opacity: var(--g); } .tube .warm { opacity: calc(var(--g) * .5); }
@@ -503,7 +503,7 @@
           <defs>
             <linearGradient id="glA" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".18" stop-color="#fff" stop-opacity=".6"/><stop offset=".34" stop-color="#fff" stop-opacity=".08"/><stop offset=".78" stop-color="#fff" stop-opacity=".05"/><stop offset=".9" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity=".12"/></linearGradient>
             <linearGradient id="miA" x1="0" x2="1"><stop offset="0" stop-color="#5d5a55"/><stop offset=".25" stop-color="#f2f0ec"/><stop offset=".5" stop-color="#8d8a84"/><stop offset=".8" stop-color="#d9d6d0"/><stop offset="1" stop-color="#4c4945"/></linearGradient>
-            <linearGradient id="bkA" x1="0" x2="1"><stop offset="0" stop-color="#050404"/><stop offset=".3" stop-color="#2a2522"/><stop offset=".55" stop-color="#121010"/><stop offset="1" stop-color="#050404"/></linearGradient>
+            <linearGradient id="bkA" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".28" stop-color="#fff" stop-opacity=".18"/><stop offset=".5" stop-color="#000" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity=".62"/></linearGradient>
             <radialGradient id="amA" cx=".5" cy=".62" r=".55"><stop offset="0" stop-color="#ff9a2e"/><stop offset=".55" stop-color="#e2620f" stop-opacity=".55"/><stop offset="1" stop-color="#c44a08" stop-opacity="0"/></radialGradient>
           </defs>
           <path d="M5 36V14Q5 6 13.0 6Q21 6 21 14V36Z" fill="#1d1309" fill-opacity=".45"/>
@@ -513,25 +513,30 @@
           <path d="M5.6 14Q5.6 6.6 13.0 6.6Q20.4 6.6 20.4 14Q13.0 12 5.6 14Z" fill="url(#miA)"/>
           <path d="M11.7 6.4L13.0 2L14.3 6.4Z" fill="url(#miA)"/>
           <path d="M5 36V14Q5 6 13.0 6Q21 6 21 14V36Z" fill="url(#glA)" stroke="#ffffff80" stroke-width=".5"/>
-          <rect x="4" y="35" width="18" height="11" rx="1.2" fill="url(#bkA)"/>
+          <rect x="4" y="35" width="18" height="11" rx="1.2" style="fill: var(--collar, #121010)"/><rect x="4" y="35" width="18" height="11" rx="1.2" fill="url(#bkA)"/>
           <path d="M4.5 36.2H21.5" stroke="#ffffff30" stroke-width=".5"/>
         </svg></span></span>
-      <span class="seat"><span class="sock"></span><span class="tube t2"><span class="halo"></span><svg viewBox="0 0 20 36" aria-hidden="true">
+      <span class="seat"><span class="sock"></span><span class="tube t2"><span class="halo"></span><svg viewBox="0 0 18 40" aria-hidden="true">
           <defs>
-            <linearGradient id="glB" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".18" stop-color="#fff" stop-opacity=".6"/><stop offset=".34" stop-color="#fff" stop-opacity=".08"/><stop offset=".78" stop-color="#fff" stop-opacity=".05"/><stop offset=".9" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity=".12"/></linearGradient>
-            <linearGradient id="miB" x1="0" x2="1"><stop offset="0" stop-color="#5d5a55"/><stop offset=".25" stop-color="#f2f0ec"/><stop offset=".5" stop-color="#8d8a84"/><stop offset=".8" stop-color="#d9d6d0"/><stop offset="1" stop-color="#4c4945"/></linearGradient>
-            <linearGradient id="bkB" x1="0" x2="1"><stop offset="0" stop-color="#050404"/><stop offset=".3" stop-color="#2a2522"/><stop offset=".55" stop-color="#121010"/><stop offset="1" stop-color="#050404"/></linearGradient>
-            <radialGradient id="amB" cx=".5" cy=".62" r=".55"><stop offset="0" stop-color="#ff9a2e"/><stop offset=".55" stop-color="#e2620f" stop-opacity=".55"/><stop offset="1" stop-color="#c44a08" stop-opacity="0"/></radialGradient>
+            <linearGradient id="glB" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".2"/><stop offset=".2" stop-color="#fff" stop-opacity=".55"/><stop offset=".38" stop-color="#fff" stop-opacity=".06"/><stop offset=".8" stop-color="#fff" stop-opacity=".05"/><stop offset=".92" stop-color="#fff" stop-opacity=".32"/><stop offset="1" stop-color="#fff" stop-opacity=".1"/></linearGradient>
+            <linearGradient id="miB" x1="0" x2="1"><stop offset="0" stop-color="#3e3328"/><stop offset=".22" stop-color="#bfb3a0"/><stop offset=".45" stop-color="#6e5d49"/><stop offset=".8" stop-color="#a99a84"/><stop offset="1" stop-color="#352b22"/></linearGradient>
+            <linearGradient id="bkB" x1="0" x2="1"><stop offset="0" stop-color="#000" stop-opacity=".6"/><stop offset=".28" stop-color="#fff" stop-opacity=".18"/><stop offset=".5" stop-color="#000" stop-opacity=".08"/><stop offset="1" stop-color="#000" stop-opacity=".62"/></linearGradient>
+            <radialGradient id="amB" cx=".5" cy=".6" r=".55"><stop offset="0" stop-color="#ff9a2e"/><stop offset=".55" stop-color="#e2620f" stop-opacity=".5"/><stop offset="1" stop-color="#c44a08" stop-opacity="0"/></radialGradient>
           </defs>
-          <path d="M4 29V14Q4 6 10.0 6Q16 6 16 14V29Z" fill="#1d1309" fill-opacity=".45"/>
-          <path class="warm" d="M4 29V14Q4 6 10.0 6Q16 6 16 14V29Z" fill="url(#amB)"/>
-          <path d="M5.4 13.5H14.6M5.4 25.5H14.6" stroke="#d8cfb8" stroke-width=".5" opacity=".6"/><rect x="7" y="14.2" width="6" height="10.6" rx="2.6" fill="#77716a" stroke="#3a3631" stroke-width=".5"/>
-          <ellipse class="fil" cx="10" cy="21.5" rx="2.4" ry="1.8" fill="#ffb347"/>
-          <path d="M4.6 14Q4.6 6.6 10.0 6.6Q15.4 6.6 15.4 14Q10.0 12 4.6 14Z" fill="url(#miB)"/>
-          <path d="M8.7 6.4L10.0 3L11.3 6.4Z" fill="url(#miB)"/>
-          <path d="M4 29V14Q4 6 10.0 6Q16 6 16 14V29Z" fill="url(#glB)" stroke="#ffffff80" stroke-width=".5"/>
-          <rect x="3" y="28" width="14" height="8" rx="1.2" fill="url(#bkB)"/>
-          <path d="M3.5 29.2H16.5" stroke="#ffffff30" stroke-width=".5"/>
+          <path d="M3.5 32V11Q3.5 5 9 5Q14.5 5 14.5 11V32Z" fill="#1d1309" fill-opacity=".4"/>
+          <path class="warm" d="M3.5 32V11Q3.5 5 9 5Q14.5 5 14.5 11V32Z" fill="url(#amB)"/>
+          <path d="M5.4 28V32M7.4 28V32M9 28V32M10.6 28V32M12.6 28V32" stroke="#c9a27a" stroke-width=".45" opacity=".8"/>
+          <path d="M4.6 13.2H13.4M4.6 27.6H13.4" stroke="#d8cfb8" stroke-width=".5" opacity=".6"/>
+          <rect x="5.6" y="14" width="6.8" height="5.9" rx=".5" fill="#6e6961" stroke="#3a3631" stroke-width=".45"/>
+          <rect x="5.6" y="21.2" width="6.8" height="5.9" rx=".5" fill="#6e6961" stroke="#3a3631" stroke-width=".45"/>
+          <path d="M7.8 14.6V19.3M10.2 14.6V19.3M7.8 21.8V26.5M10.2 21.8V26.5" stroke="#2c2924" stroke-width=".55"/>
+          <ellipse class="fil" cx="9" cy="17" rx="1.3" ry="1.6" fill="#ffb347"/>
+          <ellipse class="fil" cx="9" cy="24.2" rx="1.3" ry="1.6" fill="#ffb347"/>
+          <path d="M4.1 11Q4.1 5.6 9 5.6Q13.9 5.6 13.9 11L13.9 12.6Q9 11.4 4.1 12.6Z" fill="url(#miB)"/>
+          <path d="M8 5.4Q8.3 3.2 9 1.8Q9.7 3.2 10 5.4Z" fill="#d9d2c4" fill-opacity=".55" stroke="#ffffff90" stroke-width=".3"/>
+          <path d="M3.5 32V11Q3.5 5 9 5Q14.5 5 14.5 11V32Z" fill="url(#glB)" stroke="#ffffff80" stroke-width=".45"/>
+          <rect x="2.6" y="31.4" width="12.8" height="6.6" rx="1.1" style="fill: var(--collar, #121010)"/><rect x="2.6" y="31.4" width="12.8" height="6.6" rx="1.1" fill="url(#bkB)"/>
+          <path d="M3 32.6H15" stroke="#ffffff30" stroke-width=".45"/>
         </svg></span></span>
     </div>
     <div class="faceplate">
@@ -1415,8 +1420,13 @@ const sockAt = (tube) => { const r = tube.parentElement.querySelector(".sock").g
 function replaceTube(tube, ms) { setTimeout(() => arrive(tube, true), ms); }
 // how often each happens: drop in 35%, teleport 27%, a drop that misses 18%, the sneaky rise 12%, a puff of smoke 8%
 // (after a miss, the next one always makes it: the same odds without the misses)
+// bakelite, ceramic and painted collars: a new one each time a tube goes in
+const COLLARS = ["#121010", "#3a2216", "#e8e3d6", "#d2c3a0", "#6e1a12", "#2f3a24", "#1d2740", "#6b4a26"];
+const paintCollar = (t) => t.style.setProperty("--collar", COLLARS[Math.floor(Math.random() * COLLARS.length)]);
+tubeEls.forEach(paintCollar);
 const ARRIVALS = [["drop", 35], ["teleport", 27], ["miss", 18], ["rise", 12], ["puff", 8]];
 function arrive(tube, mayMiss) {
+  paintCollar(tube);
   const pool = ARRIVALS.filter(([k]) => mayMiss || (k !== "miss" && k !== "puff"));
   let r = Math.random() * pool.reduce((n, [, w]) => n + w, 0), pick = pool[0][0];
   for (const [k, w] of pool) { if ((r -= w) < 0) { pick = k; break; } }
