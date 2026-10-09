@@ -250,7 +250,10 @@
     transform: translateY(1px); background: linear-gradient(#3a3936, #201f1d 45%, #121111);
     box-shadow: inset 0 1px 0 #ffffff30, inset 0 2px 3px #0009, 0 1px 0 #3a3936, 0 2px 2px #000a; }   /* sunk: no side wall */
   .presets .preset.down { filter: brightness(.8); }
-  .presets .preset .ico { filter: saturate(.75) drop-shadow(0 1px 0 #000); }
+  /* the emoji become white legends printed into the plastic, like old car-radio presets: drained of colour and
+     pushed to white (some inner detail survives), with a dark lip above and a faint light one below, as if inset */
+  .presets .preset .ico { font-size: 1.15rem; filter: grayscale(1) contrast(3) brightness(2.2) opacity(.9)
+                          drop-shadow(0 -1px 0 #000c) drop-shadow(0 1px 0 #ffffff26); }
   .msg-screen { margin-top: 12px; touch-action: pan-y; cursor: grab; }   /* sideways drags move the message; up and down still scroll the page */
   /* the message ticker: a grey reflective LCD, dark dot-matrix that casts a faint shadow on the
      panel behind it, no glow (a cheaper display than the VFD above, as on real gear) */
