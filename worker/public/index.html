@@ -1479,7 +1479,7 @@ function missDrop(tube, then) {   // drops in, clips the rim, bounces off and fa
     { transform: `translateY(${-d}px)`, easing: "cubic-bezier(.5,0,1,1)" },
     { transform: `translate(${dir * 4}px, -3px) rotate(${dir * 6}deg)`, offset: .42, easing: "cubic-bezier(.2,.6,.4,1)" },
     { transform: `translate(${dir * 22}px, -22px) rotate(${dir * 40}deg)`, offset: .52, easing: "cubic-bezier(.5,0,1,1)" },
-    { transform: `translate(${dir * 90}px, ${innerHeight - r.top + 80}px) rotate(${dir * 320}deg)` }], { duration: 2000 });
+    { transform: `translate(${dir * 90}px, ${innerHeight - r.top + 80}px) rotate(${dir * (900 + Math.random() * 500)}deg)` }], { duration: 2000 });   // tumbling end over end
   setTimeout(() => { const s = sockAt(tube); sparks(s.x + dir * 6, s.y - 2, 5, { speed: 50, kick: 0 }); }, 840);   // the clink on the rim
   fall.onfinish = () => { c.remove(); then(); };
 }
