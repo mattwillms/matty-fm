@@ -23,7 +23,9 @@
   }
   * { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
-  html { touch-action: manipulation; }   /* no double-tap zoom anywhere (taps on the radio stay taps); pinch zoom still works */
+  /* no double-tap zoom anywhere (taps on the radio stay taps; pinch zoom still works), and nothing that flies off
+     the side (a gnat, a spark) can widen the page and make the phone zoom out */
+  html { touch-action: manipulation; overflow-x: clip; }
   /* an app, not a document: a held tap never selects an emoji or a label, and no iOS callout over the graphics;
      typing fields still select and paste */
   body { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
@@ -147,10 +149,10 @@
             box-shadow: 0 0 8px var(--orange); left: 0; will-change: transform; }   /* placed and moved by transform only (see the dial script) */
   .dial { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
   /* an empty coin slot's dust, and the odd gnat */
-  .dust { position: absolute; pointer-events: none; border-radius: 50%; z-index: 20; }
+  .dust { position: fixed; pointer-events: none; border-radius: 50%; z-index: 20; }   /* fixed to the screen: flying off it never widens the page */
   .dust.cloud { width: 30px; height: 30px; background: radial-gradient(circle, #b9a58acc, #8a75604d 55%, #8a756000 72%); }
   .dust.mote { background: #c2ad90; }
-  .gnat { position: absolute; width: 3px; height: 3px; border-radius: 50%; background: #120c08; pointer-events: none; z-index: 21; }
+  .gnat { position: fixed; width: 3px; height: 3px; border-radius: 50%; background: #120c08; pointer-events: none; z-index: 21; }
   .gnat::before, .gnat::after { content: ""; position: absolute; top: -3px; width: 4px; height: 3px; border-radius: 50%;
                                 background: #ffffffaa; animation: buzz .05s linear infinite alternate; }
   .gnat::before { left: -3px; transform-origin: right bottom; } .gnat::after { left: 2px; transform-origin: left bottom; }
@@ -1553,7 +1555,7 @@ tubeEls.forEach((tube) => tube.addEventListener("click", () => {
   else explode(tube);
 }));
 function dustPuff(slot) {
-  const r = slot.getBoundingClientRect(), x = r.left + r.width / 2 + scrollX, y = r.top + r.height / 2 + scrollY;
+  const r = slot.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2;   // screen coordinates (the dust is fixed)
   const bit = (cls, css) => { const e = el("i", cls); Object.assign(e.style, { left: x + "px", top: y + "px", ...css }); document.body.append(e); return e; };
   // a soft cloud, then motes drifting out and settling
   const cloud = bit("dust cloud");
