@@ -53,7 +53,7 @@
   /* two vacuum tubes on top of the set, glowing amber; the glow (--g) breathes, driven by tubeFrame() */
   /* the tubes stand on a little steel deck sitting on top of the cabinet (never over the faceplate):
      a lit top surface and a darker front face; each tube plugs into a socket in the deck, empty when it's gone */
-  .tubes { position: absolute; left: 61%; bottom: 100%; transform: translateX(-50%); z-index: 3;   /* centred in the gap between the logo and the hen */
+  .tubes { position: absolute; left: 61%; bottom: 100%; transform: translate3d(-50%, 0, 0); will-change: transform; z-index: 3;   /* its own layer: a repaint nearby (the screen flicker) can't re-snap it */   /* centred in the gap between the logo and the hen */
            display: flex; align-items: flex-end; gap: 14px; padding: 0 14px 8px; }
   /* the riser: walnut like the cabinet it grows out of, the chrome-collared sockets set straight into the wood */
   .tubes { isolation: isolate; }
@@ -64,7 +64,7 @@
   .seat { z-index: 1; }
   /* two old cloth-covered cables from the riser to the set, each ending in a mono 1/4" plug pushed into a jack on
      the top edge of the faceplate; drawn by layCables() so they follow the riser wherever the layout puts it */
-  .cables .plug { pointer-events: all; cursor: pointer; transform-box: fill-box; transform-origin: 50% 100%; -webkit-tap-highlight-color: transparent; }
+  .cables .plug { pointer-events: all; cursor: pointer; -webkit-tap-highlight-color: transparent; }
   /* the old-TV flicker over the screen: scanlines and a rolling band of static */
   .tvfx { position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none; z-index: 3; mix-blend-mode: screen;
           background: repeating-linear-gradient(0deg, #ffffff1c 0 1px, transparent 1px 3px),
@@ -1359,16 +1359,21 @@ function layCables() {
       <path d="M${x - 1.8} ${edge - 13.5}L${x + 1.8} ${edge - 14.7}L${x - 1.8} ${edge - 15.9}L${x + 1.8} ${edge - 17.1}L${x - 1.8} ${edge - 18.3}L${x + 1.8} ${edge - 19.5}"
             fill="none" stroke="#b9b5ad" stroke-width=".9"/>
     </g>`;
-  const wire = (d, base, stripe, dash) => `<path d="${d}" fill="none" stroke="#0007" stroke-width="3.6" stroke-linecap="round" transform="translate(0 1.2)"/>
-    <path d="${d}" fill="none" stroke="${base}" stroke-width="2.8" stroke-linecap="round"/>
-    <path d="${d}" fill="none" stroke="${stripe}" stroke-width="2.8" stroke-dasharray="${dash}"/>
-    <path d="${d}" fill="none" stroke="#ffffff30" stroke-width=".8" transform="translate(-.5 -.7)"/>`;
+  const wire = (d, base, stripe, dash) => `<path class="cord" d="${d}" fill="none" stroke="#0007" stroke-width="3.6" stroke-linecap="round" transform="translate(0 1.2)"/>
+    <path class="cord" d="${d}" fill="none" stroke="${base}" stroke-width="2.8" stroke-linecap="round"/>
+    <path class="cord" d="${d}" fill="none" stroke="${stripe}" stroke-width="2.8" stroke-dasharray="${dash}"/>
+    <path class="cord" d="${d}" fill="none" stroke="#ffffff30" stroke-width=".8" transform="translate(-.5 -.7)"/>`;
   // direct-ish: out of the riser's left end, a lazy sag, down into the left plug
   const d1 = `M${L + 2} ${ry}C${L - 10} ${ry + 3} ${p1 + 9} ${top1 - 16} ${p1} ${top1}`;
   // the loop: out of the right end, up and round in a curl, then down into the right plug
   const lx = R + 8, ly = ry - 11;   // a tight curl, low, so it stays clear of the hen
-  const d2 = `M${R - 2} ${ry}C${R + 6} ${ry} ${lx + 6} ${ly + 6} ${lx + 5} ${ly}C${lx + 4} ${ly - 6} ${lx - 5} ${ly - 6} ${lx - 5} ${ly}` +
-             `C${lx - 4} ${ly + 6} ${lx + 5} ${ly + 5} ${lx + 8} ${ly - 1}C${lx + 11} ${ly - 6} ${p2 - 6} ${top2 - 14} ${p2} ${top2}`;
+  const d2At = (a) => {   // a: the plug's tilt in degrees; the cord's end rides the top of the plug's spring
+    const t = a * Math.PI / 180, h = edge - top2, ex = p2 + h * Math.sin(t), ey = edge - h * Math.cos(t);
+    const cx = ex - 6 * Math.cos(t) + 14 * Math.sin(t), cy = ey - 14 * Math.cos(t) - 6 * Math.sin(t);
+    return `M${R - 2} ${ry}C${R + 6} ${ry} ${lx + 6} ${ly + 6} ${lx + 5} ${ly}C${lx + 4} ${ly - 6} ${lx - 5} ${ly - 6} ${lx - 5} ${ly}` +
+           `C${lx - 4} ${ly + 6} ${lx + 5} ${ly + 5} ${lx + 8} ${ly - 1}C${lx + 11} ${ly - 6} ${cx.toFixed(1)} ${cy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+  };
+  const d2 = d2At(0);
   let svg = cab.querySelector(".cables");
   if (!svg) { svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("class", "cables"); svg.setAttribute("aria-hidden", "true"); cab.prepend(svg); }
   svg.innerHTML = `<defs>
@@ -1376,6 +1381,7 @@ function layCables() {
       <radialGradient id="jackRing" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#111"/><stop offset=".55" stop-color="#2a2724"/><stop offset=".7" stop-color="#cfcbc3"/><stop offset="1" stop-color="#6d6962"/></radialGradient>
     </defs>
     ${wire(d2, "#6e1a12", "#ead9b6", "1 2.6")}${plug(p2)}`;   // one cable now: the curled one on the right
+  svg._d2At = d2At; svg._pivot = [p2, edge];
   svg.querySelector(".plug").addEventListener("click", jiggle);
 }
 addEventListener("load", layCables); addEventListener("resize", layCables);
@@ -1384,7 +1390,14 @@ function jiggle(e) {
   const g = e.currentTarget, glass = $("glass");
   if (glass._flicker) return;
   glass._flicker = true;
-  g.animate([0, -9, 7, -6, 5, -3, 2, 0].map((d) => ({ transform: `rotate(${d}deg)` })), { duration: 480, easing: "ease-out" });
+  const svg = g.ownerSVGElement, cords = svg.querySelectorAll(".cord"), [px, py] = svg._pivot, t0 = performance.now();
+  const wobble = (now) => {   // a damped shake: the plug rocks in its jack and the cord's end goes with it
+    const t = (now - t0) / 1000, a = t > .7 ? 0 : -14 * Math.sin(t * Math.PI * 2 * 3.6) * Math.exp(-t * 4.2);
+    g.setAttribute("transform", a ? `rotate(${a.toFixed(2)} ${px} ${py})` : "");
+    const d = svg._d2At(a); cords.forEach((c) => c.setAttribute("d", d));
+    if (a) requestAnimationFrame(wobble);
+  };
+  requestAnimationFrame(wobble);
   const fx = el("div", "tvfx"); glass.append(fx);
   const frames = [];
   for (let k = 0; k <= 14; k++) {
