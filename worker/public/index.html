@@ -184,9 +184,9 @@
   .again.spent:active, .again[aria-disabled="true"]:active { transform: none; }
   .earlier { display: block; margin: 8px 0 0; font-size: .92rem; }
   .pick:disabled { opacity: .5; cursor: default; }
-  .song .cancel { background: none; border: 0; padding: 12px 0 8px; min-height: 44px; margin: 0; font: inherit; font-size: .8rem; color: var(--cream-dim);
-                  text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
-  .song .cancel.armed { color: var(--bad); font-weight: 700; }
+  /* Cancel: the same round button as Request again, beside the status; the first tap arms it (red) */
+  .again.cancel { color: var(--cream-dim); }
+  .again.cancel.armed { background: var(--bad); color: #2A1A12; box-shadow: none; }
   .vfd .idle { color: #6fe3c8aa; }
   /* the top strip of the faceplate: the maker's wordmark left, the SPECIAL REQUEST lamp right,
      both engraved and ink-filled dark, as on a 70s receiver */
@@ -1190,16 +1190,18 @@ $("jsend").onclick = () => busy($("jsend"), "Sending…", async () => {
 });
 // Taking back a request: two taps (the first arms it for 3 s), so a stray tap never removes a song.
 const armed = new Map();   // request id -> when its Cancel was armed
+const ICON_X = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>';
 function cancelButton(m) {
-  const b = el("button", "cancel"); b.type = "button";
-  const show = () => { const on = Date.now() - (armed.get(m.id) || 0) < 3000; b.classList.toggle("armed", on); b.textContent = on ? "Tap again to cancel" : "Cancel request"; };
+  const b = el("button", "again cancel"); b.type = "button"; b.innerHTML = ICON_X;
+  const show = () => { const on = Date.now() - (armed.get(m.id) || 0) < 3000; b.classList.toggle("armed", on);
+    b.setAttribute("aria-label", on ? `Tap again to cancel ${cleanTitle(m.title)}` : `Cancel ${cleanTitle(m.title)}`); };
   show();
   const left = 3000 - (Date.now() - (armed.get(m.id) || 0));   // rebuilt by a poll mid-arm: still disarms on time
   if (left > 0) setTimeout(show, left + 50);
   b.onclick = async (e) => {
     e.stopPropagation();   // the row itself opens the record sleeve
-    if (!b.classList.contains("armed")) { armed.set(m.id, Date.now()); show(); setTimeout(show, 3100); return; }
-    armed.delete(m.id); b.disabled = true; b.textContent = "Cancelling…";
+    if (!b.classList.contains("armed")) { armed.set(m.id, Date.now()); show(); setTimeout(show, 3100); toast("Tap ✕ again to cancel this request."); return; }
+    armed.delete(m.id); b.disabled = true;
     try {
       const r = await api("/api/cancel", { method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ id: m.id }), signal: AbortSignal.timeout(10000) });
@@ -1371,7 +1373,9 @@ async function refresh() {
       const changed = lastBadge.has(m.id) && lastBadge.get(m.id) !== label;
       lastBadge.set(m.id, label);
       const row = songRow(m.status === "failed" ? { ...m, names: "" } : m, label, cls + (changed ? " flash" : ""));
-      if (["pending", "preparing", "ready", "queued"].includes(m.status)) row.querySelector(".meta").append(cancelButton(m));
+      if (["pending", "preparing", "ready", "queued"].includes(m.status)) {   // the status and its Cancel side by side
+        const side = el("div", "side"); side.append(row.querySelector(".chip"), cancelButton(m)); row.append(side);
+      }
       if (m.status === "failed") row.querySelector(".a").textContent = "Try a different version, or another song";
       else if (m.artist) sleeveOnTap(row, m);   // a hidden (offensive) title has no artist: nothing to look up
       if (m.status === "played" && m.artist) {   // the status and its "Request again" stacked on the right
