@@ -201,16 +201,19 @@
   .brand .maker::after { content: attr(data-t); position: absolute; inset: 0; text-shadow: none; color: transparent;
                          background: linear-gradient(#060402, #1f170a 40%, #3d2f15 80%, #574420);
                          -webkit-background-clip: text; background-clip: text; }
-  .brand .req { display: flex; align-items: center; gap: 8px; }
+  .brand .req { display: flex; align-items: flex-start; gap: 8px; }
   /* the lamp, set in the panel like a real indicator: a polished chrome bezel in a hole (the hole's top
      edge in shade, its lower lip lit), a dark recess inside the ring, and a domed glass lens with the
      room's light reflected near its top. Off, the lens is dark green glass, not grey */
-  .brand .bezel { position: relative; flex: none; width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center;
+  /* the bezel spans the label's letters exactly: from the top of SPECIAL to the baseline of REQUEST
+     (Michroma: caps .78em tall, lines 1.2em apart, the first cap top .258em below the line box) */
+  .brand .bezel { --lbl: .64rem; position: relative; flex: none; width: calc(var(--lbl) * 1.98); height: calc(var(--lbl) * 1.98);
+                  margin-top: calc(var(--lbl) * .258); border-radius: 50%; display: grid; place-items: center;
                   background: conic-gradient(from 210deg, #b9b6ae, #3e3c38 18%, #8e8b84 34%, #2a2926 52%, #85827b 72%, #4a4844 88%, #b9b6ae);   /* dark chrome: darker than the panel */
                   box-shadow: 0 -1px 0 #00000070, 0 1px 0 #ffffffc0, 0 1.5px 2px #00000045, inset 0 0 0 .5px #00000055; }
-  .brand .bezel::before { content: ""; position: absolute; inset: 3.5px; border-radius: 50%; background: #0b0a08;
+  .brand .bezel::before { content: ""; position: absolute; inset: 13%; border-radius: 50%; background: #0b0a08;
                           box-shadow: inset 0 2px 3px #000, inset 0 -1px 0 #ffffff26; }
-  .brand .lamp { position: relative; z-index: 1; width: 15px; height: 15px; }
+  .brand .lamp { position: relative; z-index: 1; width: 60%; height: 60%; }
   .brand .lamp:not(.on) { background: radial-gradient(circle at 45% 40%, #36533a, #16231a 60%, #090f0b);
                           box-shadow: inset 0 -2px 3px #000a, inset 0 1px 1px #ffffff26; }
   .brand .lamp::after { content: ""; position: absolute; left: 20%; top: 10%; width: 46%; height: 32%; border-radius: 50%;
