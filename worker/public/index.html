@@ -193,10 +193,14 @@
   /* the top strip of the faceplate: the maker's wordmark left, the SPECIAL REQUEST lamp right,
      both engraved and ink-filled dark, as on a 70s receiver */
   .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -6px 14px 12px; }
-  /* the wordmark, engraved into the aluminum: a dark, ink-filled cut whose upper wall is in shadow and
-     whose lower lip catches the light (Russo One, only these 5 letters loaded) */
-  .brand .maker { font: 400 1.55rem/1 "Russo One", "Arial Black", sans-serif; letter-spacing: .01em; color: #3a2c12;
-                  text-shadow: 0 -1px 0 #00000080, 0 1px 0 #ffffffa0, 0 2px 1px #ffffff40; }
+  /* the wordmark, engraved into the aluminum (Russo One, only these 5 letters loaded). The letters carry
+     the cut's edges as shadows: the upper-left wall in shade, the lower-right lip polished bright; a copy
+     laid over them is the cut's floor, dark ink deepest under the top wall, catching a little light lower down */
+  .brand .maker { position: relative; font: 400 1.55rem/1 "Russo One", "Arial Black", sans-serif; letter-spacing: .01em;
+                  color: #1c150a; text-shadow: -.5px -1px 0 #000000b0, .5px 1px 0 #ffffffe6, 1px 1.5px .5px #ffffff70; }
+  .brand .maker::after { content: attr(data-t); position: absolute; inset: 0; text-shadow: none; color: transparent;
+                         background: linear-gradient(#060402, #1f170a 40%, #3d2f15 80%, #574420);
+                         -webkit-background-clip: text; background-clip: text; }
   .brand .req { display: flex; align-items: center; gap: 8px; }
   .brand .lamp { width: 16px; height: 16px; }
   .brand .label { font: 400 .64rem/1.2 Michroma, sans-serif; letter-spacing: .08em; color: #15130f; text-align: right;
@@ -406,7 +410,7 @@
       <i class="screw tl"><b class="slit" style="--r: 23deg"></b></i><i class="screw tr"><b class="slit" style="--r: 142deg"></b></i>
       <i class="screw bl"><b class="slit" style="--r: 81deg"></b></i><i class="screw br"><b class="slit" style="--r: 167deg"></b></i>
       <div class="brand">
-        <span class="maker" aria-hidden="true">matty</span>
+        <span class="maker" data-t="matty" aria-hidden="true">matty</span>
         <span class="req"><span class="lamp" id="lamp" aria-hidden="true"></span><span class="label">SPECIAL<br>REQUEST</span></span>
       </div>
       <div class="glass" id="glass" role="button" tabindex="0" aria-label="Show the record sleeve">
