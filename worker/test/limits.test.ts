@@ -232,3 +232,31 @@ describe("anonymous message", () => {
     expect((await p.submitJoke("d1", { name: "Ann", text: "Why did the duck cross the road twice?", anon: true })).ok).toBe(true);
   });
 });
+
+describe("preset sound buttons", () => {
+  const padCmds = (p: P) => runInDurableObject(p, async (_i: Party, s) =>
+    s.storage.sql.exec("SELECT type FROM commands WHERE type LIKE 'pad%'").toArray().map((r) => String(r.type)));
+  it("one sound a minute per phone, and a 5 s gap for the whole party", async () => {
+    const p = stub("pad-1");
+    expect((await p.guestPad("d1", 3)).ok).toBe(true);
+    expect(await padCmds(p)).toEqual(["pad3"]);
+    const again = await p.guestPad("d1", 2);
+    expect(again.ok).toBe(false);
+    expect(again.error).toMatch(/minute|\d+ s/);
+    expect((await p.guestState("d1")).limits.padInS).toBeGreaterThan(50);
+    const other = await p.guestPad("d2", 1);   // someone else, right away: the party gap
+    expect(other.ok).toBe(false);
+    await sql(p, "UPDATE pad_presses SET at=at-6000");
+    expect((await p.guestPad("d2", 1)).ok).toBe(true);
+    expect((await p.guestPad("d1", 9)).ok).toBe(false);   // no such button
+  });
+
+  it("free play lifts both limits; a muted phone can't press", async () => {
+    const p = stub("pad-2");
+    await p.adminAction({ action: "settings", settings: { freePlay: true } });
+    for (const n of [1, 2, 3]) expect((await p.guestPad("d1", n)).ok).toBe(true);
+    expect((await p.guestState("d1")).limits.padInS).toBe(0);
+    await sql(p, "INSERT INTO muted(device) VALUES('d9')");
+    expect((await p.guestPad("d9", 1)).ok).toBe(false);
+  });
+});

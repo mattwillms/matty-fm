@@ -154,7 +154,6 @@
 
   /* ---- add a request ---- */
   input, textarea { width: 100%; font: inherit; color: var(--ink); background: var(--bg); border: 1.5px solid var(--line); border-radius: 10px; padding: 11px 12px; }
-  input::placeholder { color: var(--faint); }
   input:focus { outline: none; border-color: var(--gold); }
   label { display: block; color: var(--muted); font-size: .9rem; margin: 12px 0 5px; }
   .results { display: grid; gap: 6px; margin-top: 8px; }
@@ -197,15 +196,15 @@
       <button type="button" class="segb" data-mode="song" aria-pressed="false">Song for someone</button>
     </div>
     <div id="modeAnnounce">
-      <textarea id="annText" maxlength="400" rows="3" aria-label="Announcement" placeholder="Fish is ready by the barn"></textarea>
+      <textarea id="annText" maxlength="400" rows="3" aria-label="Announcement"></textarea>
       <div class="ann-row"><span class="empty">Read as soon as it's recorded, over whatever is playing.</span>
         <button class="primary" id="annSend" type="button">Announce</button></div>
     </div>
     <div id="modeSong" hidden>
-      <input id="aq" type="search" placeholder="Search for a song" autocomplete="off" aria-label="Search for a song">
+      <input id="aq" type="search" autocomplete="off" aria-label="Search for a song">
       <div class="results" id="aresults"></div>
       <div class="two">
-        <div><label for="aname">Their name</label><input id="aname" maxlength="40" placeholder="the family"></div>
+        <div><label for="aname">Their name</label><input id="aname" maxlength="40"></div>
         <div><label for="amsg">Message (optional)</label><input id="amsg" maxlength="280"></div>
       </div>
       <div class="add-row"><button class="primary" id="addBtn" disabled>Pick a song first</button></div>

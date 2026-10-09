@@ -187,6 +187,14 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
         return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
       return json(await party.submitJoke(dev.id, await body(req), ip), 200, extra);
     }
+    if (path === "/api/pad" && req.method === "POST") {   // a guest presses a preset button on the radio
+      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
+      const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
+        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+      const { pad } = await body(req);
+      return json(await party.guestPad(dev.id, pad), 200, extra);
+    }
     if (path === "/api/cancel" && req.method === "POST") {   // a guest takes back their own request
       if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
       if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success)

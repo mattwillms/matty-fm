@@ -15,6 +15,8 @@ const COMMAND_TTL_MS = 20_000;   // a command the studio didn't pick up by then 
 const APPLE_HOSTS = ["music.apple.com"];
 const MAX_WAITING_PER_DEVICE = 2;
 const MAX_ASKS_PER_SONG = 2;
+const PAD_EVERY_MS = 60_000;   // a guest's preset buttons: one sound a minute per phone
+const PAD_GAP_MS = 5_000;      // and one at a time for the whole party, so thirty phones can't make a wall of noise
 const MYSTERY = "a mystery guest";   // who an anonymous message is from, on air and on the guest page   // a phone may ask for a song, and once more after it plays ("Request again")
 const QUEUED_GRACE_MS = 15_000;
 
@@ -69,6 +71,7 @@ export class Party extends DurableObject<Env> {
       CREATE TABLE IF NOT EXISTS muted(device TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS song_locks(device TEXT PRIMARY KEY);
       CREATE TABLE IF NOT EXISTS song_release(device TEXT PRIMARY KEY, at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS pad_presses(device TEXT NOT NULL, pad INTEGER NOT NULL, at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS airlog(kind TEXT NOT NULL, text TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(kind, at));
       CREATE TABLE IF NOT EXISTS jokes(
         id TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT NOT NULL, text TEXT NOT NULL,
@@ -103,7 +106,9 @@ export class Party extends DurableObject<Env> {
       CREATE INDEX IF NOT EXISTS jokes_ended ON jokes(ended_at);
       CREATE INDEX IF NOT EXISTS jokes_urgent ON jokes(urgent, created_at);
       CREATE INDEX IF NOT EXISTS airlog_at ON airlog(at);
-      CREATE INDEX IF NOT EXISTS commands_open ON commands(done, type);`);
+      CREATE INDEX IF NOT EXISTS commands_open ON commands(done, type);
+      CREATE INDEX IF NOT EXISTS pad_device ON pad_presses(device, at);
+      CREATE INDEX IF NOT EXISTS pad_at ON pad_presses(at);`);
   }
 
   // ---------- helpers ----------
@@ -331,6 +336,30 @@ export class Party extends DurableObject<Env> {
     return { ok: true };
   }
 
+  /** A guest presses one of the radio's preset buttons: the matching sound pad plays on the PA. */
+  async guestPad(device: string, pad: unknown) {
+    const n = typeof pad === "number" ? pad : NaN;
+    if (!Number.isInteger(n) || n < 1 || n > 5) return { ok: false, error: "No such button." };
+    if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
+    if (!this.flags().freePlay) {
+      const lim = this.padLimit(device);
+      if (lim.padInS) return { ok: false, error: `One sound a minute: the next in ${lim.padInS} s.` };
+      if (lim.partyPadInS) return { ok: false, error: "Someone just pressed one. Try again in a few seconds." };
+    }
+    const now = Date.now();
+    this.sql.exec("INSERT INTO pad_presses(device, pad, at) VALUES(?,?,?)", device, n, now);
+    this.sql.exec("DELETE FROM pad_presses WHERE at<?", now - PAD_EVERY_MS);   // only the last minute matters
+    this.command(`pad${n}`);
+    return { ok: true };
+  }
+
+  private padLimit(device: string) {
+    const now = Date.now(), left = (t: number, ms: number) => Math.max(0, Math.ceil((t + ms - now) / 1000));
+    const mine = Number(this.one("SELECT MAX(at) AS t FROM pad_presses WHERE device=?", device)?.t ?? 0);
+    const party = Number(this.one("SELECT MAX(at) AS t FROM pad_presses")?.t ?? 0);
+    return { padInS: mine ? left(mine, PAD_EVERY_MS) : 0, partyPadInS: party ? left(party, PAD_GAP_MS) : 0 };
+  }
+
   /** A guest takes back their own request before it plays. A song others asked for too keeps going
    *  without their name; one only they asked for is removed (and pulled from the console if handed out). */
   async cancel(device: string, id: string) {
@@ -440,7 +469,7 @@ export class Party extends DurableObject<Env> {
                        urgent: Boolean(j.urgent), anon: Boolean(j.anon) })),
       djOnBreak: Date.now() - this.health().at > OFFLINE_MS,
       limits: { freePlay: this.flags().freePlay, songs: { ...this.songLimit(device), max: MAX_WAITING_PER_DEVICE },
-                ...this.messageLimit(device) },
+                ...this.messageLimit(device), padInS: this.flags().freePlay ? 0 : this.padLimit(device).padInS },
     };
   }
 
@@ -650,7 +679,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "anon-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "pads-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, created_at"),
               ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL AND +status<>'deleted' ORDER BY ended_at DESC LIMIT 10")]
@@ -802,6 +831,7 @@ export class Party extends DurableObject<Env> {
     this.sql.exec("DELETE FROM requesters");
     this.sql.exec("DELETE FROM song_locks");
     this.sql.exec("DELETE FROM song_release");
+    this.sql.exec("DELETE FROM pad_presses");
     this.sql.exec("UPDATE items SET dj_line=NULL");
     this.sql.exec("UPDATE jokes SET name='', text='', script=NULL, ip=NULL, device=''");
     this.sql.exec("UPDATE airlog SET text=''");

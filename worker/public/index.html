@@ -188,37 +188,40 @@
                   text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
   .song .cancel.armed { color: var(--bad); font-weight: 700; }
   .vfd .idle { color: #6fe3c8aa; }
-  /* the request module: a dark gunmetal plate (lamp, label, name screen), the script screen under it */
-  /* a sliver of old brushed gold: dark, dulled and grimy from years of hands */
-  .plate { position: relative; display: flex; align-items: center; gap: 12px; margin-top: 12px; padding: 4px 28px; border-radius: var(--glass-r);   /* 14px clear of each screw; corners match the screens */
-           background: linear-gradient(100deg, #fff0 30%, #ffffff14 48%, #fff0 64%),   /* a tired sheen */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.03' numOctaves='4' seed='9' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .14 0 0 0 0 .1 0 0 0 0 .03 0 0 0 1.7 -.5'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 200px,   /* grime in the low spots */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.5' numOctaves='1' seed='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .1 0 0 0 0 .07 0 0 0 0 .02 0 0 0 2.4 -1.3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 100px,   /* pitting */
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='80'%3E%3Cfilter id='n' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.003 1.1' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .75 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E") 0 0 / 400px 80px,   /* fine brush strokes */
-                       linear-gradient(90deg, #2a1e0840, #0000 14%, #0000 86%, #2a1e0840),   /* ends a shade darker */
-                       linear-gradient(#8f7a45, #7a6638 50%, #66542c);   /* dark old gold */
-           background-blend-mode: normal, normal, normal, overlay, normal, normal;
-           box-shadow: inset 0 1px 0 #cdb97a66, inset 0 -1px 0 #7d6a3a, 0 1px 0 #fff6, 0 0 0 1px #6f5d30; }   /* gold rim, no black edge */
-  .plate .lamp { flex: none; width: 9px; height: 9px; }
-  .plate .screw { width: 8px; height: 8px; top: 50%; margin-top: -4px; box-shadow: inset 0 0 0 1px #0003, 0 1px 0 #fff4c066;   /* steel */
-                  background: radial-gradient(circle at 35% 35%, #fff, #9a948a 60%, #6d675e); }
-  .plate .slit { top: 3px; height: 1.5px; background: #5d574e; }
-  .plate .screw.ml { left: 6px; } .plate .screw.mr { right: 6px; }
-  /* wide hi-fi faceplate lettering, engraved and paint-filled cream as on old gear: the cut's upper
-     wall is in shadow (dark above), its lower lip catches the light */
-  .plate-label { font: 400 .58rem/1.1 Michroma, sans-serif; letter-spacing: .08em; min-width: 0;   /* folds to two lines before the name screen gets squeezed */
-                 color: #f1e6c6; text-shadow: 0 -1px 0 #1a1204cc, 0 1px 0 #ffffff22; }
-  .lcd.name-screen { flex: 1 0 90px; min-width: 90px; padding: 2px 8px 3px; }   /* .lcd comes later in the file: match its weight to win */
-  @media (max-width: 360px) { .lcd.name-screen { flex-basis: 70px; min-width: 70px; } }   /* small phones: room for the folded label */
-  .msg-screen { margin-top: 12px; }
-  /* the request VFD: dark glass, glowing teal dot-matrix, same family as the display above */
-  .lcd { position: relative; border-radius: var(--glass-r); padding: 7px 10px 8px; overflow: hidden; background: var(--glass);
-         box-shadow: inset 0 3px 8px #000, 0 1px 0 #fff8; color: var(--teal);
-         text-shadow: 0 0 6px #6fe3c899, 0 0 1px #b8fff0; }
+  /* the top strip of the faceplate: the maker's wordmark left, the SPECIAL REQUEST lamp right,
+     both engraved and ink-filled dark, as on a 70s receiver */
+  .brand { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -6px 14px 12px; }
+  .brand .maker { font: 400 1.05rem/1 Michroma, sans-serif; letter-spacing: .02em; color: #26221c;
+                  text-shadow: 0 1px 0 #ffffff55, 0 -1px 0 #0000002a; transform: scaleY(.92); }
+  .brand .req { display: flex; align-items: center; gap: 8px; }
+  .brand .lamp { width: 10px; height: 10px; }
+  .brand .label { font: 400 .5rem/1.15 Michroma, sans-serif; letter-spacing: .1em; color: #2e2a24; text-align: right;
+                  text-shadow: 0 1px 0 #ffffff55; }
+  /* preset buttons, as on an old car radio: chunky square black plastic in a recessed slot. A pressed one
+     latches down until the phone may press again (a minute); tap toys of the whole party share the PA */
+  .presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 12px; padding: 6px 6px 8px;
+             border-radius: var(--glass-r); background: linear-gradient(#24221f, #141311); box-shadow: inset 0 2px 5px #000d, 0 1px 0 #fff8; }
+  .presets .preset { aspect-ratio: 1.2; padding: 0; border-radius: 4px; color: #fff; font-size: 1.3rem; line-height: 1;
+                     display: grid; place-items: center; cursor: pointer; filter: none;
+                     background: linear-gradient(#3b3a38, #1b1a19 45%, #0e0d0d);
+                     box-shadow: inset 0 1px 0 #ffffff38, inset 0 -3px 0 #000, 0 3px 0 #050505, 0 5px 4px #0009;
+                     transform: translateY(-2px); transition: transform .05s, box-shadow .05s, background .05s; }
+  .presets .preset:hover { filter: none; }
+  .presets .preset:active, .presets .preset.down {
+    transform: translateY(1px); background: linear-gradient(#2a2928, #121111 50%, #0a0a0a);
+    box-shadow: inset 0 1px 0 #ffffff14, inset 0 -1px 0 #000, 0 0 0 #000, 0 1px 1px #0008; }
+  .presets .preset.down { filter: brightness(.8); }
+  .presets .preset .ico { filter: saturate(.75) drop-shadow(0 1px 0 #000); }
+  .msg-screen { margin-top: 12px; touch-action: pan-y; cursor: grab; }   /* sideways drags move the message; up and down still scroll the page */
+  /* the message ticker: a grey reflective LCD, dark dot-matrix that casts a faint shadow on the
+     panel behind it, no glow (a cheaper display than the VFD above, as on real gear) */
+  .lcd { position: relative; border-radius: var(--glass-r); padding: 7px 10px 8px; overflow: hidden;
+         background: linear-gradient(#a9b0a0, #949b8b); color: #1c211b;
+         box-shadow: inset 0 3px 6px #0007, inset 0 0 0 1px #0004, 0 1px 0 #fff8;
+         text-shadow: 1px 2px 0 #0000001f; }
   .lcd::after { content: ""; position: absolute; inset: 0; pointer-events: none;
-                background: repeating-linear-gradient(0deg, #0000 0 2px, #00000026 2px 3px), linear-gradient(170deg, #ffffff12 0 25%, transparent 25%); }
+                background: linear-gradient(170deg, #ffffff26 0 25%, transparent 25%); }
   .lcd-line { position: relative; white-space: nowrap; overflow: hidden; }
-  .lcd-line.name { font-size: 1.1rem; line-height: 1.15; }
   .lcd-line.msg { font-size: 1.575rem; line-height: 1.15; }
   /* ---- record sleeve lightbox: tap the screen to pull the record ---- */
   dialog.sleeve-box { border: 0; padding: 24px 16px; margin: 0; width: 100%; height: 100%; max-width: none; max-height: none;
@@ -320,7 +323,6 @@
 
   input, textarea { width: 100%; font: inherit; color: var(--cream); background: #1f140e; border: 2px solid #6b4a32;
                     border-radius: 10px; padding: 12px 14px; }
-  input::placeholder, textarea::placeholder { color: #a88d6a; }
   input:focus, textarea:focus { outline: none; border-color: var(--gold); }
   textarea { min-height: 88px; resize: vertical; }
   label { display: block; margin: 14px 0 6px; color: var(--cream-dim); font-weight: 500; }
@@ -399,6 +401,10 @@
     <div class="faceplate">
       <i class="screw tl"><b class="slit" style="--r: 23deg"></b></i><i class="screw tr"><b class="slit" style="--r: 142deg"></b></i>
       <i class="screw bl"><b class="slit" style="--r: 81deg"></b></i><i class="screw br"><b class="slit" style="--r: 167deg"></b></i>
+      <div class="brand">
+        <span class="maker" aria-hidden="true">matty</span>
+        <span class="req"><span class="lamp" id="lamp" aria-hidden="true"></span><span class="label">SPECIAL<br>REQUEST</span></span>
+      </div>
       <div class="glass" id="glass" role="button" tabindex="0" aria-label="Show the record sleeve">
         <div class="display" id="display"><div class="vfd"><div class="idle">Warming up…</div></div></div>
         <div class="meter" id="meter" aria-hidden="true"></div>
@@ -408,12 +414,7 @@
         <div class="ticks"></div>
         <div class="needle" id="needle"></div>
       </div>
-      <div class="plate">
-        <i class="screw ml"><b class="slit" style="--r: 64deg"></b></i><i class="screw mr"><b class="slit" style="--r: 118deg"></b></i>
-        <div class="lcd name-screen"><div class="lcd-line name"><span class="track" id="lcdName"><span>SomaFM 70s</span></span></div></div>
-        <span class="lamp" id="lamp" aria-hidden="true"></span>
-        <span class="plate-label" id="reqLabel">REQUESTED</span>
-      </div>
+      <div class="presets" id="presets" role="group" aria-label="Sound buttons: play a sound on the speakers"></div>
       <div class="lcd msg-screen" aria-live="polite">
         <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
       </div>
@@ -448,7 +449,7 @@
   <section class="panel" id="who" aria-labelledby="whoH">
     <h2 id="whoH">Who's listening?</h2>
     <p class="hint" style="margin-top:0">Your first name goes on your requests, so the DJ can give you a shout-out.</p>
-    <form id="whoForm"><input id="whoName" maxlength="40" autocomplete="given-name" placeholder="First name" aria-label="Your first name" required>
+    <form id="whoForm"><input id="whoName" maxlength="40" autocomplete="given-name" aria-label="Your first name" required>
       <button type="submit">That's me</button></form>
     <p class="hint" id="whoBack" hidden><button class="link" id="whoKeep" type="button">Keep my name</button></p>
   </section>
@@ -457,7 +458,7 @@
     <div class="h2row"><h2>Request a song</h2>
       <span class="slots" id="slots" role="img" aria-label="Song picks"><i></i><i></i></span></div>
     <p class="allow" id="songAllow" hidden></p>
-    <input id="q" type="search" placeholder="Song or artist" autocomplete="off" aria-label="Search for a song or artist">
+    <input id="q" type="search" autocomplete="off" aria-label="Search for a song or artist">
     <ul id="results"></ul>
     <p class="hint">Can't find it? <button class="link" id="freeBtn" type="button">Type it in</button></p>
     <p id="closed" class="notice" hidden style="margin:14px 0 0">Requests are closed for tonight. Thanks for dancing.</p>
@@ -533,6 +534,15 @@ function art(src) {
   if (!src) return noCover();
   const img = el("img"); img.alt = ""; img.src = src; img.onerror = () => img.replaceWith(noCover()); return img;
 }
+// The now-playing screen fills the glass (~900 device px): the 200 px search art blurs, so ask the
+// source for the big one (the same file the record sleeve uses, so it's cached for that too).
+function screenArt(src) {
+  const big = typeof bigArt === "function" ? bigArt(src) : src;
+  if (!src || big === src) return art(src);
+  const img = el("img"); img.alt = "";
+  img.onerror = () => { img.onerror = () => img.replaceWith(noCover()); img.src = src; };
+  img.src = big; return img;
+}
 function songRow(s, extra, chipClass) {
   const li = el("li", "song"), box = el("div", "meta");
   box.append(el("div", "t", cleanTitle(s.title)));
@@ -557,11 +567,29 @@ const SCROLL_PX_S = 55;   // the message line's scroll speed; the title, artist 
 // Scrolling lines are moved by one frame loop, not a repeating CSS/Web animation: iPhone Safari
 // blanked the text for a frame each time such an animation started its next loop.
 const scrollers = new Map();   // track element -> { dist (px, unscaled), holdMs, moveMs, t0 }
+const RESUME_MS = 1200;   // after a drag coasts to a stop, the scroll picks up again after this beat
+const wrapX = (x, d) => -((((-x) % d) + d) % d);   // two copies side by side: any offset folds into one copy's width
+function loopX(sc, now) {
+  const t = (now - sc.t0) % (sc.holdMs + sc.moveMs);
+  return t < sc.holdMs ? 0 : -sc.dist * (t - sc.holdMs) / sc.moveMs;
+}
 function scrollFrame(now) {
   for (const [track, sc] of scrollers) {
     if (!track.isConnected) { scrollers.delete(track); continue; }
-    const t = (now - sc.t0) % (sc.holdMs + sc.moveMs);
-    const x = t < sc.holdMs ? 0 : -sc.dist * (t - sc.holdMs) / sc.moveMs;
+    let x;
+    const h = sc.hand;
+    if (h) {   // moved by a finger, or coasting after a flick
+      if (!h.down) {
+        const dt = Math.min(64, now - h.last); h.last = now;
+        h.x += h.v * dt; h.v *= Math.pow(0.996, dt);   // friction: a flick coasts about a second
+        if (Math.abs(h.v) < 0.02) { h.v = 0; h.restAt ??= now; }
+        if (h.restAt != null && now - h.restAt > RESUME_MS) {   // carry on looping from where it was left
+          const at = wrapX(h.x, sc.dist);
+          sc.t0 = now - sc.holdMs - (-at / sc.dist) * sc.moveMs; sc.hand = null;
+        }
+      }
+      x = wrapX(h.x, sc.dist);
+    } else x = loopX(sc, now);
     track.style.transform = `translate3d(${x.toFixed(2)}px,0,0)`;
   }
   if (typeof scanFrame === "function") scanFrame(now);
@@ -583,14 +611,38 @@ function setLine(id, text, always, speed = SCROLL_PX_S, holdMs = 0) {
     scrollers.set(track, { dist: one.offsetWidth, holdMs, moveMs: (w / speed) * 1000, t0: performance.now() });
   }
 }
+// Drag the message left or right; let go and it coasts, then the scroll carries on after a beat.
+(() => {
+  const box = document.querySelector(".msg-screen"), SCALE = 0.8;   // the line is drawn squeezed to 80%: a finger's px are 1/0.8 track px
+  let id = null;
+  box.addEventListener("pointerdown", (e) => {
+    const sc = scrollers.get($("lcdMsg"));
+    if (!sc) return;
+    const now = performance.now();
+    sc.hand = { down: true, x: sc.hand ? sc.hand.x : loopX(sc, now), v: 0, last: now, px: e.clientX, restAt: null };
+    id = e.pointerId; box.setPointerCapture(id);
+  });
+  box.addEventListener("pointermove", (e) => {
+    const sc = scrollers.get($("lcdMsg")), h = sc && sc.hand;
+    if (!h || !h.down || e.pointerId !== id) return;
+    const now = performance.now(), dx = (e.clientX - h.px) / SCALE, dt = Math.max(1, now - h.last);
+    h.x += dx; h.v = h.v * 0.5 + (dx / dt) * 0.5; h.px = e.clientX; h.last = now;
+  });
+  const up = (e) => {
+    const sc = scrollers.get($("lcdMsg")), h = sc && sc.hand;
+    if (!h || e.pointerId !== id) return;
+    if (performance.now() - h.last > 80) h.v = 0;   // held still before letting go: no flick
+    h.down = false; h.last = performance.now(); id = null;
+  };
+  box.addEventListener("pointerup", up); box.addEventListener("pointercancel", up);
+})();
 function lcd(np) {
   const req = np && !np.soma;
-  const name = req ? (np.names || "The family") : "SomaFM 70s";
-  const msg = req ? (shoutout(np.djLine, np) || "Turn it up.") : "Got a song in your head? Request it below.";
-  const key = name + "|" + msg;
-  if (key === lcdKey) return;   // unchanged: leave the scroll running where it is
-  lcdKey = key;
-  setLine("lcdName", name, false, SCROLL_PX_S * 0.5);
+  const said = req ? (shoutout(np.djLine, np) || "Turn it up.") : "Got a song in your head? Request it below.";
+  const named = req && np.names && !said.toLowerCase().startsWith(String(np.names).toLowerCase());
+  const msg = named ? `${np.names}: ${said}` : said;   // a request: who asked, then the shout-out (unless it opens with them)
+  if (msg === lcdKey) return;   // unchanged: leave the scroll running where it is
+  lcdKey = msg;
   setLine("lcdMsg", msg, true, SCROLL_PX_S);
 }
 
@@ -954,7 +1006,7 @@ function showNow(np, force) {
   tl.append(Object.assign(el("span", "track"), { id: "vfdTitle" })); al.append(Object.assign(el("span", "track"), { id: "vfdArtist" }));
   const rem = el("div", "remain"); rem.append(Object.assign(el("span", "clk"), { id: "clk" }));
   const aw = el("div", "aw"), foot = el("div", "foot"); aw.append(al); foot.append(aw, rem);
-  v.append(art(np.artwork), tl, foot);
+  v.append(screenArt(np.artwork), tl, foot);
   d.replaceChildren(v);
   tickClock();   // the artist line's width depends on it: set before measuring
   setLine("vfdTitle", cleanTitle(np.title), false, SCROLL_PX_S * 0.5, 1500);   // scrolls only if it doesn't fit, resting 1.5 s each loop
@@ -1180,7 +1232,6 @@ function showLimits() {
     : sg.active === 1 ? "One picked. <b>Room for one more.</b>" : "Pick up to two songs.");
   if (!$("closed").hidden) say("songAllow", "");
   $("q").disabled = !$("closed").hidden || !st.can;
-  $("q").placeholder = st.can ? "Song or artist" : "Your picks are in line";
   $("freeBtn").closest("p").hidden = !$("closed").hidden || !st.can;
   // messages
   const left = (n) => Math.max(0, n - (Date.now() - limitsAt) / 1000);
@@ -1193,6 +1244,10 @@ function showLimits() {
   const blocked = !free && limits.waiting && !urgent;
   say("msgAllow", free ? "<b>Free play:</b> send as many as you like."
     : limits.waiting ? "<b>Yours is in line.</b> Send another once the DJ has read it." : "");
+  // preset buttons: the server's countdown (another phone of yours, a reload)
+  if (free) { if (padUntil - Date.now() > 400) padUntil = 0; }
+  else if (limits.padInS) padUntil = Math.max(padUntil, limitsAt + limits.padInS * 1000);
+  showPresets();
   // anonymous: one a night, never urgent (urgent and anonymous switch each other off)
   const anonUsed = !free && limits.anonLeft === false;
   if (anonUsed || urgent) $("anon").checked = false;
@@ -1202,6 +1257,36 @@ function showLimits() {
   if (!$("jsend").classList.contains("busy")) $("jsend").disabled = !accepting || blocked;
 }
 setInterval(showLimits, 10000);   // the urgent countdown
+// The preset buttons: the host's five sound pads, one press a minute per phone (Free play: no limit).
+const PRESETS = [["📯", "Air horn"], ["🥁", "Rimshot"], ["👏", "Applause"], ["🎺", "Sad trombone"], ["🐔", "Cluck"]];
+let padUntil = 0, padDown = -1, padTimer = null;
+function showPresets() {
+  const wait = padUntil - Date.now();
+  [...$("presets").children].forEach((b, i) => {
+    b.classList.toggle("down", wait > 0 && i === padDown);
+    b.setAttribute("aria-disabled", String(wait > 0));
+  });
+  clearTimeout(padTimer);
+  if (wait > 0) padTimer = setTimeout(showPresets, wait + 50);   // pops back up when the minute is over
+}
+$("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
+  const b = el("button", "preset"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl} on the speakers`);
+  b.append(el("span", "ico", ico));
+  b.onclick = async () => {
+    const wait = padUntil - Date.now();
+    if (wait > 0) { toast(`One sound a minute: the next in ${Math.ceil(wait / 1000)} s.`); return; }
+    padDown = i; padUntil = Date.now() + 60000; showPresets();   // latches down at once, like the real thing
+    try {
+      const r = await api("/api/pad", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ pad: i + 1 }), signal: AbortSignal.timeout(10000) });
+      if (!r.ok) { padUntil = 0; toast(r.error, true); }
+      else if (limits && limits.freePlay) padUntil = Date.now() + 400;   // free play: a quick press, no wait
+      else toast(`${lbl}! On the speakers in a moment.`);
+    } catch { padUntil = 0; toast("Didn't send. Check your connection and try again.", true); }
+    showPresets();
+  };
+  return b;
+}));
 $("urgent").addEventListener("change", showLimits);
 $("anon").addEventListener("change", () => { if ($("anon").checked) $("urgent").checked = false; showLimits(); });
 let accepting = true, familyMode = true;
