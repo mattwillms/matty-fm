@@ -301,3 +301,25 @@ describe("station off closes the door", () => {
     expect((await p.submit("d1", T("Waterloo"))).ok).toBe(true);
   });
 });
+
+describe("fresh party", () => {
+  it("wipes songs, guests, messages, mutes and limits but keeps settings and the id counter; the console is told to drop what it holds", async () => {
+    const p = stub("reset-1");
+    await p.adminAction({ action: "settings", settings: { breakEveryMin: 15 } });
+    const a = await p.submit("d1", { ...T("Waterloo"), message: "for Bob" });
+    const b = await p.submit("d2", T("Mamma Mia"));
+    await p.submitJoke("d1", { name: "Ann", text: "Why did the hen cross the road twice?" });
+    await p.adminAction({ action: "mute", device: "d2" });
+    await sql(p, "UPDATE items SET status='playing', started_at=? WHERE id=?", Date.now(), a.id!);
+    await sql(p, "UPDATE items SET status='queued' WHERE id=?", b.id!);
+    expect((await p.adminAction({ action: "reset" })).ok).toBe(true);
+    const st = await p.adminState();
+    expect(st.items).toEqual([]); expect(st.jokes).toEqual([]); expect(st.muted).toEqual([]);
+    expect(st.settings.breakEveryMin).toBe(15);
+    const r = await p.beat({ ...beat, source: "requests", current: a.id! } as never);   // the Pi is still playing the old song
+    expect(r.commands.map((c: { type: string }) => c.type).sort()).toEqual(["clear", "skip"]);
+    const c = await p.submit("d1", T("SOS"));
+    expect(c.ok).toBe(true);
+    expect(Number(c.id!.slice(1))).toBeGreaterThan(Number(b.id!.slice(1)));   // ids never repeat: the Pi still remembers the old ones
+  });
+});

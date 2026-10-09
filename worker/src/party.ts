@@ -686,7 +686,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "off-2",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "reset-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, created_at"),
               ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL AND +status<>'deleted' ORDER BY ended_at DESC LIMIT 10")]
@@ -743,6 +743,15 @@ export class Party extends DurableObject<Env> {
         if (status !== "playing") return { ok: false, error: "Only the song on air can be replayed." };
         this.command("replay", a.id!);
         return { ok: true };
+      case "reset": {   // a fresh party: every song, guest, message and limit goes; settings and the id counter stay
+        const onAir = this.one("SELECT id FROM items WHERE status='playing' LIMIT 1");
+        const held = this.one("SELECT 1 AS q FROM items WHERE status='queued' LIMIT 1");
+        for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands"])
+          this.sql.exec(`DELETE FROM ${t}`);
+        if (onAir) this.command("skip", String(onAir.id));   // the console drops the old party's song and pushed item
+        if (held) this.command("clear");
+        return { ok: true };
+      }
       case "delete":
         if (!status) return { ok: false, error: "no such request" };
         if (!["pending", "preparing", "ready", "queued", "playing"].includes(status)) return { ok: true };   // already gone

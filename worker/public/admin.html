@@ -273,6 +273,10 @@
       <input type="range" id="breakEvery" min="5" max="30" step="5" value="10" aria-label="Minutes between bumpers">
       <div class="ticks" aria-hidden="true"><span>5</span><span>10</span><span>15</span><span>20</span><span>25</span><span>30</span></div>
     </div>
+    <div class="switch-row">
+      <div><div class="what">Fresh party</div><div class="why">Wipes every song, guest name, message, joke, mute and limit, and stops the request on air. Settings stay.</div></div>
+      <button class="sm danger" id="resetParty" type="button">Wipe</button>
+    </div>
   </section>
 </main>
 <script>
@@ -622,6 +626,7 @@ $("skip").onclick = (e) => {
     .finally(() => load());
 };
 $("releaseAll").onclick = (e) => act({ action: "release" }, e);
+$("resetParty").onclick = (e) => confirm("Wipe the whole party? Every song, name and message goes. This can't be undone.") && act({ action: "reset" }, e);
 $("bumper").onclick = (e) => studioUp() ? act({ action: "break" }, e) : offline();
 
 /* add a request: search, pick, then name and message, then add */
