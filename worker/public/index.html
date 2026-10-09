@@ -201,14 +201,12 @@
   .brand .maker::after { content: attr(data-t); position: absolute; inset: 0; text-shadow: none; color: transparent;
                          background: linear-gradient(#060402, #1f170a 40%, #3d2f15 80%, #574420);
                          -webkit-background-clip: text; background-clip: text; }
-  .brand .req { display: flex; align-items: flex-start; gap: 8px; }
+  .brand .req { display: flex; align-items: center; gap: 8px; }
   /* the lamp, set in the panel like a real indicator: a polished chrome bezel in a hole (the hole's top
      edge in shade, its lower lip lit), a dark recess inside the ring, and a domed glass lens with the
      room's light reflected near its top. Off, the lens is dark green glass, not grey */
-  /* the bezel spans the label's letters exactly: from the top of SPECIAL to the baseline of REQUEST
-     (Michroma: caps .78em tall, lines 1.2em apart, the first cap top .258em below the line box) */
-  .brand .bezel { --lbl: .64rem; position: relative; flex: none; width: calc(var(--lbl) * 1.98); height: calc(var(--lbl) * 1.98);
-                  margin-top: calc(var(--lbl) * .258); border-radius: 50%; display: grid; place-items: center;
+  /* the bezel, centered on the one-line label */
+  .brand .bezel { position: relative; flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
                   background: conic-gradient(from 210deg, #b9b6ae, #3e3c38 18%, #8e8b84 34%, #2a2926 52%, #85827b 72%, #4a4844 88%, #b9b6ae);   /* dark chrome: darker than the panel */
                   box-shadow: 0 -1px 0 #00000070, 0 1px 0 #ffffffc0, 0 1.5px 2px #00000045, inset 0 0 0 .5px #00000055; }
   .brand .bezel::before { content: ""; position: absolute; inset: 13%; border-radius: 50%; background: #0b0a08;
@@ -218,7 +216,7 @@
                           box-shadow: inset 0 -2px 3px #000a, inset 0 1px 1px #ffffff26; }
   .brand .lamp::after { content: ""; position: absolute; left: 20%; top: 10%; width: 46%; height: 32%; border-radius: 50%;
                         background: radial-gradient(ellipse at 50% 40%, #ffffffd8, #ffffff00 70%); }   /* the lens's highlight */
-  .brand .label { font: 400 .64rem/1.2 Michroma, sans-serif; letter-spacing: .08em; color: #15130f; text-align: right;
+  .brand .label { font: 400 clamp(.56rem, 2.8vw, .72rem)/1 Michroma, sans-serif; letter-spacing: .08em; color: #15130f; white-space: nowrap;
                   -webkit-text-stroke: .3px #15130f; text-shadow: 0 1px 0 #ffffff70; }   /* thick, dark ink: readable on a phone */
   /* preset buttons, as on an old car radio: chunky square black plastic in a recessed slot. A pressed one
      latches down until the phone may press again (a minute); tap toys of the whole party share the PA */
@@ -426,7 +424,7 @@
       <i class="screw bl"><b class="slit" style="--r: 81deg"></b></i><i class="screw br"><b class="slit" style="--r: 167deg"></b></i>
       <div class="brand">
         <span class="maker" data-t="matty" aria-hidden="true">matty</span>
-        <span class="req"><span class="label">SPECIAL<br>REQUEST</span><span class="bezel" aria-hidden="true"><span class="lamp" id="lamp"></span></span></span>
+        <span class="req"><span class="label">REQUESTED</span><span class="bezel" aria-hidden="true"><span class="lamp" id="lamp"></span></span></span>
       </div>
       <div class="glass" id="glass" role="button" tabindex="0" aria-label="Show the record sleeve">
         <div class="display" id="display"><div class="vfd"><div class="idle">Warming up…</div></div></div>
