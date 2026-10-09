@@ -294,3 +294,8 @@ def test_the_joke_and_announcement_writers_never_make_up_a_sender():
     assert "Uncle Ray" not in djline.JOKE_SYSTEM
     assert "invent a name" in djline.JOKE_SYSTEM and "invent a name" in djline.ANNOUNCE_SYSTEM
     assert "mystery guest" in djline.JOKE_SYSTEM and "mystery guest" in djline.ANNOUNCE_SYSTEM
+
+
+def test_the_intro_writer_is_told_to_make_plain_sense():
+    # "a 2012 song, which for OrrFM is practically a new release, so enjoy the wait" went on air
+    assert "plain sense" in djline.SYSTEM and "enjoy the wait" in djline.SYSTEM and "I'm told" in djline.SYSTEM

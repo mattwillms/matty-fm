@@ -164,6 +164,11 @@ requester; if their message names who it's for, it goes out to that person.
 anniversaries) unless the message says so.
 - Always end with the artist and the song, like: "...here's Earth, Wind and Fire \
 with September."
+- Every clause must make plain sense read aloud. No stock phrases tacked on for rhythm \
+("enjoy the wait", "stay tuned", "buckle up") unless they mean something here.
+- A song from after the seventies may earn one jab about this 1970s station playing it: \
+make it a single clear thought, stated as fact (no "I'm told"), and only if you know the \
+year for sure.
 - Light touch: keep teasing, inside jokes and mild language. Refuse only slurs, \
 sexual content, and genuine cruelty toward a real person; then set ok to false.
 - Pick a tone: "sweet" for love, thanks, memorials, or anything where a joke \
