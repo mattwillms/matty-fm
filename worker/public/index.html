@@ -61,19 +61,10 @@
                    background: linear-gradient(#ffffff1c, #fff0 45%),
                                repeating-linear-gradient(2deg, #5a3520 0 2px, #4a2b19 2px 5px, #63402a 5px 6px, #4f2e1b 6px 11px);   /* grain runs along it */
                    box-shadow: inset 0 1px 0 #ffffff2e, inset 0 -2px 3px #0005; }
-  /* a brass strap at each end, over the top of the riser and down onto the faceplate, where duct tape holds it */
-  .strap { position: absolute; bottom: -13px; width: 6px; height: 29px; border-radius: 2px 2px 1px 1px; z-index: 2; pointer-events: none;
-           background: linear-gradient(#fff3c8aa, transparent 3px), linear-gradient(90deg, #6e4f1a, #e2bd62 38%, #c79d3c 62%, #6a4b18);
-           box-shadow: 1px 1px 1px #0009, inset 0 1px 0 #fff6d0; }
-  .strap.l { left: 5px; } .strap.r { right: 5px; }
-  .strap::after { content: ""; position: absolute; left: -1px; right: -1px; top: 13px; height: 1px; background: #3d2b0c88; }   /* where it bends over the front edge */
-  .tape { position: absolute; bottom: -3px; left: -6px; width: 18px; height: 9px; transform: rotate(-7deg);
-          background: repeating-linear-gradient(90deg, #ffffff10 0 1px, transparent 1px 2px), repeating-linear-gradient(0deg, #00000014 0 1px, transparent 1px 2px),
-                      linear-gradient(#a3a5a2, #8a8c89);
-          clip-path: polygon(0 12%, 8% 0, 15% 10%, 92% 0, 100% 15%, 94% 50%, 100% 86%, 90% 100%, 80% 90%, 10% 100%, 0 88%, 5% 50%);
-          box-shadow: 0 1px 1px #0006; opacity: .96; }
-  .strap.r .tape { transform: rotate(9deg); left: -5px; }
   .seat { z-index: 1; }
+  /* two old cloth-covered cables from the riser to the set, each ending in a mono 1/4" plug pushed into a jack on
+     the top edge of the faceplate; drawn by layCables() so they follow the riser wherever the layout puts it */
+  .cables { position: absolute; left: 0; top: -60px; width: 100%; height: 64px; overflow: visible; pointer-events: none; z-index: 2; }
   .tube { position: relative; display: block; cursor: pointer; transform-origin: 50% 100%; --g: .8; -webkit-tap-highlight-color: transparent; }
   .tube svg { position: relative; display: block; overflow: visible; }
   .tube.t1 svg { width: 29px; height: 51px; } .tube.t2 svg { width: 19px; height: 42px; }   /* an octal power tube, and a slim 9-pin miniature */
@@ -414,8 +405,11 @@
              #f6edd9;
            background-position: 0 0, 0 30px, 0 0;
            box-shadow: 0 8px 18px #0008; border-radius: 2px; color: #233a63; font-family: Kalam, "Comic Sans MS", cursive; }
-  .jcard::before { content: ""; position: absolute; top: -9px; left: 50%; width: 70px; height: 18px; margin-left: -35px;
-                   background: #f1e4b8cc; transform: rotate(2deg); box-shadow: 0 1px 2px #0003; }
+  .jcard::before { content: ""; position: absolute; top: -9px; left: 50%; width: 72px; height: 19px; margin-left: -36px;   /* duct tape */
+                   background: repeating-linear-gradient(90deg, #ffffff12 0 1px, transparent 1px 2px), repeating-linear-gradient(0deg, #00000016 0 1px, transparent 1px 2px),
+                               linear-gradient(#a7a9a6, #8b8d8a);
+                   clip-path: polygon(0 10%, 5% 0, 9% 12%, 13% 0, 88% 0, 93% 14%, 97% 2%, 100% 18%, 97% 50%, 100% 84%, 95% 100%, 90% 88%, 86% 100%, 12% 100%, 7% 86%, 3% 100%, 0 90%, 3% 50%);
+                   transform: rotate(2deg); box-shadow: 0 1px 2px #0005; opacity: .97; }
   .jcard-h { margin: 0 0 2px; font-weight: 700; font-size: 1.15rem; line-height: 28px; color: #b2361f; }
   .jcard ol { margin: 0; padding: 0; list-style: none; counter-reset: trk; }
   .jcard li { counter-increment: trk; position: relative; line-height: 28px; font-size: 1.02rem; }
@@ -513,7 +507,6 @@
 
   <section class="cabinet" aria-label="On air">
     <div class="tubes" aria-hidden="true">
-      <i class="strap l"><b class="tape"></b></i><i class="strap r"><b class="tape"></b></i>
       <span class="seat"><span class="sock"></span><span class="tube t1"><span class="halo"></span><svg viewBox="0 0 26 46" aria-hidden="true">
           <defs>
             <linearGradient id="glA" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".18" stop-color="#fff" stop-opacity=".6"/><stop offset=".34" stop-color="#fff" stop-opacity=".08"/><stop offset=".78" stop-color="#fff" stop-opacity=".05"/><stop offset=".9" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity=".12"/></linearGradient>
@@ -1311,13 +1304,50 @@ const JOKE_STATUS = { pending: ["The DJ is reading it over", "prep"], preparing:
 [...$("slots").children].forEach((c) => {
   c.onclick = () => {
     if (c.classList.contains("used")) { dustPuff(c); return; }
-    c.classList.remove("spin"); void c.offsetWidth; c.classList.add("spin");
+    if (c.classList.contains("spin")) return;   // still flipping: let it land first
+    c.classList.add("spin");
   };
   c.onanimationend = () => c.classList.remove("spin");
 });
 // ---- the vacuum tubes ----
 // Their glow breathes: a few slow waves added together (never quite repeating), each tube on its own;
 // the circuit board behind the buttons follows their average, subdued, as if a hidden tube lights it.
+// The cables: one fairly direct with a natural sag, one throwing a loop before it plugs in. Striped cloth
+// jackets (a dashed stroke over the base colour), chrome plugs with grip ridges and a spring strain relief.
+function layCables() {
+  const cab = document.querySelector(".cabinet"), riser = document.querySelector(".tubes"); if (!cab || !riser) return;
+  const c = cab.getBoundingClientRect(), r = riser.getBoundingClientRect(), face = document.querySelector(".faceplate").getBoundingClientRect();
+  const X = (x) => +(x - c.left).toFixed(1), Y = (y) => +(y - c.top + 60).toFixed(1);   // into the svg's box (it starts 60px above)
+  const edge = Y(face.top), ry = Y(r.bottom - 7), L = X(r.left), R = X(r.right);
+  const p1 = Math.max(X(face.left) + 30, L - 22), p2 = Math.min(X(face.right) - 30, R + 26), top1 = edge - 20, top2 = edge - 20;
+  const plug = (x) => `
+    <g>
+      <ellipse cx="${x}" cy="${edge + .4}" rx="5.2" ry="1.7" fill="url(#jackRing)"/>
+      <rect x="${x - 2.3}" y="${edge - 3}" width="4.6" height="3.2" fill="#8d8a84"/>
+      <rect x="${x - 3.3}" y="${edge - 13.5}" width="6.6" height="10.8" rx="1.4" fill="url(#plugChrome)"/>
+      <path d="M${x - 3.2} ${edge - 11}H${x + 3.2}M${x - 3.2} ${edge - 9.4}H${x + 3.2}M${x - 3.2} ${edge - 7.8}H${x + 3.2}M${x - 3.2} ${edge - 6.2}H${x + 3.2}" stroke="#5c5953" stroke-width=".55" opacity=".8"/>
+      <path d="M${x - 1.8} ${edge - 13.5}L${x + 1.8} ${edge - 14.7}L${x - 1.8} ${edge - 15.9}L${x + 1.8} ${edge - 17.1}L${x - 1.8} ${edge - 18.3}L${x + 1.8} ${edge - 19.5}"
+            fill="none" stroke="#b9b5ad" stroke-width=".9"/>
+    </g>`;
+  const wire = (d, base, stripe, dash) => `<path d="${d}" fill="none" stroke="#0007" stroke-width="3.6" stroke-linecap="round" transform="translate(0 1.2)"/>
+    <path d="${d}" fill="none" stroke="${base}" stroke-width="2.8" stroke-linecap="round"/>
+    <path d="${d}" fill="none" stroke="${stripe}" stroke-width="2.8" stroke-dasharray="${dash}"/>
+    <path d="${d}" fill="none" stroke="#ffffff30" stroke-width=".8" transform="translate(-.5 -.7)"/>`;
+  // direct-ish: out of the riser's left end, a lazy sag, down into the left plug
+  const d1 = `M${L + 2} ${ry}C${L - 10} ${ry + 3} ${p1 + 9} ${top1 - 16} ${p1} ${top1}`;
+  // the loop: out of the right end, up and round in a curl, then down into the right plug
+  const lx = R + 8, ly = ry - 11;   // a tight curl, low, so it stays clear of the hen
+  const d2 = `M${R - 2} ${ry}C${R + 6} ${ry} ${lx + 6} ${ly + 6} ${lx + 5} ${ly}C${lx + 4} ${ly - 6} ${lx - 5} ${ly - 6} ${lx - 5} ${ly}` +
+             `C${lx - 4} ${ly + 6} ${lx + 5} ${ly + 5} ${lx + 8} ${ly - 1}C${lx + 11} ${ly - 6} ${p2 - 6} ${top2 - 14} ${p2} ${top2}`;
+  let svg = cab.querySelector(".cables");
+  if (!svg) { svg = document.createElementNS("http://www.w3.org/2000/svg", "svg"); svg.setAttribute("class", "cables"); svg.setAttribute("aria-hidden", "true"); cab.prepend(svg); }
+  svg.innerHTML = `<defs>
+      <linearGradient id="plugChrome" x1="0" x2="1"><stop offset="0" stop-color="#6f6c66"/><stop offset=".3" stop-color="#f4f2ee"/><stop offset=".55" stop-color="#a9a59d"/><stop offset=".8" stop-color="#e2dfd8"/><stop offset="1" stop-color="#5d5a55"/></linearGradient>
+      <radialGradient id="jackRing" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#111"/><stop offset=".55" stop-color="#2a2724"/><stop offset=".7" stop-color="#cfcbc3"/><stop offset="1" stop-color="#6d6962"/></radialGradient>
+    </defs>
+    ${wire(d1, "#2b2420", "#cdb68c", "1.4 2.2")}${wire(d2, "#6e1a12", "#ead9b6", "1 2.6")}${plug(p1)}${plug(p2)}`;
+}
+addEventListener("load", layCables); addEventListener("resize", layCables);
 // Each visit racks them one tall and one short, the tall one on either side.
 (() => {
   const proto = { tall: document.querySelector(".tube.t1"), short: document.querySelector(".tube.t2") };
