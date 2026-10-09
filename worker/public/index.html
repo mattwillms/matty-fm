@@ -57,8 +57,20 @@
   .tubes { isolation: isolate; }
   .tubes::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 14px; border-radius: 6px 6px 0 0; z-index: 0;
                    background: linear-gradient(#ffffff1c, #fff0 45%),
-                               repeating-linear-gradient(92deg, #5a3520 0 2px, #4a2b19 2px 5px, #63402a 5px 6px, #4f2e1b 6px 11px);
+                               repeating-linear-gradient(2deg, #5a3520 0 2px, #4a2b19 2px 5px, #63402a 5px 6px, #4f2e1b 6px 11px);   /* grain runs along it */
                    box-shadow: inset 0 1px 0 #ffffff2e, inset 0 -2px 3px #0005; }
+  /* a brass strap at each end, over the top of the riser and down onto the faceplate, where duct tape holds it */
+  .strap { position: absolute; bottom: -13px; width: 6px; height: 29px; border-radius: 2px 2px 1px 1px; z-index: 2; pointer-events: none;
+           background: linear-gradient(#fff3c8aa, transparent 3px), linear-gradient(90deg, #6e4f1a, #e2bd62 38%, #c79d3c 62%, #6a4b18);
+           box-shadow: 1px 1px 1px #0009, inset 0 1px 0 #fff6d0; }
+  .strap.l { left: 5px; } .strap.r { right: 5px; }
+  .strap::after { content: ""; position: absolute; left: -1px; right: -1px; top: 13px; height: 1px; background: #3d2b0c88; }   /* where it bends over the front edge */
+  .tape { position: absolute; bottom: -3px; left: -6px; width: 18px; height: 9px; transform: rotate(-7deg);
+          background: repeating-linear-gradient(90deg, #ffffff10 0 1px, transparent 1px 2px), repeating-linear-gradient(0deg, #00000014 0 1px, transparent 1px 2px),
+                      linear-gradient(#a3a5a2, #8a8c89);
+          clip-path: polygon(0 12%, 8% 0, 15% 10%, 92% 0, 100% 15%, 94% 50%, 100% 86%, 90% 100%, 80% 90%, 10% 100%, 0 88%, 5% 50%);
+          box-shadow: 0 1px 1px #0006; opacity: .96; }
+  .strap.r .tape { transform: rotate(9deg); left: -5px; }
   .seat { z-index: 1; }
   .tube { position: relative; display: block; cursor: pointer; transform-origin: 50% 100%; --g: .8; -webkit-tap-highlight-color: transparent; }
   .tube svg { position: relative; display: block; overflow: visible; }
@@ -499,6 +511,7 @@
 
   <section class="cabinet" aria-label="On air">
     <div class="tubes" aria-hidden="true">
+      <i class="strap l"><b class="tape"></b></i><i class="strap r"><b class="tape"></b></i>
       <span class="seat"><span class="sock"></span><span class="tube t1"><span class="halo"></span><svg viewBox="0 0 26 46" aria-hidden="true">
           <defs>
             <linearGradient id="glA" x1="0" x2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".18" stop-color="#fff" stop-opacity=".6"/><stop offset=".34" stop-color="#fff" stop-opacity=".08"/><stop offset=".78" stop-color="#fff" stop-opacity=".05"/><stop offset=".9" stop-color="#fff" stop-opacity=".35"/><stop offset="1" stop-color="#fff" stop-opacity=".12"/></linearGradient>
