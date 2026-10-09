@@ -260,3 +260,30 @@ describe("preset sound buttons", () => {
     expect((await p.guestPad("d9", 1)).ok).toBe(false);
   });
 });
+
+describe("station off", () => {
+  it("is a setting the studio hears on every beat (with family mode, which it never got before)", async () => {
+    const p = stub("off-1");
+    expect((await p.beat({ ...beat } as never)).settings).toMatchObject({ stationOff: false, familyMode: true });
+    await p.adminAction({ action: "settings", settings: { stationOff: true, familyMode: false } });
+    expect((await p.adminState()).settings.stationOff).toBe(true);
+    expect((await p.beat({ ...beat } as never)).settings).toMatchObject({ stationOff: true, familyMode: false });
+    expect((await p.guestState("d1")).stationOff).toBe(true);
+  });
+
+  it("while the Pi is off nothing changes state and nothing is handed out; a queued song goes back in line", async () => {
+    const p = stub("off-2");
+    const a = await p.submit("d1", T("Waterloo"));
+    const b = await p.submit("d2", T("Mamma Mia"));
+    await sql(p, "UPDATE items SET status='playing', started_at=? WHERE id=?", Date.now(), a.id!);
+    await sql(p, "UPDATE items SET status='queued' WHERE id=?", b.id!);
+    await p.adminAction({ action: "settings", settings: { stationOff: true } });
+    const st = async (id: string) => runInDurableObject(p, async (_i: Party, s) =>
+      String(s.storage.sql.exec("SELECT status FROM items WHERE id=?", id).one().status));
+    expect(await st(b.id!)).toBe("ready");   // off the console: back in line
+    const r = await p.beat({ ...beat, source: "off", wantNext: true } as never);
+    expect(r.next).toBeNull();
+    expect(r.commands).toEqual([]);
+    expect(await st(a.id!)).toBe("playing");   // the Pi's "off" says nothing about it: left as it was
+  });
+});

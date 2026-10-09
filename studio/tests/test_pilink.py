@@ -63,3 +63,16 @@ def test_voice_break_sends_where_he_is_talking():
         lambda r: seen.append(json.loads(r.content)) or httpx.Response(200, json={}))))
     pi.voice("breaks/live-1.mp3", 6.0, speech=[(0.3, 2.0), (3.6, 5.5)])
     assert seen[0]["speech"] == [[0.3, 2.0], [3.6, 5.5]]
+
+
+def test_power_switches_the_console_off_and_on():
+    seen = []
+
+    def handler(r):
+        seen.append((r.url.path, json.loads(r.content or b"{}")))
+        return httpx.Response(200, json={"source": "off", "current": "", "remaining": -1, "queued": 0})
+
+    pi = PiLink("http://pi:8042", "tok", httpx.Client(transport=httpx.MockTransport(handler)))
+    assert pi.power(False)["source"] == "off"
+    pi.power(True)
+    assert seen == [("/power", {"on": False}), ("/power", {"on": True})]

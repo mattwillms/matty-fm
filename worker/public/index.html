@@ -418,6 +418,7 @@
 
   <p id="gate" class="notice err" hidden>Scan the party QR code to open the request line. Stuck? Ask Matt.</p>
   <p id="onbreak" class="notice" hidden>The DJ is on a short break. Your request is saved and will play.</p>
+  <p id="offair" class="notice" hidden>OrrFM is off the air for now. Requests still save and play when it's back on.</p>
 
   <section class="cabinet" aria-label="On air">
     <div class="faceplate">
@@ -1378,7 +1379,8 @@ async function refresh() {
   try {
     const s = await api("/api/state", { signal: AbortSignal.timeout(8000) });   // a hung poll never piles up
     if (!s || !Array.isArray(s.upNext)) return;   // an error reply is not "requests closed": keep what's shown
-    $("onbreak").hidden = !s.djOnBreak;
+    $("offair").hidden = !s.stationOff;
+    $("onbreak").hidden = !s.djOnBreak || Boolean(s.stationOff);   // off air says it better
     accepting = s.accepting; spent = s.spent || []; familyMode = s.familyMode !== false;
     if (s.limits) { limits = s.limits; limitsAt = Date.now(); }
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;

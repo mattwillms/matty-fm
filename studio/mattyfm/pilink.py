@@ -38,5 +38,10 @@ class PiLink:
         """A sound pad over whatever is on air (a path on the file server, e.g. breaks/pad-1.mp3)."""
         self._post("/fx", {"url": url})
 
+    def power(self, on: bool) -> dict:
+        """Station off: the console fades every channel to silence, stops every player and drops
+        SomaFM's stream. On: SomaFM fades back in."""
+        return self._post("/power", {"on": on})
+
     def clear(self) -> None:
         self._post("/clear")

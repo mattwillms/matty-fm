@@ -125,6 +125,9 @@
                    background: var(--ink); transition: transform .18s ease; }
   .toggle[aria-checked="true"] { background: var(--ok); }
   .toggle[aria-checked="true"].warn { background: var(--orange); }
+  .toggle[aria-checked="true"].danger { background: var(--bad); }
+  .switch-row.off-row { margin-bottom: 6px; }
+  .chipstat.off { background: #e8644a26; color: var(--bad); box-shadow: inset 0 0 0 1.5px var(--bad); }
   .toggle[aria-checked="true"]::after { transform: translateX(22px); }
 
   /* ---- queue rows ---- */
@@ -228,6 +231,10 @@
 
   <section aria-label="Station settings">
     <h2>Station</h2>
+    <div class="switch-row off-row">
+      <div><div class="what">Station off</div><div class="why">Fades everything to silence over 3 seconds, then stops every player and disconnects from SomaFM. Songs keep getting prepared; requests wait. Turn off to come back on SomaFM.</div></div>
+      <button class="toggle danger" role="switch" id="stationOff" aria-label="Station off"></button>
+    </div>
     <p class="group">Guests</p>
     <div class="switch-row">
       <div><div class="what">Requests open</div><div class="why">Off for last call: guests can't add songs or messages; the line still plays out.</div></div>
@@ -325,7 +332,8 @@ function btn(cls, label, fn, title) { const b = el("button", cls, label); b.oncl
 
 function renderStatus() {
   const h = state.health, age = h.ageS, ok = age != null && age <= 60;
-  const src = { requests: ["Request on air", "var(--ok)"], soma: ["SomaFM on air", "var(--ok)"], backup: ["Backup playlist", "var(--gold)"] }[h.source]
+  const src = { requests: ["Request on air", "var(--ok)"], soma: ["SomaFM on air", "var(--ok)"], backup: ["Backup playlist", "var(--gold)"],
+                off: ["Off air", "var(--bad)"] }[h.source]
     || ["Console unreachable", "var(--bad)"];
   $("status").replaceChildren(
     dotted(ok ? "var(--ok)" : "var(--bad)", ok ? "Studio OK" : age == null ? "Studio offline" : `Studio silent ${age}s`),
@@ -337,6 +345,7 @@ function renderStatus() {
 // Anything not the party's normal running is flagged at the top, so a switch left on is never forgotten.
 function modeChips() {
   const s = state.settings, out = [];
+  if (s.stationOff) out.push(el("span", "chipstat off", "Station off"));
   if (s.freePlay) out.push(el("span", "chipstat", "Free play"));
   if (s.familyMode === false) out.push(el("span", "chipstat", "PG-13"));
   if (!s.accepting) out.push(el("span", "chipstat", "Requests closed"));
@@ -402,6 +411,11 @@ function renderSwitches() {
   set("somaOnly", s.somaOnly, "somaOnly");
   set("freePlay", s.freePlay, "freePlay");
   set("familyMode", s.familyMode, "familyMode");
+  set("stationOff", s.stationOff, "stationOff");
+  if (!s.stationOff) {   // switching off silences the party: ask first (switching back on doesn't)
+    const b = $("stationOff");
+    b.onclick = (e) => confirm("Switch the station off? Everything fades to silence and stops.") && act({ action: "settings", settings: { stationOff: true } }, e);
+  }
   const r = $("breakEvery");
   if (!sliding) { r.value = String(s.breakEveryMin ?? 10); showEvery(r); }
 }

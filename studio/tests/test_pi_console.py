@@ -422,3 +422,30 @@ def test_the_first_dip_fades_down_before_he_talks():
     d = console.FIRST_FADE_S                                     # everything after moves with him
     assert at(d + 2.0 + console.DUCK_HOLD_S + console.DUCK_RELEASE_S + 0.1) == 100
     assert at(d + 3.52) == console.DUCK_PCT
+
+
+def test_power_off_fades_everything_to_silence_then_stops_every_player():
+    eng, clock, players, mixer = make()
+    eng.push(item("r1")); run(eng, clock, 30)   # a request on air
+    eng.fx("breaks/pad-1.mp3")
+    eng.power(False)
+    run(eng, clock, 1.5)
+    assert 0 < mixer.level["DeckAVol"] < 100 or 0 < mixer.level["DeckBVol"] < 100   # fading, not cut
+    run(eng, clock, 2.5)
+    assert all(mixer.level[c] == 0 for c in ("SomaVol", "DeckAVol", "DeckBVol", "DjVol"))
+    assert not players.alive   # decks, DJ and pads all stopped
+    assert eng.status()["source"] == "off" and eng.off
+
+
+def test_while_off_nothing_plays_and_power_on_brings_somafm_back():
+    eng, clock, players, mixer = make()
+    eng.power(False); run(eng, clock, 4)
+    eng.push(item("r2")); eng.fx("breaks/pad-2.mp3")
+    assert eng.voice_break("breaks/x.mp3", 3.0) is False
+    run(eng, clock, 10)
+    assert not players.alive and eng.status() == {**eng.status(), "source": "off", "queued": 0}
+    eng.power(True)
+    run(eng, clock, 6)
+    assert eng.status()["source"] == "soma" and mixer.level["SomaVol"] == 100 and mixer.level["DjVol"] == 100
+    eng.push(item("r3")); run(eng, clock, 8)
+    assert eng.status()["source"] == "requests"   # requests play again

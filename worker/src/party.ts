@@ -135,6 +135,7 @@ export class Party extends DurableObject<Env> {
       breakEveryMin: Number(this.setting("breakEveryMin", "10")),
       freePlay: this.setting("freePlay", "0") === "1",   // no per-phone limits on songs or messages
       familyMode: this.setting("familyMode", "1") === "1",   // clean songs only, a family-friendly DJ (off: PG-13)
+      stationOff: this.setting("stationOff", "0") === "1",   // the Pi fades to silence and stops streaming altogether
     };
   }
   private command(type: "skip" | "clear" | "break" | "replay" | `pad${number}`, target: string | null = null): void {
@@ -464,6 +465,7 @@ export class Party extends DurableObject<Env> {
       spent: asked.filter((a) => Number(a.n) >= MAX_ASKS_PER_SONG).map((a) => ({ title: String(a.title), artist: String(a.artist) })),
       accepting: this.flags().accepting,
       familyMode: this.flags().familyMode,
+      stationOff: this.flags().stationOff,
       myJokes: this.all("SELECT id, text, status, kind, urgent, anon FROM jokes WHERE device=? AND status<>'deleted' ORDER BY created_at DESC LIMIT 3", device)
         .map((j) => ({ id: String(j.id), text: String(j.text), status: String(j.status), kind: String(j.kind ?? "joke"),
                        urgent: Boolean(j.urgent), anon: Boolean(j.anon) })),
@@ -514,7 +516,8 @@ export class Party extends DurableObject<Env> {
     // "silence": the studio couldn't reach the Pi, so this beat says nothing about what's playing.
     // Change no song's state and hand nothing out (that marked the on-air song played and handed a
     // second song out); preparation carries on.
-    const unknown = b.source === "silence";
+    // "off": the host switched the station off; the Pi plays nothing and reports nothing either.
+    const unknown = b.source === "silence" || b.source === "off";
     if (!unknown) this.followStation(b, now);
     const jobs = [];
     for (const i of this.all(`SELECT * FROM items WHERE status='pending' ORDER BY rank LIMIT ?`, Math.max(0, Number(b.want) || 0))) {
@@ -548,7 +551,8 @@ export class Party extends DurableObject<Env> {
     }
     return {
       commands,
-      settings: { somaOnly: f.somaOnly, stopAfterCurrent: f.stopAfterCurrent, breakEveryMin: f.breakEveryMin },
+      settings: { somaOnly: f.somaOnly, stopAfterCurrent: f.stopAfterCurrent, breakEveryMin: f.breakEveryMin,
+                  familyMode: f.familyMode, stationOff: f.stationOff },
       next: next ? this.studioItem(next) : null,
       jobs,
       jokeJobs,
@@ -679,7 +683,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "pads-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "off-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, created_at"),
               ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL AND +status<>'deleted' ORDER BY ended_at DESC LIMIT 10")]
@@ -703,7 +707,7 @@ export class Party extends DurableObject<Env> {
 
   async adminAction(a: {
     action: string; id?: string; dir?: -1 | 1; device?: string; pad?: number; track?: Track; name?: string; text?: string;
-    message?: string; settings?: Partial<Record<"accepting" | "stopAfterCurrent" | "somaOnly", boolean>> & { breakEveryMin?: number };
+    message?: string; settings?: Partial<Record<"accepting" | "stopAfterCurrent" | "somaOnly" | "freePlay" | "familyMode" | "stationOff", boolean>> & { breakEveryMin?: number };
   }) {
     const status = a.id ? String(this.one("SELECT status FROM items WHERE id=?", a.id)?.status ?? "") : "";
     switch (a.action) {
@@ -811,12 +815,14 @@ export class Party extends DurableObject<Env> {
         return { ok: true };
       case "settings":
         for (const [k, v] of Object.entries(a.settings ?? {})) {   // real true/false only: "false" is not true
-          if (["accepting", "stopAfterCurrent", "somaOnly", "freePlay", "familyMode"].includes(k) && typeof v === "boolean") this.set(k, v ? "1" : "0");
+          if (["accepting", "stopAfterCurrent", "somaOnly", "freePlay", "familyMode", "stationOff"].includes(k) && typeof v === "boolean") this.set(k, v ? "1" : "0");
         }
         const every = a.settings?.breakEveryMin;
         if (typeof every === "number" && Number.isFinite(every))
           this.set("breakEveryMin", String(Math.min(30, Math.max(5, Math.round(every / 5) * 5))));
         if (a.settings?.somaOnly === true) this.skip();   // the studio cuts the song on air: a skip, not a cut-off
+        if (a.settings?.stationOff === true)   // the Pi drops what it holds when it switches off: back in line
+          this.sql.exec("UPDATE items SET status='ready' WHERE status='queued'");
         if (a.settings?.somaOnly === true || a.settings?.stopAfterCurrent === true) {
           this.command("clear");
           this.sql.exec("UPDATE items SET status='ready' WHERE status='queued'");

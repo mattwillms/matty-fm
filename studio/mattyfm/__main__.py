@@ -346,6 +346,15 @@ def main() -> None:
                 with lock:
                     working.add(job["id"])
                 pool.submit(run_job, job)
+            # Station off (admin): the console fades to silence and stops everything. Songs still get
+            # prepared; nothing is pushed, no breaks, pads or commands until it's switched back on.
+            off = bool(reply["settings"].get("stationOff"))
+            if off != (status["source"] == "off"):
+                station.power(not off)
+                log.info("station switched %s", "off" if off else "on")
+            if off:
+                time.sleep(max(0.0, BEAT_S - (time.monotonic() - started)))
+                continue
             for c in reply["commands"]:
                 pad = re.fullmatch(r"pad([1-5])", c["type"])
                 if pad:   # a sound pad from the admin page: straight to the console's fx channel

@@ -18,6 +18,7 @@ last OUTRO_S seconds and SomaFM fades back in after the gap.
 
 The studio (workstation) drives this over a token-protected HTTP API:
   GET /status  POST /push {id,title,artist,songS,voiceS}  POST /skip  POST /clear  POST /fx {url}
+  POST /power {on}: off fades every channel to silence, stops every player and SomaFM's stream
 Song and voice files come from the workstation's file server.
 
 Config: /etc/mattyfm.conf — CARD, FILES_URL, SOMA_URLS, TOKEN, PORT.
@@ -44,6 +45,7 @@ PLAIN_UP_S = 1.5        # incoming fade without a voice
 PLAIN_FADE_S = DOWN_S   # kept for skips
 OUTRO_S = 3.0           # song -> SomaFM: the song fades out over its last seconds
 SOMA_UP_S = 2.0
+OFF_FADE_S = 3.0        # station off: everything fades to silence over this, then every player stops
 DUCK_PCT = 75           # voice breaks: the on-air channel dips to this (softvol %, -60..0 dB: 75 = -15 dB, the music stays faintly under the voice)
 DUCK_S = 0.5            # dip over this, then the DJ starts
 RESTORE_S = 1.0         # back to full over this after the DJ ends
@@ -132,6 +134,8 @@ class Engine:
         self.recent: list[tuple[str, float]] = []   # (id, start time) of the last requests that started, newest last
         self.soma_down_since: float | None = None
         self.soma_up_since: float | None = None
+        self.off = False                          # the host switched the station off (SomaFM disconnects too)
+        self.stop_all_at: float | None = None     # when the off fade ends and the players stop
 
     def soma_up(self) -> bool:   # replaced at runtime by the SomaFM reader's health
         return True
@@ -158,6 +162,9 @@ class Engine:
         for k in ("songS", "voiceS"):   # a NaN or a string here would make every tick raise
             seconds(item.get(k, 0.0))
         with self.lock:
+            if self.off:
+                self.log(f"push {item['id']} ignored: the station is off")
+                return
             _, on_air = self.on_air
             starting = self.pending_play and self.pending_play[1].endswith(f"/{item['id']}.mp3")
             if (on_air and on_air.get("id") == item["id"]) or starting:
@@ -167,6 +174,29 @@ class Engine:
             self.queued = item
             self.log(f"push {item['id']}: {item.get('artist')} - {item.get('title')} "
                      f"(song {item.get('songS', 0):.0f}s, voice {item.get('voiceS', 0):.1f}s)")
+
+    def power(self, on: bool) -> None:
+        """Station off: every channel fades to silence, then every player stops (SomaReader sees
+        `off` and drops its stream). On: SomaFM fades back in; requests play again."""
+        with self.lock:
+            now = self.clock()
+            if not on and not self.off:
+                self.off = True
+                self.queued, self.pending_play, self.pending_dj, self.pending_break = None, None, None, None
+                self.transition_until = 0.0
+                self.ramps = [(c, lvl, 0, now, OFF_FADE_S) for c, lvl in self.mixer.level.items() if lvl > 0]
+                self.stop_all_at = now + OFF_FADE_S + 0.2
+                self.on_air = ("off", None)
+                self.log(f"power off: fading to silence over {OFF_FADE_S:.0f}s")
+            elif on and self.off:
+                self.off, self.stop_all_at, self.ramps = False, None, []
+                for c in self.mixer.level:
+                    self.mixer.set(c, 0 if c in ("SomaVol", "DeckAVol", "DeckBVol") else 100)
+                self.ramps.append(("SomaVol", 0, 100, now + 1.0, SOMA_UP_S))   # a second for the stream to reconnect
+                self.on_air = ("soma", None)
+                self.soma_down_since = self.soma_up_since = None
+                self.transition_until = now + 1.0 + SOMA_UP_S
+                self.log("power on: SomaFM back")
 
     def clear(self) -> None:
         with self.lock:
@@ -179,6 +209,9 @@ class Engine:
         it), or back to SomaFM with the skip bumper over the fade."""
         with self.lock:
             ch, it = self.on_air
+            if ch == "off":
+                self.log("skip ignored: the station is off")
+                return
             if ch == "soma":
                 self.log("skip ignored: nothing but SomaFM on air")
                 return
@@ -199,6 +232,8 @@ class Engine:
         with self.lock:
             now = self.clock()
             ch, it = self.on_air
+            if self.off:
+                return False
             if soma_only and (ch != "soma" or self.queued or now < self.transition_until or self.pending_break):
                 self.log("voice break declined: not on settled SomaFM")
                 return False
@@ -259,13 +294,17 @@ class Engine:
     def fx(self, url: str) -> None:
         """A sound pad: its own channel, laid over whatever is on air. A new tap replaces the last."""
         with self.lock:
+            if self.off:
+                return
             self.players.play("fx", self.resolve(url))
             self.log(f"pad: {url}")
 
     def status(self) -> dict:
         with self.lock:
             ch, it = self.on_air
-            if ch == "soma":
+            if ch == "off":
+                source = "off"
+            elif ch == "soma":
                 source = "soma"
             elif it and it.get("backup"):
                 source = "backup"
@@ -346,6 +385,13 @@ class Engine:
                 # sent every step: a softvol control created mid-fade must not keep its default
                 self.mixer.set(control, lvl)
             self.ramps = [r for r in self.ramps if now - r[3] < r[4]]
+            if self.off:   # faded out: stop every player once the fade is done, then nothing more
+                if self.stop_all_at is not None and now >= self.stop_all_at:
+                    for ch in ("deckA", "deckB", "dj", "fx"):
+                        self.players.stop(ch)
+                    self.stop_all_at = None
+                    self.log("power off: silent, every player stopped")
+                return
             if self.pending_play and now >= self.pending_play[2]:
                 ch, url, _ = self.pending_play
                 self.players.play(ch, url)
@@ -445,8 +491,15 @@ class Mixer:
 class SomaReader:
     """Streams SomaFM into its decoder; health = bytes arrived recently."""
 
-    def __init__(self, urls: list[str]):
+    def __init__(self, urls: list[str], wanted=lambda: True):
         self.urls, self.health, self.proc = urls, FlowHealth(), None
+        self.wanted = wanted   # False while the station is off: no stream, no decoder
+
+    def _quiet(self) -> None:
+        if self.proc is not None and self.proc.poll() is None:
+            self.proc.kill()
+            self.proc.wait()
+        self.proc = None
 
     def _decoder(self):
         if self.proc is None or self.proc.poll() is not None:
@@ -461,6 +514,11 @@ class SomaReader:
     def run(self) -> None:
         i = 0
         while True:
+            if not self.wanted():   # station off: hold no connection to SomaFM at all
+                self._quiet()
+                self.health.reset()
+                time.sleep(0.5)
+                continue
             url = self.urls[i % len(self.urls)]
             log(f"soma: connecting {url}")
             try:
@@ -468,6 +526,9 @@ class SomaReader:
                 with urllib.request.urlopen(req, timeout=SOMA_STALL_S) as r:
                     log(f"soma: connected ({r.status})")
                     while data := r.read(CHUNK):
+                        if not self.wanted():
+                            log("soma: station off, disconnected")
+                            break
                         self.health.saw_bytes()
                         dec = self._decoder()
                         dec.stdin.write(data)
@@ -546,6 +607,10 @@ def serve(engine: Engine, token: str, port: int) -> None:
                     engine.clear()
                 elif self.path == "/fx":
                     engine.fx(str(body["url"]))
+                elif self.path == "/power":
+                    if not isinstance(body.get("on"), bool):
+                        raise ValueError("power needs on: true or false")
+                    engine.power(body["on"])
                 else:
                     return self._reply(404, {})
             except (ValueError, KeyError, TypeError) as e:   # a bad request is answered, never left hanging
@@ -563,7 +628,8 @@ def main(conf_path: str) -> None:
     mixer = Mixer(conf["CARD"])
     players = Players()
     engine = Engine(conf["FILES_URL"], clock=time.monotonic, players=players, mixer=mixer)
-    soma = SomaReader(conf["SOMA_URLS"].split())
+    # off: SomaFM keeps flowing through the fade, and hangs up once it's silent
+    soma = SomaReader(conf["SOMA_URLS"].split(), wanted=lambda: not (engine.off and engine.stop_all_at is None))
     engine.soma_up = soma.health.up
     engine.backup = load_backup(conf["FILES_URL"])
     threads = [threading.Thread(target=soma.run, daemon=True, name="soma"),
