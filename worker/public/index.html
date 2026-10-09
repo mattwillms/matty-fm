@@ -343,8 +343,8 @@
   .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; } .row > * { flex: 1 1 7.5em; padding-inline: 12px; }   /* wraps at big zoom, never off-screen */
   .hint { margin: 12px 0 0; color: var(--cream-dim); font-size: .95rem; }
   /* who's listening: asked once, then every request and message goes out under that name */
-  #who { display: none; } body.anon #who { display: block; }
-  body.anon #find, body.anon #form, body.anon #jokeBox, body.anon #mineBox { display: none; }
+  #who { display: none; } body.noname #who { display: block; }
+  body.noname #find, body.noname #form, body.noname #jokeBox, body.noname #mineBox { display: none; }
   #who h2 { margin-bottom: 4px; }
   #who form { display: flex; gap: 10px; margin-top: 12px; } #who input { flex: 1; min-width: 0; } #who button { flex: none; }
   .as { margin: 14px 0 0; color: var(--cream-dim); font-size: .95rem; }
@@ -497,7 +497,10 @@
     <label for="joke" id="jokeLabel">Your joke</label><textarea id="joke" maxlength="400"></textarea>
     <label class="check" id="urgentRow" hidden><input type="checkbox" id="urgent">
       <span>Urgent: read it as soon as it's ready <small id="urgentNote">(one an hour)</small></span></label>
-    <p class="as">Sending as <b class="myName"></b><button class="link rename" type="button">Change</button></p>
+    <label class="check" id="anonRow"><input type="checkbox" id="anon">
+      <span>Send anonymously <small id="anonNote">(one a night)</small></span></label>
+    <p class="as" id="jokeAs">Sending as <b class="myName"></b><button class="link rename" type="button">Change</button></p>
+    <p class="as" id="jokeAnonAs" hidden>The DJ will say it's from <b>a mystery guest</b>. The host still sees who sent it.</p>
     <div class="row"><button id="jsend" type="button">Send to the DJ</button></div>
     <p id="jokeErr" class="hint" style="color:var(--bad)"></p>
     <p class="jokes-head" id="myJokesHead" hidden>Yours</p>
@@ -1082,7 +1085,7 @@ let nameHere = "";   // the fallback when the browser won't store it (some priva
 function myName() { try { return (localStorage.getItem("mfm_name") || nameHere).trim(); } catch { return nameHere; } }
 function showName() {
   const n = myName();
-  document.body.classList.toggle("anon", !n);
+  document.body.classList.toggle("noname", !n);
   document.querySelectorAll(".myName").forEach((b) => b.textContent = n);
 }
 $("whoForm").onsubmit = (e) => {
@@ -1096,7 +1099,7 @@ $("whoForm").onsubmit = (e) => {
 };
 document.querySelectorAll(".rename").forEach((b) => b.onclick = () => {
   $("whoName").value = myName(); $("whoBack").hidden = false;
-  document.body.classList.add("anon");
+  document.body.classList.add("noname");
   $("who").scrollIntoView({ behavior: "smooth", block: "center" }); $("whoName").focus({ preventScroll: true });
 });
 $("whoKeep").onclick = showName;
@@ -1110,7 +1113,7 @@ function showJokes(list) {
   $("myJokes").replaceChildren(...(list || []).map((j) => {
     const [label, cls] = JOKE_STATUS[j.status] || [j.status, ""];
     const li = el("li");
-    const what = j.kind === "announcement" ? (j.urgent ? "Urgent announcement · " : "Announcement · ") : "";
+    const what = (j.anon ? "Anonymous · " : "") + (j.kind === "announcement" ? (j.urgent ? "Urgent announcement · " : "Announcement · ") : "");
     li.append(el("div", "jt", `“${j.text}”`), el("div", "js " + cls, what + label));
     return li;
   }));
@@ -1126,13 +1129,13 @@ document.querySelectorAll(".seg .segb").forEach((b) => b.onclick = () => {
 });
 $("jsend").onclick = () => busy($("jsend"), "Sending…", async () => {
   try {
-    const urgent = sendKind === "announcement" && $("urgent").checked;
+    const urgent = sendKind === "announcement" && $("urgent").checked, anon = $("anon").checked && !urgent;
     const r = await api("/api/joke", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: myName(), text: $("joke").value, kind: sendKind, urgent }), signal: AbortSignal.timeout(15000) });
+      body: JSON.stringify({ name: myName(), text: $("joke").value, kind: sendKind, urgent, anon }), signal: AbortSignal.timeout(15000) });
     if (!r.ok) { $("jokeErr").textContent = r.error; toast(r.error, true); return; }
     $("jokeErr").textContent = "";
     toast(urgent ? "Sent! The DJ will read it as soon as it's ready." : "Sent! The DJ will read it between songs.");
-    $("joke").value = ""; $("urgent").checked = false; refresh();   // the next poll brings the new limits
+    $("joke").value = ""; $("urgent").checked = false; $("anon").checked = false; refresh();   // the next poll brings the new limits
   } catch (e) {
     const m = e.message === "gate" ? $("gate").textContent : "Didn't send. Check your connection and try again.";
     $("jokeErr").textContent = m; toast(m, true);
@@ -1195,10 +1198,17 @@ function showLimits() {
   const blocked = !free && limits.waiting && !urgent;
   say("msgAllow", free ? "<b>Free play:</b> send as many as you like."
     : limits.waiting ? "<b>Yours is in line.</b> Send another once the DJ has read it." : "");
+  // anonymous: one a night, never urgent (urgent and anonymous switch each other off)
+  const anonUsed = !free && limits.anonLeft === false;
+  if (anonUsed || urgent) $("anon").checked = false;
+  $("anon").disabled = anonUsed;
+  $("anonNote").textContent = free ? "(free play)" : anonUsed ? "(you've used yours tonight)" : "(one a night)";
+  $("jokeAs").hidden = $("anon").checked; $("jokeAnonAs").hidden = !$("anon").checked;
   if (!$("jsend").classList.contains("busy")) $("jsend").disabled = !accepting || blocked;
 }
 setInterval(showLimits, 10000);   // the urgent countdown
 $("urgent").addEventListener("change", showLimits);
+$("anon").addEventListener("change", () => { if ($("anon").checked) $("urgent").checked = false; showLimits(); });
 let accepting = true, familyMode = true;
 
 // Request again: one tap, once per song. Spent (asked twice): a circle with a slash.

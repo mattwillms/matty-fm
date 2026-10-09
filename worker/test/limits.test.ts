@@ -196,3 +196,39 @@ describe("family mode", () => {
     expect((await p.submit("d1", { track: { ...T("Other").track, explicit: true }, name: "Ann" })).ok).toBe(true);
   });
 });
+
+describe("anonymous message", () => {
+  const studioBeat = { ...beat, wantJokes: 2 };
+  it("one a night per phone: the DJ hears a mystery guest, the line shows no name, the host sees who", async () => {
+    const p = stub("anon-1");
+    const j = await p.submitJoke("d1", { name: "Ann", text: "Why did the hen cross the road twice?", anon: true });
+    expect(j.ok).toBe(true);
+    expect((await p.guestState("d1")).limits.anonLeft).toBe(false);
+    expect((await p.guestState("d1")).myJokes[0].anon).toBe(true);
+    expect((await p.guestState("d2")).upNext.find((x) => "joke" in x)).toMatchObject({ names: "a mystery guest" });
+    const jobs = (await p.beat(studioBeat as never)).jokeJobs;
+    expect(jobs[0]).toMatchObject({ name: "a mystery guest" });
+    expect(JSON.stringify(jobs)).not.toContain("Ann");
+    expect((await p.adminState()).jokes[0]).toMatchObject({ name: "Ann", anon: true, device: "d1" });
+    await sql(p, "UPDATE jokes SET status='played', ended_at=? WHERE id=?", Date.now(), j.id!);
+    const r = await p.submitJoke("d1", { name: "Ann", text: "Why did the duck cross the road twice?", anon: true });
+    expect(r.ok).toBe(false);
+    expect(r.error).toMatch(/anonymous/i);
+    expect((await p.submitJoke("d1", { name: "Ann", text: "Why did the duck cross the road twice?" })).ok).toBe(true);
+  });
+
+  it("never urgent; one the DJ passed on doesn't use it up; free play lifts it", async () => {
+    const p = stub("anon-2");
+    const u = await p.submitJoke("d1", { name: "Ann", text: "Red truck, your lights are on", kind: "announcement", urgent: true, anon: true });
+    expect(u.ok).toBe(false);
+    expect(u.error).toMatch(/urgent/i);
+    const j = await p.submitJoke("d1", { name: "Ann", text: "Fish fry starts at six by the barn", kind: "announcement", anon: true });
+    expect(j.ok).toBe(true);
+    await p.jokeResult({ id: j.id!, status: "rejected" });
+    expect((await p.guestState("d1")).limits.anonLeft).toBe(true);
+    await p.submitJoke("d1", { name: "Ann", text: "Fish fry starts at six by the barn", kind: "announcement", anon: true });
+    await sql(p, "UPDATE jokes SET status='played', ended_at=? WHERE device='d1'", Date.now());
+    await p.adminAction({ action: "settings", settings: { freePlay: true } });
+    expect((await p.submitJoke("d1", { name: "Ann", text: "Why did the duck cross the road twice?", anon: true })).ok).toBe(true);
+  });
+});

@@ -474,8 +474,9 @@ const JOKE = { pending: ["Waiting", ""], preparing: ["Being written up", "warn"]
                played: ["Told on air", ""], rejected: ["DJ passed", "bad"], failed: ["Couldn't record", "bad"], deleted: ["Removed", "bad"] };
 function jokeBlock(j) {
   const ann = j.kind === "announcement";
-  const title = ann ? (j.source === "host" ? "Your announcement" : `${j.urgent ? "Urgent announcement" : "Announcement"} from ${j.name}`)
-                    : `Joke from ${j.name}`;
+  const from = j.anon ? `${j.name} (anonymous on air)` : j.name;   // the DJ says "a mystery guest"; you see who
+  const title = ann ? (j.source === "host" ? "Your announcement" : `${j.urgent ? "Urgent announcement" : "Announcement"} from ${from}`)
+                    : `Joke from ${from}`;
   const wrap = el("div", "item"), row = el("div", "item-row"), meta = el("div", "meta");
   meta.append(el("div", "t", title), el("div", "a", j.text));
   const [label, cls] = JOKE[j.status] || [j.status, ""];
