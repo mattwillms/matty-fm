@@ -172,6 +172,7 @@
     0%, 100% { transform: none; } 25% { transform: translateX(-2px) rotate(-8deg); } 75% { transform: translateX(2px) rotate(8deg); } }
   .allow { margin: -4px 0 12px; color: var(--cream-dim); font-size: .95rem; line-height: 1.35; }
   .allow b { color: var(--cream); font-weight: 600; }
+  .allow:has(+ #q[hidden]) { margin-bottom: 0; }   /* no search box under it: no gap either */
   /* the status and its Request again, side by side at one height */
   .song .side { flex: none; display: flex; align-items: center; gap: 6px; }
   .song .side .chip { height: 30px; display: inline-flex; align-items: center; }
@@ -1235,6 +1236,7 @@ function showLimits() {
     : sg.active === 1 ? "One picked. <b>Room for one more.</b>" : "Pick up to two songs.");
   if (!$("closed").hidden) say("songAllow", "");
   $("q").disabled = !$("closed").hidden || !st.can;
+  $("q").hidden = $("results").hidden = $("q").disabled;   // no picks left (or closed): no box at all, the sentence above says why
   $("freeBtn").closest("p").hidden = !$("closed").hidden || !st.can;
   // messages
   const left = (n) => Math.max(0, n - (Date.now() - limitsAt) / 1000);
