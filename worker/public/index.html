@@ -1001,6 +1001,7 @@ function dropEgg(layer, h) {
   let taps = [], rolling = false;
   h1.addEventListener("click", () => {
     const now = Date.now();
+    if (taps.length && now - taps[taps.length - 1] < 120) return;   // a doubled click from one tap (iPhone does this): not a second tap
     taps = taps.filter((t) => now - t < 1000).concat(now);   // three within a second
     if (taps.length < 3 || rolling) return;
     taps = []; rolling = true;
