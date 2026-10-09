@@ -1423,20 +1423,13 @@ function arrive(tube, mayMiss) {
   if (pick === "miss") return missDrop(tube, () => setTimeout(() => arrive(tube, false), 1500));
   if (pick === "puff") return puffSocket(tube, () => setTimeout(() => arrive(tube, false), 1300));
   const go = () => (pick === "drop" ? dropIn : pick === "teleport" ? beamIn : riseIn)(tube);
+  // it goes into the empty socket and never moves the other tube; with both sockets empty, it takes either
   const other = tubeEls.find((t) => t !== tube);
-  // now and then the survivor shuffles over into the empty socket first, and the new one takes the socket it left
-  if (other && !other.classList.contains("gone") && !other._busy && Math.random() < .3) hopOver(other, tube, go); else go();
-}
-function hopOver(other, tube, then) {
-  const from = other.parentElement, to = tube.parentElement, dx = sockAt(tube).x - sockAt(other).x;
-  other._busy = true; other._tilt = 0; other.style.transform = "";
-  other.animate([{ transform: "translate(0,0)" }, { transform: "translate(0,-12px) rotate(-4deg)", offset: .3 },
-                 { transform: `translate(${dx}px,-12px) rotate(4deg)`, offset: .75 }, { transform: `translate(${dx}px,0)` }],
-                { duration: 750, easing: "ease-in-out" }).onfinish = () => {
-    to.append(other); from.append(tube); other._busy = false;
-    other.animate([{ transform: "rotate(3deg)" }, { transform: "rotate(-2deg)" }, { transform: "rotate(0)" }], { duration: 300 });
-    setTimeout(then, 250);
-  };
+  if (other && other.classList.contains("gone") && Math.random() < .5) {
+    const [a, b] = [tube.parentElement, other.parentElement];
+    a.append(other); b.append(tube);
+  }
+  go();
 }
 function dropIn(tube) {   // from above the screen, straight into the socket: a wobble on landing, then it stands up straight
   const r = tube.getBoundingClientRect(), d = r.bottom + 30;
