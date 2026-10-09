@@ -563,7 +563,8 @@ function shoutout(line, np) {
   return s ? s + "." : "";
 }
 let lcdKey = "";
-const SCROLL_PX_S = 55;   // the message line's scroll speed; the title, artist and name run at half that
+const SCROLL_PX_S = 60.5;   // the grey LCD message line, px per second
+const VFD_PX_S = 24.75;     // the title and artist on the VFD: slower, they rest 1.5 s each loop
 // Scrolling lines are moved by one frame loop, not a repeating CSS/Web animation: iPhone Safari
 // blanked the text for a frame each time such an animation started its next loop.
 const scrollers = new Map();   // track element -> { dist (px, unscaled), holdMs, moveMs, t0 }
@@ -978,7 +979,7 @@ function tickClock() {
   const on = endAt > 0, v = document.querySelector("#display .vfd");
   if (v && v.classList.contains("timed") !== on) {
     v.classList.toggle("timed", on);
-    if ($("vfdArtist") && onAir) setLine("vfdArtist", onAir.artist, false, SCROLL_PX_S * 0.5, 1500);   // its room changed: measure again
+    if ($("vfdArtist") && onAir) setLine("vfdArtist", onAir.artist, false, VFD_PX_S, 1500);   // its room changed: measure again
   }
   $("meter").classList.toggle("on", on || Boolean(onAir && onAir.soma));
   if (!on) return;
@@ -1009,8 +1010,8 @@ function showNow(np, force) {
   v.append(screenArt(np.artwork), tl, foot);
   d.replaceChildren(v);
   tickClock();   // the artist line's width depends on it: set before measuring
-  setLine("vfdTitle", cleanTitle(np.title), false, SCROLL_PX_S * 0.5, 1500);   // scrolls only if it doesn't fit, resting 1.5 s each loop
-  setLine("vfdArtist", np.artist, false, SCROLL_PX_S * 0.5, 1500);
+  setLine("vfdTitle", cleanTitle(np.title), false, VFD_PX_S, 1500);   // scrolls only if it doesn't fit, resting 1.5 s each loop
+  setLine("vfdArtist", np.artist, false, VFD_PX_S, 1500);
   const song = `${np.title}|${np.artist}`;
   if (song !== lastNow) { lastNow = song; tune(song); }
 }
