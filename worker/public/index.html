@@ -1472,7 +1472,7 @@ function missDrop(tube, then) {   // drops in, clips the rim, bounces off and fa
   const c = tube.cloneNode(true);
   c.classList.remove("gone"); c.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));
   Object.assign(c.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px",
-                           margin: 0, zIndex: 61, pointerEvents: "none", transform: "" });
+                           margin: 0, zIndex: 61, pointerEvents: "none", transform: "", transformOrigin: "50% 50%" });   // spins about its own middle
   c.style.setProperty("--g", 0);
   document.body.append(c);
   const fall = c.animate([
@@ -1504,7 +1504,8 @@ function breakOff(tube) {   // it snaps at the socket and falls down the screen,
     const r = tube.getBoundingClientRect(), clone = tube.cloneNode(true);
     clone.querySelectorAll("[id]").forEach((n) => n.removeAttribute("id"));   // its gradients still point at the originals
     Object.assign(clone.style, { position: "fixed", left: r.left + "px", top: r.top + "px", width: r.width + "px", height: r.height + "px",
-                                 margin: 0, zIndex: 61, pointerEvents: "none", transform: tube.style.transform });
+                                 margin: 0, zIndex: 61, pointerEvents: "none", transform: tube.style.transform,
+                                 transformOrigin: "50% 50%" });   // loose now: it spins about its own middle, not the socket
     clone.querySelector(".sock")?.remove();
     clone.style.setProperty("--g", .5);
     document.body.append(clone);
