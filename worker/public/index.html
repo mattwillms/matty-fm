@@ -68,11 +68,11 @@
   .tube .fil { opacity: var(--g); } .tube .warm { opacity: calc(var(--g) * .5); }
   /* the socket in the deck: a chrome ring round a dark hole with its pin holes; the tube's collar hides it */
   .seat { position: relative; display: flex; justify-content: center; width: 32px; }   /* a fixed seat: the socket never moves, whichever tube is in it */
-  .seat .sock { position: absolute; left: 50%; bottom: -3px; width: 26px; height: 7px; margin-left: -13px; border-radius: 50%;
+  .seat .sock { position: absolute; left: 50%; bottom: -1px; width: 26px; height: 7px; margin-left: -13px; border-radius: 50%;
                 background: radial-gradient(circle at 30% 50%, #000 0 .8px, transparent 1.2px), radial-gradient(circle at 50% 42%, #000 0 .8px, transparent 1.2px),
                             radial-gradient(circle at 70% 50%, #000 0 .8px, transparent 1.2px), radial-gradient(circle at 50% 66%, #000 0 .8px, transparent 1.2px),
                             radial-gradient(ellipse at 50% 50%, #2a2622 0 52%, #a9a59c 60%, #e9e6df 70%, #6d6962 86%);
-                box-shadow: 0 1px 0 #ffffff40; }
+                box-shadow: 0 1.5px 0 #8e8a82, 0 2.5px 0 #4a4640, 0 3.5px 3px #000b; }   /* proud of the wood: a chrome side wall, its shadow on the walnut */
   .tube.gone svg, .tube.gone .halo { visibility: hidden; }   /* broken or blown: an empty socket until it's replaced */
   /* what a tapped tube can do: sparks, fire, smoke, a flash and arcs of electricity, drawn over everything */
   .fx { position: fixed; pointer-events: none; z-index: 60; border-radius: 50%; }
