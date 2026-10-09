@@ -103,13 +103,12 @@
   .cabinet :focus, .cabinet :focus-visible { outline: none; }
   .glass::after { content: ""; position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none;
                   background: linear-gradient(165deg, #ffffff14 0 22%, transparent 22%); }
-  /* stacked: the sleeve big and centered, the title centered under it, then the artist left and the time right */
-  .display { --art: min(58vw, 220px); }
-  .display img, .display .art { display: block; margin: 2px auto 10px; }
+  /* stacked: the sleeve as wide as the lines under it, the title centered, then the artist left and the time right */
+  .display img, .display .art { display: block; margin: 2px 0 10px; }
   .vfd .t:not(.ticking) { text-align: center; }   /* a title too long to fit scrolls from the left instead */
   .vfd .foot { display: flex; align-items: baseline; gap: 12px; }
   .vfd .foot .aw { flex: 1; min-width: 0; overflow: hidden; }
-  .display img, .display .art { width: var(--art); height: var(--art); border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
+  .display img, .display .art { width: 100%; height: auto; aspect-ratio: 1; border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
   .display .art { display: grid; place-items: center; font-size: 42px; background: #16201d; text-shadow: none; }
   /* LED dot matrix, near-square dots, drawn narrow: each line is laid out 25% wider and squeezed
      to 80%, so it still fills its screen while the letters come out slim, as on a real display */
