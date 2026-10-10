@@ -178,11 +178,30 @@
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: #B23A22; color: #fff; }   /* 4.5:1 for white text */
   @media (prefers-reduced-motion: reduce) { button, .toggle::after { transition: none; } }
   .party { padding: 2px 0 12px; }
-  .party-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .party-top { display: grid; gap: 10px; }
   .party .what { font-weight: 700; }
   .party .why { color: var(--faint); font-size: .88rem; }
   .party .why b { color: var(--ink); font-size: 1.05rem; font-variant-numeric: tabular-nums; }
-  .party-btns { display: flex; gap: 8px; flex: none; }
+  .party-btns { display: grid; grid-template-columns: repeat(auto-fit, minmax(0, 1fr)); gap: 8px; }
+  .party-btns button { white-space: nowrap; padding: 0 8px; }
+  /* the archive: one past party at a time on a floating panel, arrows at its top corners to step through
+     time, a floating close button top right of the screen (as on the guests' record sleeve) */
+  dialog.arch { border: 0; padding: 0; margin: auto; width: min(440px, calc(100% - 32px)); max-height: none; overflow: visible;
+                background: var(--panel); color: var(--ink); border-radius: 18px; box-shadow: 0 18px 48px #000c; }
+  dialog.arch::backdrop { background: radial-gradient(circle at 50% 38%, #3d2518, #120a06 72%); }
+  dialog.arch[open] { animation: archIn .24s ease-out both; }
+  @keyframes archIn { from { opacity: 0; } }   /* opacity only: a transform would pull the fixed close button along */
+  .arch-close { position: fixed; top: calc(14px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right)); z-index: 2;
+                width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; background: #0007; color: var(--ink); }
+  .arch-close svg, .arch-nav svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .arch-body { padding: 18px 18px 16px; }
+  .arch-head { display: grid; grid-template-columns: 44px 1fr 44px; align-items: start; gap: 8px; }
+  .arch-nav { width: 44px; height: 44px; padding: 0; border-radius: 50%; display: grid; place-items: center; }
+  .arch-head .t { text-align: center; padding-top: 2px; }
+  .arch-head h3 { margin: 0; font: 700 1.25rem/1.2 Fraunces, Georgia, serif; color: var(--gold); overflow-wrap: anywhere; }
+  .arch-head .when { margin-top: 4px; color: var(--muted); font-size: .88rem; }
+  .arch-count { text-align: center; color: var(--faint); font-size: .8rem; margin-top: 12px; }
+  .arch-foot { display: flex; justify-content: center; margin-top: 12px; }
   .party .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
   .party .stats div { background: var(--bg); border-radius: 10px; padding: 8px 10px; }
   .party .stats b { display: block; font-size: 1.2rem; color: var(--ink); } .party .stats span { font-size: .8rem; color: var(--muted); }
@@ -252,12 +271,27 @@
     <div id="history"></div>
   </section>
 
+  <dialog class="arch" id="arch" aria-label="Party archive">
+    <button class="arch-close" id="archClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="arch-body">
+      <div class="arch-head">
+        <button class="arch-nav" id="archPrev" type="button" aria-label="Earlier party"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+        <div class="t"><h3 id="archTitle"></h3><div class="when" id="archWhen"></div></div>
+        <button class="arch-nav" id="archNext" type="button" aria-label="Later party"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg></button>
+      </div>
+      <div class="party"><div class="stats" id="archStats"></div></div>
+      <div class="arch-count" id="archCount"></div>
+      <div class="arch-foot"><button class="sm danger" id="archDelete" type="button">Delete this party</button></div>
+    </div>
+  </dialog>
+
   <section aria-label="Station settings">
     <h2>Station</h2>
     <div class="party" id="party">
       <div class="party-top"><div><div class="what">Party</div><div class="why" id="partyClock">Not started</div></div>
-        <div class="party-btns"><button class="sm danger" id="partyWipe" type="button">Wipe &amp; start</button>
-          <button class="primary" id="partyGo" type="button">Start</button></div></div>
+        <div class="party-btns"><button class="sm ghost" id="partyArchive" type="button">Archive</button>
+          <button class="sm danger" id="partyWipe" type="button">Wipe &amp; start</button>
+          <button class="sm primary" id="partyGo" type="button">Start</button></div></div>
       <div class="stats" id="partyStats" hidden></div>
     </div>
     <div class="switch-row off-row">
@@ -688,15 +722,13 @@ function renderParty() {
   const running = p.start && !p.end;
   $("partyClock").innerHTML = !p.start ? "Not started" : p.end ? `Ended after <b>${partyTime(p.end - p.start)}</b>` : `Running <b>${partyTime(now - p.start)}</b>`;
   $("partyGo").textContent = running ? "End" : p.end ? "Start again" : "Start";
-  $("partyGo").className = running ? "sm ghost" : "primary";
+  $("partyGo").className = running ? "sm ghost" : "sm primary";
   $("partyWipe").hidden = running;   // wiping is for before the party, not during it
   if (p.start && (Date.now() - statsAt > 60000 || statsFor !== p.start + (p.end || 0))) {
     statsAt = Date.now(); statsFor = p.start + (p.end || 0);
     call("/api/admin/action", { action: "stats" }).then((r) => {
       const t = r.stats; if (!t) return;
-      const cell = (n, label) => { const d = el("div"); d.append(el("b", null, n == null ? "–" : String(n)), el("span", null, label)); return d; };
-      $("partyStats").replaceChildren(cell(t.played, "songs played"), cell(t.requests, "requests"), cell(t.guests, "guests"),
-        cell(t.messages, "messages aired"), cell(t.skipped, "skipped"), cell(t.medianWaitMin == null ? null : `${t.medianWaitMin} min`, "typical wait"));
+      $("partyStats").replaceChildren(...statCells(t));
       $("partyStats").hidden = false;
     }).catch(() => {});
   }
@@ -705,8 +737,52 @@ function renderParty() {
 setInterval(() => { if (state) renderParty(); }, 30000);   // the clock shows minutes: a tick every 30 s is enough
 $("partyGo").onclick = (e) => {
   const p = state?.party || {}, running = p.start && !p.end;
-  if (running) confirm("End the party? The clock stops and the stats freeze. Nothing else changes.") && act({ action: "partyEnd" }, e);
+  if (running) {   // ending archives the night under a title of the host's choosing
+    const title = prompt("End the party. What should this one be called in the archive?",
+      `Party of ${new Date(p.start).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`);
+    if (title !== null) act({ action: "partyEnd", title }, e);
+  }
   else if (!p.end || confirm("Start the party clock over from now?")) act({ action: "partyStart" }, e);
+};
+// The archive: every ended party, stepped through with the arrows (left: earlier, right: later).
+let archive = [], archAt = 0;
+const statCell = (n, label) => { const d = el("div"); d.append(el("b", null, n == null ? "–" : String(n)), el("span", null, label)); return d; };
+function statCells(t) {
+  return [statCell(t.played, "songs played"), statCell(t.requests, "requests"), statCell(t.guests, "guests"),
+          statCell(t.messages, "messages aired"), statCell(t.skipped, "skipped"), statCell(t.medianWaitMin == null ? null : `${t.medianWaitMin} min`, "typical wait")];
+}
+function showArchive() {
+  const p = archive[archAt];
+  $("archPrev").disabled = archAt <= 0; $("archNext").disabled = archAt >= archive.length - 1;
+  $("archDelete").hidden = !p;
+  if (!p) {
+    $("archTitle").textContent = "No parties yet"; $("archWhen").textContent = "End a party and it's saved here.";
+    $("archStats").replaceChildren(); $("archCount").textContent = ""; return;
+  }
+  const day = new Date(p.start).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" });
+  const at = (t) => new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  $("archTitle").textContent = p.title;
+  $("archWhen").textContent = `${day} · ${at(p.start)} to ${at(p.end)} · ${partyTime(p.end - p.start)}`;
+  $("archStats").replaceChildren(...statCells(p.stats));
+  $("archCount").textContent = `${archAt + 1} of ${archive.length}`;
+}
+async function openArchive(at) {
+  try { archive = (await call("/api/admin/action", { action: "archive" })).parties || []; }
+  catch { toast("Couldn't reach the server", true); return; }
+  archAt = Math.max(0, Math.min(at ?? archive.length - 1, archive.length - 1));   // the latest first
+  showArchive();
+  if (!$("arch").open) $("arch").showModal();
+}
+$("partyArchive").onclick = () => openArchive();
+$("archClose").onclick = () => $("arch").close();
+$("arch").addEventListener("click", (e) => { if (e.target === $("arch")) $("arch").close(); });   // a tap outside the panel
+$("archPrev").onclick = () => { archAt--; showArchive(); };
+$("archNext").onclick = () => { archAt++; showArchive(); };
+$("archDelete").onclick = async () => {
+  const p = archive[archAt];
+  if (!p || !confirm(`Delete "${p.title}" from the archive? This can't be undone.`)) return;
+  try { await call("/api/admin/action", { action: "deleteParty", id: String(p.id) }); } catch { toast("Couldn't reach the server", true); return; }
+  toast("Deleted"); openArchive(archAt - (archAt >= archive.length - 1 ? 1 : 0));
 };
 // a fresh party: every song, guest name, message, joke, mute and limit goes (the test run's leftovers), the
 // request on air stops, settings stay; then the clock starts

@@ -84,6 +84,8 @@ export class Party extends DurableObject<Env> {
         id TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT NOT NULL, text TEXT NOT NULL,
         status TEXT NOT NULL, created_at INTEGER NOT NULL, lease_until INTEGER DEFAULT 0,
         file TEXT, seconds REAL, script TEXT, played_at INTEGER, ip TEXT);
+      CREATE TABLE IF NOT EXISTS parties(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, start INTEGER NOT NULL,
+        end INTEGER NOT NULL, stats TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS commands(
         id INTEGER PRIMARY KEY AUTOINCREMENT, type TEXT NOT NULL, done INTEGER DEFAULT 0,
         created_at INTEGER NOT NULL);`);
@@ -278,16 +280,16 @@ export class Party extends DurableObject<Env> {
    *  requesters and messages, play history, muted phones, settings. Commands are left behind (stale). */
   async exportState() {
     const table = (t: string) => this.all(`SELECT * FROM ${t}`);
-    return { items: table("items"), requesters: table("requesters"), settings: table("settings"), muted: table("muted"), jokes: table("jokes"), airlog: table("airlog"), song_locks: table("song_locks"), song_release: table("song_release") };
+    return { items: table("items"), requesters: table("requesters"), settings: table("settings"), muted: table("muted"), parties: table("parties"), jokes: table("jokes"), airlog: table("airlog"), song_locks: table("song_locks"), song_release: table("song_release") };
   }
 
   /** Takes over an old queue's state, once, and only into an empty queue (ids are kept, so the
    *  console's song on air and every phone's "Your requests" still match). */
-  async importState(data: { items?: Row[]; requesters?: Row[]; settings?: Row[]; muted?: Row[]; jokes?: Row[]; airlog?: Row[]; song_locks?: Row[]; song_release?: Row[] }) {
+  async importState(data: { items?: Row[]; requesters?: Row[]; settings?: Row[]; muted?: Row[]; jokes?: Row[]; airlog?: Row[]; song_locks?: Row[]; song_release?: Row[]; parties?: Row[] }) {
     if (this.one("SELECT 1 AS x FROM items LIMIT 1") || this.one("SELECT 1 AS x FROM requesters LIMIT 1"))
       return { ok: false, error: "this queue isn't empty" };
     let n = 0;
-    for (const t of ["items", "requesters", "settings", "muted", "jokes", "airlog", "song_locks", "song_release"] as const) {
+    for (const t of ["items", "requesters", "settings", "muted", "jokes", "airlog", "song_locks", "song_release", "parties"] as const) {
       const cols = new Set(this.all(`PRAGMA table_info(${t})`).map((c) => String(c.name)));
       for (const row of Array.isArray(data?.[t]) ? data[t]! : []) {
         const keys = Object.keys(row).filter((k) => cols.has(k));   // only columns this schema has
@@ -740,7 +742,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "party-fixes-2",
+      code: "party-fixes-3",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -785,7 +787,7 @@ export class Party extends DurableObject<Env> {
   }
 
   async adminAction(a: {
-    action: string; id?: string; dir?: -1 | 1; device?: string; pad?: number; track?: Track; name?: string; text?: string;
+    action: string; id?: string; dir?: -1 | 1; title?: string; device?: string; pad?: number; track?: Track; name?: string; text?: string;
     message?: string; settings?: Partial<Record<"accepting" | "stopAfterCurrent" | "somaOnly" | "freePlay" | "familyMode" | "stationOff", boolean>> & { breakEveryMin?: number; padGapS?: number };
   }) {
     const status = a.id ? String(this.one("SELECT status FROM items WHERE id=?", a.id)?.status ?? "") : "";
@@ -819,9 +821,21 @@ export class Party extends DurableObject<Env> {
         this.set("partyStart", String(Date.now()));
         this.sql.exec("DELETE FROM settings WHERE key='partyEnd'");
         return { ok: true };
-      case "partyEnd":
-        if (Number(this.setting("partyStart", "0"))) this.set("partyEnd", String(Date.now()));
+      case "partyEnd": {   // the clock stops, and the night goes in the archive under the host's title
+        const start = Number(this.setting("partyStart", "0"));
+        if (!start || Number(this.setting("partyEnd", "0"))) return { ok: false, error: "No party is running." };
+        const end = Date.now();
+        this.set("partyEnd", String(end));
+        const title = clean(a.title, 80) || `Party of ${new Date(start).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}`;
+        this.sql.exec("INSERT INTO parties(title, start, end, stats) VALUES(?,?,?,?)", title, start, end, JSON.stringify(this.partyStats()));
         return { ok: true };
+      }
+      case "deleteParty":   // one archived night, gone for good
+        this.sql.exec("DELETE FROM parties WHERE id=?", Number(a.id));
+        return { ok: true };
+      case "archive":   // every party ended so far, oldest first (a wipe never touches these)
+        return { ok: true, parties: this.all("SELECT * FROM parties ORDER BY start").map((p) => ({
+          id: Number(p.id), title: String(p.title), start: Number(p.start), end: Number(p.end), stats: JSON.parse(String(p.stats)) })) };
       case "stats":   // asked for by the admin page about once a minute, not with every poll: it reads the whole night
         return { ok: true, stats: this.partyStats() };
       case "dropJokes": {   // every guest joke still waiting (announcements stay)

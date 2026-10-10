@@ -246,20 +246,22 @@
   .slots i.used { --face: var(--empty); --back: var(--empty); }
   .slots i.used::before, .slots i.used::after { filter: none; }
   .slots i.gone { cursor: default; }   /* the line is long: one pick for now, the other coin's slot stands empty */
-  /* the slot itself stays put: while the coin is up in the air its empty slot shows underneath */
-  .slots i { background: var(--empty) center / 100% 100% no-repeat; border-radius: 50%; }
-  .slots i.spin::before { animation: coinspin .8s steps(16) both; }
-  .slots i.spin::after { animation: coinspinb .8s steps(16) both; }
+  /* the slots themselves stay put: while a coin is up in the air its empty slot shows underneath. Drawn on the
+     row, not on the coin: in the coin's own 3D space a turning coin would cut through its slot */
+  .slots { background: var(--empty) 0 0 / 30px 30px no-repeat, var(--empty) 22px 0 / 30px 30px no-repeat; }
+  .slots i.spin { animation: coinspin .8s steps(16) both; }
   @keyframes coinspin {   /* the arcade coin: hops up, turns over twice (the other side showing each time), lands face up */
     0% { transform: translateY(0) rotateY(0); } 25% { transform: translateY(-11px) rotateY(180deg); }
     50% { transform: translateY(-14px) rotateY(360deg); } 75% { transform: translateY(-8px) rotateY(540deg); }
     88% { transform: translateY(0) rotateY(720deg); } 94% { transform: translateY(-2px) rotateY(720deg); }
     100% { transform: rotateY(720deg); } }
-  @keyframes coinspinb {   /* its other face: the same flight, half a turn on */
-    0% { transform: translateY(0) rotateY(180deg); } 25% { transform: translateY(-11px) rotateY(360deg); }
-    50% { transform: translateY(-14px) rotateY(540deg); } 75% { transform: translateY(-8px) rotateY(720deg); }
-    88% { transform: translateY(0) rotateY(900deg); } 94% { transform: translateY(-2px) rotateY(900deg); }
-    100% { transform: rotateY(900deg); } }
+  /* a quarter is 1.75 mm thick: the faces stand 1.2px off the middle, and five thin discs between them make the
+     reeded silver rim that shows as it turns edge-on */
+  .slots i::before { transform: translateZ(1.2px); }
+  .slots i::after { transform: rotateY(180deg) translateZ(1.2px); }
+  .slots i s { position: absolute; inset: .4px; border-radius: 50%; transform: translateZ(var(--z));
+               background: repeating-conic-gradient(#d9d6cf 0 2deg, #8e8b84 2deg 4deg); }
+  .slots i.used s { display: none; }
   /* station off: the set goes dark and the request panel hangs a CLOSED sign */
   .closed-sign { display: none; position: relative; width: max-content; margin: 26px auto 8px; padding: 8px 22px 9px; text-align: center;
                  background: linear-gradient(#c9341f, #9e2414); color: #f6e9cc; border-radius: 6px; transform: rotate(-3deg);
@@ -1406,6 +1408,7 @@ const JOKE_STATUS = { pending: ["The DJ is reading it over", "prep"], preparing:
   failed: ["Didn't make it on air", "bad"], expired: ["The DJ ran out of time for this one. Send another!", "bad"] };
 // Tap a coin: it flips. Tap an empty slot: a puff of dust, and about one time in seven a gnat flies out. Just for fun.
 [...$("slots").children].forEach((c) => {
+  for (const z of [-.9, -.45, 0, .45, .9]) { const d = document.createElement("s"); d.style.setProperty("--z", `${z}px`); c.append(d); }   // the rim
   c.onclick = () => {
     if (c.classList.contains("used")) { dustPuff(c); return; }
     if (c.classList.contains("spin")) return;   // still flipping: let it land first

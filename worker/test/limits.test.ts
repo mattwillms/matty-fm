@@ -432,7 +432,13 @@ describe("party clock", () => {
     expect(stats).toMatchObject({ played: 1, skipped: 0, requests: 2, guests: 3, messages: 0, medianWaitMin: 10 });
     void old;
     expect((await p.adminState()).party.end).toBeNull();
-    await p.adminAction({ action: "partyEnd" });
+    await p.adminAction({ action: "partyEnd", title: "Orr reunion 2026" });
     expect((await p.adminState()).party.end).toBeGreaterThan(0);
+    expect((await p.adminAction({ action: "partyEnd" })).ok).toBe(false);   // ended once: not archived twice
+    await p.adminAction({ action: "reset" });   // a wipe keeps the archive
+    const { parties } = (await p.adminAction({ action: "archive" })) as { parties: { title: string; stats: { requests: number } }[] };
+    expect(parties.map((x) => [x.title, x.stats.requests])).toEqual([["Orr reunion 2026", 2]]);
+    await p.adminAction({ action: "deleteParty", id: String((parties[0] as unknown as { id: number }).id) });
+    expect(((await p.adminAction({ action: "archive" })) as { parties: unknown[] }).parties).toEqual([]);
   });
 });
