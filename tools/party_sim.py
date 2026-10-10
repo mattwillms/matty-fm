@@ -80,7 +80,7 @@ class Guest:
         self.client = httpx.AsyncClient(base_url=self.base, timeout=20, headers={"user-agent": f"partysim/{self.persona}"})
 
     async def call(self, method, path, **kw):
-        params = {"k": self.code, **kw.pop("params", {})}
+        params = {"k": self.code, **(kw.pop("params", None) or {})}
         t0 = time.time()
         try:
             r = await self.client.request(method, path, params=params, **kw)
@@ -99,7 +99,8 @@ class Guest:
         return status, body
 
     async def poll(self):
-        s, b = await self.call("GET", "/api/state")
+        # the first poll is the page load: only that one hands the phone its id (as on a real phone)
+        s, b = await self.call("GET", "/api/state", params=None if self.state else {"load": "1"})
         if s == 200:
             self.state = b
         return b
