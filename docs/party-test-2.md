@@ -73,3 +73,15 @@ ElevenLabs credit for the party; the ElevenLabs path was proven in party test 1.
 - ElevenLabs: 23,811 characters left (unchanged; resets Nov 7).
 - Apify: $3.47 of $5.00 used this cycle (ends Nov 7).
 - Cloudflare: 0 errors; ~14M rows read in 24 h.
+
+## Done after the run (2026-10-10)
+
+1. Long line: no change; the long-line rule holds it.
+2. Jokes wait 45 minutes before they expire (was 30); the pace stays one every 5 minutes.
+3. Medals: one a phone every 3 s (was 10); a refusal says when to try again and the page retries then.
+4. A failed doubt check is no longer remembered as "fine" (`doubt` returns None on failure).
+5. No change: a download service failed on one remix.
+6. Profiled with 30 waiting: a guest poll reads ~65 rows for the line, ~35 to count it, plus that phone's own
+   history (the sim's heavy phones had 20 requests each). No single waste; left as is.
+
+Also: per-phone Free Play in the booth's guest list; the music dips 6 dB under a sound pad.
