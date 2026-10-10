@@ -741,8 +741,8 @@
   .fx.spk { border-radius: 0; background: none; filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 7px #ffd76a); }
   .fx.spk svg { display: block; width: 100%; height: 100%; overflow: visible; }
   .m3d .gleam { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; -webkit-backface-visibility: hidden; backface-visibility: hidden;
-                background: linear-gradient(115deg, transparent 40%, #ffffffcc 49%, #fff 50%, #ffffffcc 51%, transparent 60%) 170% 0 / 300% 100% no-repeat;
-                mix-blend-mode: screen; animation: coinGleam 3.2s ease-in-out infinite; }
+                background: linear-gradient(115deg, transparent 40%, #ffffff55 47%, #ffffffb0 50%, #ffffff55 53%, transparent 60%) 170% 0 / 300% 100% no-repeat;
+                animation: coinGleam 3.2s ease-in-out infinite; }   /* no blend mode: Safari flattens a 3D coin with one inside, and its rim paints over its faces */
   .m3d .gleam.front { transform: translateZ(5.2px); } .m3d .gleam.back { transform: rotateY(180deg) translateZ(5.2px); animation-delay: 1.6s; }
   @keyframes coinGleam { 0%, 55% { background-position: 170% 0; } 85%, 100% { background-position: -70% 0; } }
   .fx.glint { width: 14px; height: 14px; border-radius: 0; background: none; color: #fff7d6; font-size: 14px; line-height: 14px; text-align: center;
