@@ -505,12 +505,23 @@ class Mixer:
         self.level[control] = pct
 
 
+# The listening tap's loopback keeps the Pi's clock, the USB card its own: through the tap a decoder that runs for
+# about an hour drifts until the two mixes it feeds no longer line up and its writes stall ("Deep trouble",
+# 2026-10-09, 57 min in). Song decks restart every song; SomaFM's decoder is restarted before that, where it can't
+# be heard: SomaFM faded right down (a request on air), or turned down under the DJ, or, failing both, at the limit.
+TAP_FRESH_QUIET_S = 20 * 60    # with SomaFM silent, renew after this long
+TAP_FRESH_DUCKED_S = 40 * 60   # with SomaFM under the DJ (at or below half), after this long
+TAP_FRESH_MAX_S = 55 * 60      # whatever is playing
+
+
 class SomaReader:
     """Streams SomaFM into its decoder; health = bytes arrived recently."""
 
-    def __init__(self, urls: list[str], wanted=lambda: True):
+    def __init__(self, urls: list[str], wanted=lambda: True, level=lambda: 100):
         self.urls, self.health, self.proc = urls, FlowHealth(), None
         self.wanted = wanted   # False while the station is off: no stream, no decoder
+        self.level = level     # SomaFM's fader now, 0-100
+        self.born = 0.0        # when the decoder started (monotonic)
 
     def _quiet(self) -> None:
         if self.proc is not None and self.proc.poll() is None:
@@ -522,11 +533,19 @@ class SomaReader:
         if self.proc is None or self.proc.poll() is not None:
             self.proc = subprocess.Popen(["mpg123", "-q", "-b", "1024", "-o", "alsa", "-a", device("soma"), "-"],
                                          stdin=subprocess.PIPE)
+            self.born = time.monotonic()
             try:
                 fcntl.fcntl(self.proc.stdin.fileno(), F_SETPIPE_SZ, PIPE_BYTES)
             except OSError:
                 pass
         return self.proc
+
+    def stale(self) -> bool:
+        """The tap is on and the decoder has run long enough to be renewed, at a moment it can't be heard."""
+        if self.proc is None or not device("soma").endswith("_t"):
+            return False
+        age, level = time.monotonic() - self.born, self.level()
+        return (age > TAP_FRESH_QUIET_S and level == 0) or (age > TAP_FRESH_DUCKED_S and level <= 50) or age > TAP_FRESH_MAX_S
 
     def run(self) -> None:
         i = 0
@@ -547,9 +566,16 @@ class SomaReader:
                             log("soma: station off, disconnected")
                             break
                         self.health.saw_bytes()
+                        if self.stale():
+                            log("soma: decoder renewed (listening tap: clock drift)")
+                            self._quiet()
                         dec = self._decoder()
-                        dec.stdin.write(data)
-                        dec.stdin.flush()
+                        try:
+                            dec.stdin.write(data)
+                            dec.stdin.flush()
+                        except BrokenPipeError:   # the decoder died: a new one takes the next chunk, the stream stays up
+                            log("soma: decoder gone; starting another")
+                            self._quiet()
                     log("soma: stream ended")
             except Exception as e:  # stall, DNS, TLS, decoder pipe — never let the thread die
                 log(f"soma: {type(e).__name__}: {e}")
@@ -660,7 +686,8 @@ def main(conf_path: str) -> None:
         engine.power(False)
         engine.stop_all_at = None   # already silent: nothing to fade or stop, and SomaFM never connects
         log("started off (the station was switched off)")
-    soma = SomaReader(conf["SOMA_URLS"].split(), wanted=lambda: not (engine.off and engine.stop_all_at is None))
+    soma = SomaReader(conf["SOMA_URLS"].split(), wanted=lambda: not (engine.off and engine.stop_all_at is None),
+                      level=lambda: mixer.level.get("SomaVol", 100))
     engine.soma_up = soma.health.up
     engine.backup = load_backup(conf["FILES_URL"])
     threads = [threading.Thread(target=soma.run, daemon=True, name="soma"),

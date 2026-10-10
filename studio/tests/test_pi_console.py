@@ -468,3 +468,26 @@ def test_the_tap_only_used_when_on_and_the_loopback_is_there(monkeypatch):
     assert console.device("soma") == "soma_t"
     monkeypatch.setattr(console.os.path, "exists", lambda p: False)   # module missing: plain, never silent
     assert console.device("deckA") == "deckA"
+
+
+def test_soma_decoder_renewed_only_with_the_tap_and_where_it_cant_be_heard(monkeypatch):
+    level = {"v": 100}
+    r = console.SomaReader(["u"], level=lambda: level["v"])
+    r.proc = object()
+    monkeypatch.setattr(console, "device", lambda ch: ch + "_t")
+    now = {"t": 10_000.0}
+    monkeypatch.setattr(console.time, "monotonic", lambda: now["t"])
+    r.born = now["t"] - 25 * 60
+    assert not r.stale()                 # 25 min, SomaFM up full: not yet
+    level["v"] = 0
+    assert r.stale()                     # a request on air: SomaFM silent, renew
+    level["v"] = 40
+    assert not r.stale()                 # ducked, but under 40 min
+    r.born = now["t"] - 45 * 60
+    assert r.stale()                     # ducked past 40 min
+    level["v"] = 100
+    assert not r.stale()
+    r.born = now["t"] - 56 * 60
+    assert r.stale()                     # the limit, whatever is playing
+    monkeypatch.setattr(console, "device", lambda ch: ch)
+    assert not r.stale()                 # no tap: never
