@@ -180,3 +180,21 @@ def test_apify_download_remembers_failures_and_hangs(tmp_path):
     fail["on"] = False
     dl("abc", tmp_path / "x.mp3")
     assert dl.failed_at == 0.0 and not dl.timed_out
+
+
+def test_a_second_key_takes_over_when_the_first_runs_out(tmp_path):
+    used = []
+
+    def handler(r):
+        key = r.headers["x-goog-api-key"]
+        used.append((r.url.path.rsplit("/", 1)[-1], key))
+        if key == "k1":
+            return httpx.Response(403, json={"error": {"errors": [{"reason": "quotaExceeded"}]}})
+        if r.url.path.endswith("/search"):
+            return httpx.Response(200, json={"items": [{"id": {"videoId": "a"}, "snippet": {"title": "T", "channelTitle": "C"}}]})
+        return httpx.Response(200, json={"items": [{"id": "a", "contentDetails": {"duration": "PT3M"}}]})
+
+    yt = sources.YouTubeSearch(["k1", "k2", ""], client(handler), tmp_path / "s.json")
+    assert [c.id for c in yt("q1")] == ["a"]
+    yt("q2")   # k1 is spent for today: not asked again
+    assert used == [("search", "k1"), ("search", "k2"), ("videos", "k2"), ("search", "k2"), ("videos", "k2")]

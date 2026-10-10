@@ -202,7 +202,7 @@ def test_a_shortened_or_accented_song_name_counts_as_named():
     reply = json.dumps({"ok": True, "tone": "funny", "script": "For Bob, here's Earth, Wind and Fire with September."})
     assert djline.write_line(it, FakeClient(reply)).script.count("September") == 1
     reply = json.dumps({"ok": True, "tone": "funny", "script": "Bob loves Earth, Wind and Fire."})   # artist alone is not the song
-    assert djline.write_line(it, FakeClient(reply)).script.endswith("September (Remastered 2003).")
+    assert djline.write_line(it, FakeClient(reply)).script.endswith("Here's Earth, Wind & Fire with September.")   # version tags trimmed
 
 
 def test_prompt_says_the_requester_sends_the_song_not_receives_it():
@@ -298,4 +298,41 @@ def test_the_joke_and_announcement_writers_never_make_up_a_sender():
 
 def test_the_intro_writer_is_told_to_make_plain_sense():
     # "a 2012 song, which for OrrFM is practically a new release, so enjoy the wait" went on air
-    assert "plain sense" in djline.SYSTEM and "enjoy the wait" in djline.SYSTEM and "I'm told" in djline.SYSTEM
+    assert "plain sense" in djline.SYSTEM and "enjoy the wait" in djline.SYSTEM
+
+
+def test_one_sign_off_when_the_model_named_the_real_song():
+    # party test: "...here's Trio with Da Da Da. Here's the one with that goes da da da."
+    it = {**item(), "artist": "Trio", "title": "the one that goes da da da"}
+    reply = json.dumps({"ok": True, "tone": "funny", "script": "From Aunt Linda, here's Trio with Da Da Da."})
+    assert djline.write_line(it, FakeClient(reply)).script == "From Aunt Linda, here's Trio with Da Da Da."
+
+
+def test_the_plain_intro_drops_version_tags():
+    it = {**item(), "artist": "Prince", "title": "Let's Go Crazy (2015 Paisley Park Remaster)"}
+    assert djline.template(it).script.endswith("here's Prince with Let's Go Crazy.")
+
+
+def test_a_fallback_logs_why(caplog):
+    caplog.set_level("INFO", logger="mattyfm.djline")
+    djline.write_line({**item(), "id": "r9"}, FakeClient(json.dumps({"ok": False, "script": ""})))
+    assert "r9 fell back (declined the message" in caplog.text
+
+
+def test_every_prompt_carries_the_house_rules():
+    for fam in (True, False):
+        djline.set_family(fam)
+        for system in (djline.SYSTEM, djline.JOKE_SYSTEM, djline.ANNOUNCE_SYSTEM, djline.BACKANNOUNCE_SYSTEM):
+            p = djline.rated(system)
+            assert "every one is welcome" in p and "gender from a name" in p and "queues" in p
+    djline.set_family(True)
+    assert "without a word about it" in djline.rated(djline.SYSTEM)   # family: drop the trick quietly
+    djline.set_family(False)
+    assert "sassy line on air" in djline.rated(djline.SYSTEM)         # PG-13: push back
+    djline.set_family(True)
+
+
+def test_an_urgent_joke_is_flagged():
+    reply = json.dumps({"ok": True, "is_joke": True, "script": "Knock knock, says Pop-Pop."})
+    assert djline.announce_line("Pop-Pop", "URGENT knock knock", True, False, FakeClient(reply)).is_joke
+    assert not djline.announce_line("", "Cake at 3", True, True, FakeClient(reply)).is_joke   # the host's own: never

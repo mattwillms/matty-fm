@@ -236,19 +236,35 @@ describe("anonymous message", () => {
 describe("preset sound buttons", () => {
   const padCmds = (p: P) => runInDurableObject(p, async (_i: Party, s) =>
     s.storage.sql.exec("SELECT type FROM commands WHERE type LIKE 'pad%'").toArray().map((r) => String(r.type)));
-  it("one sound a minute per phone, and a 5 s gap for the whole party", async () => {
+  it("one sound a minute per phone, and a 20 s gap for the whole house", async () => {
     const p = stub("pad-1");
     expect((await p.guestPad("d1", 3)).ok).toBe(true);
     expect(await padCmds(p)).toEqual(["pad3"]);
     const again = await p.guestPad("d1", 2);
     expect(again.ok).toBe(false);
-    expect(again.error).toMatch(/minute|\d+ s/);
+    expect(again.error).toMatch(/Your next sound in \d+ s/);
     expect((await p.guestState("d1")).limits.padInS).toBeGreaterThan(50);
-    const other = await p.guestPad("d2", 1);   // someone else, right away: the party gap
-    expect(other.ok).toBe(false);
+    const other = await p.guestPad("d2", 1);   // someone else, right away: the house gap
+    expect(other).toMatchObject({ ok: false, error: expect.stringMatching(/Shared buttons: next sound in \d+ s/) });
+    expect((await p.guestState("d2")).limits.padInS).toBeGreaterThan(15);   // the dimmed buttons count this down
     await sql(p, "UPDATE pad_presses SET at=at-6000");
+    expect((await p.guestPad("d2", 1)).ok).toBe(false);   // 6 s: still inside 20
+    await sql(p, "UPDATE pad_presses SET at=at-15000");
     expect((await p.guestPad("d2", 1)).ok).toBe(true);
     expect((await p.guestPad("d1", 9)).ok).toBe(false);   // no such button
+  });
+
+  it("the host sets the gap, or turns the buttons off", async () => {
+    const p = stub("pad-3");
+    await p.adminAction({ action: "settings", settings: { padGapS: 5 } });
+    expect((await p.guestPad("d1", 1)).ok).toBe(true);
+    await sql(p, "UPDATE pad_presses SET at=at-6000");
+    expect((await p.guestPad("d2", 1)).ok).toBe(true);
+    await p.adminAction({ action: "settings", settings: { padGapS: 7 } });   // not an option: ignored
+    expect((await p.adminState()).settings.padGapS).toBe(5);
+    await p.adminAction({ action: "settings", settings: { padGapS: 0, freePlay: true } });
+    expect(await p.guestPad("d3", 1)).toMatchObject({ ok: false, error: "The buttons are off right now." });
+    expect((await p.guestState("d3")).limits.padsOff).toBe(true);
   });
 
   it("free play lifts both limits; a muted phone can't press", async () => {
@@ -321,5 +337,67 @@ describe("fresh party", () => {
     const c = await p.submit("d1", T("SOS"));
     expect(c.ok).toBe(true);
     expect(Number(c.id!.slice(1))).toBeGreaterThan(Number(b.id!.slice(1)));   // ids never repeat: the Pi still remembers the old ones
+  });
+});
+
+describe("party test fixes", () => {
+  const fill = async (p: P, n: number) => { for (let i = 0; i < n; i++) await p.submit(`f${i}`, T(`Filler ${i}`)); };
+  it("a long line: one song per phone at a time; free play lifts it", async () => {
+    const p = stub("long-1");
+    await fill(p, 21);
+    expect((await p.guestState("d1")).limits.songs).toMatchObject({ active: 0, locked: false, max: 1 });
+    expect((await p.submit("d1", T("Waterloo"))).ok).toBe(true);
+    const r = await p.submit("d1", T("SOS"));
+    expect(r).toMatchObject({ ok: false, error: expect.stringMatching(/line is long/) });
+    expect((await p.adminState()).line).toEqual({ songs: 22, oneEach: true });
+    await p.adminAction({ action: "settings", settings: { freePlay: true } });
+    expect((await p.submit("d1", T("SOS"))).ok).toBe(true);
+  });
+
+  it("a typed-in request needs letters, and a weak match waits for the host", async () => {
+    const p = stub("held-1");
+    const junk = { ...T("%%%"), track: { ...T("%%%").track, artist: "%%" }, freeText: true };
+    expect(await p.submit("d1", junk)).toMatchObject({ ok: false, error: "Type the song's name in words." });
+    const a = await p.submit("d1", { ...T("lol"), freeText: true });
+    await p.beat({ ...beat, want: 1 });
+    await p.result({ id: a.id!, status: "ready", file: "x.mp3", durationS: 20, confidence: 10 });
+    expect((await p.guestState("d1")).mine[0].status).toBe("held");
+    expect((await p.guestState("d1")).limits.songs.active).toBe(0);   // a held one doesn't use a slot
+    expect((await p.adminState()).held.map((h) => h.id)).toEqual([a.id]);
+    await p.adminAction({ action: "approve", id: a.id });
+    expect((await p.adminState()).held).toEqual([]);
+    expect((await p.guestState("d1")).mine[0].status).toBe("ready");
+    const b = await p.submit("d2", { ...T("Dancing Queen"), freeText: false });   // picked from search: never held
+    await p.beat({ ...beat, want: 1 });
+    await p.result({ id: b.id!, status: "ready", file: "y.mp3", durationS: 200, confidence: 10 });
+    expect((await p.guestState("d2")).mine[0].status).toBe("ready");
+  });
+
+  it("a joke not told in 30 minutes expires; announcements don't; free play keeps them", async () => {
+    const p = stub("stale-1");
+    const j = await p.submitJoke("d1", { name: "Ray", text: "Why did the chicken cross the road? Worms." });
+    const a = await p.submitJoke("d2", { name: "Ann", text: "Cake is on the back table at 3 o'clock.", kind: "announcement" });
+    await sql(p, "UPDATE jokes SET created_at=created_at-31*60000");
+    await p.beat(beat);
+    expect((await p.guestState("d1")).myJokes[0].status).toBe("expired");
+    expect((await p.guestState("d2")).myJokes[0].status).toBe("pending");
+    expect((await p.submitJoke("d1", { name: "Ray", text: "Another joke about a chicken and a road." })).ok).toBe(true);
+    void a; void j;
+    await p.adminAction({ action: "settings", settings: { freePlay: true } });
+    await sql(p, "UPDATE jokes SET created_at=created_at-31*60000 WHERE status='pending'");
+    await p.beat(beat);
+    expect((await p.guestState("d1")).myJokes[0].status).toBe("pending");
+  });
+
+  it("an urgent that's really a joke joins the joke line; the host can drop every joke", async () => {
+    const p = stub("demote-1");
+    const u = await p.submitJoke("d1", { name: "Pop", text: "URGENT knock knock who is there banana", kind: "announcement", urgent: true });
+    await p.beat({ ...beat, wantJokes: 1 });
+    await p.jokeResult({ id: u.id!, status: "ready", file: "u.mp3", seconds: 5, script: "x", isJoke: true });
+    expect((await p.beat(beat)).nextJoke).toMatchObject({ id: u.id, urgent: false, kind: "joke" });
+    await p.submitJoke("d2", { name: "Ann", text: "Cake is on the back table at 3 o'clock.", kind: "announcement" });
+    await p.adminAction({ action: "dropJokes" });
+    const left = (await p.adminState()).jokes.filter((x) => ["pending", "preparing", "ready"].includes(x.status));
+    expect(left.map((x) => x.kind)).toEqual(["announcement"]);
   });
 });

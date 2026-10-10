@@ -204,3 +204,13 @@ def test_back_announces_take_half_the_turns_at_song_starts():
             s.done(now=t, kind=k)
     assert kinds.count("backannounce") * 2 == len(kinds) or abs(kinds.count("backannounce") * 2 - len(kinds)) <= 1
     assert all(not (a == b == "id") and not (a == b == "goof") for a, b in zip(kinds, kinds[1:]))
+
+
+def test_an_announcement_doesnt_wait_for_the_joke_clock():
+    # party test: "Group photo on the porch now" aired 39 minutes late behind the jokes
+    s = make()
+    s.joke_told(100)
+    assert s.due(SOMA, 200, 30, joke_ready=True) is None                    # a joke: 5 minutes apart
+    assert s.due(SOMA, 200, 30, joke_ready=True, announce=True) == "joke"   # news: at the next chance
+    s.joke_told(200)
+    assert s.due(SOMA, 230, 30, joke_ready=True, announce=True) is None     # never on top of the last talk

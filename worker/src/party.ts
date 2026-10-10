@@ -16,7 +16,10 @@ const APPLE_HOSTS = ["music.apple.com"];
 const MAX_WAITING_PER_DEVICE = 2;
 const MAX_ASKS_PER_SONG = 2;
 const PAD_EVERY_MS = 60_000;   // a guest's preset buttons: one sound a minute per phone
-const PAD_GAP_MS = 5_000;      // and one at a time for the whole party, so thirty phones can't make a wall of noise
+const PAD_GAPS_S = [0, 5, 20, 60];   // the whole house shares the buttons: one sound per gap (admin; 0 = buttons off)
+const LONG_LINE = 20;          // more songs than this waiting: one song per phone at a time, so more guests get a turn
+const JOKE_STALE_MS = 30 * 60_000;   // a joke not told by then is dropped ("the DJ ran out of time")
+const HOLD_BELOW = 50;         // a typed-in request matched below this confidence waits for the host
 const MYSTERY = "a mystery guest";   // who an anonymous message is from, on air and on the guest page   // a phone may ask for a song, and once more after it plays ("Request again")
 const QUEUED_GRACE_MS = 15_000;
 
@@ -136,6 +139,7 @@ export class Party extends DurableObject<Env> {
       freePlay: this.setting("freePlay", "0") === "1",   // no per-phone limits on songs or messages
       familyMode: this.setting("familyMode", "1") === "1",   // clean songs only, a family-friendly DJ (off: PG-13)
       stationOff: this.setting("stationOff", "0") === "1",   // the Pi fades to silence and stops streaming altogether
+      padGapS: Number(this.setting("padGapS", "20")),   // the guests' preset buttons, house-wide (0: off)
     };
   }
   private command(type: "skip" | "clear" | "break" | "replay" | `pad${number}`, target: string | null = null): void {
@@ -205,12 +209,15 @@ export class Party extends DurableObject<Env> {
     if (!visible(name)) return { ok: false, error: "Add your name (letters, not just emoji)." };
     if (!title) return { ok: false, error: "Add the song title." };
     if (!artist) return { ok: false, error: "Add the artist, or your best guess." };
+    if (s.freeText === true && (title + artist).replace(/[^\p{L}]/gu, "").length < 2)
+      return { ok: false, error: "Type the song's name in words." };
     if (!asAdmin && s.track?.explicit === true && this.flags().familyMode)
       return { ok: false, error: "Family mode is on: pick the clean version." };
     if (!asAdmin && !this.flags().freePlay) {
       const lim = this.songLimit(device);
       if (lim.locked)
-        return { ok: false, error: lim.active === 1 ? "Your other song plays first. Then you can pick two more!"
+        return { ok: false, error: lim.max === 1 ? "The line is long: one song at a time. Yours plays first!"
+                                 : lim.active === 1 ? "Your other song plays first. Then you can pick two more!"
                                                     : "You have 2 songs coming up. Once both play, pick two more!" };
     }
     const key = songKey(artist, title);
@@ -249,7 +256,8 @@ export class Party extends DurableObject<Env> {
     }
     this.sql.exec("INSERT INTO requesters(item_id,device,name,message,created_at,ip) VALUES(?,?,?,?,?,?)",
       id, device, name, message, now, ip);
-    if (!asAdmin && this.songLimit(device).active >= MAX_WAITING_PER_DEVICE)   // both slots used: none again until both play
+    const after = this.songLimit(device);
+    if (!asAdmin && !this.flags().freePlay && after.active >= after.max)   // every slot used: none again until all play
       this.sql.exec("INSERT OR IGNORE INTO song_locks(device) VALUES(?)", device);
     if ((await this.ctx.storage.getAlarm()) === null)
       await this.ctx.storage.setAlarm(now < PURGE_AT ? PURGE_AT : now + PURGE_AFTER_MS);
@@ -329,13 +337,16 @@ export class Party extends DurableObject<Env> {
   }
 
   /** The studio's answer for a joke: recorded (ready), declined by the DJ (rejected), or failed. */
-  async jokeResult(r: { id: string; status: string; file?: string; seconds?: number; script?: string }) {
+  async jokeResult(r: { id: string; status: string; file?: string; seconds?: number; script?: string; isJoke?: boolean }) {
     const status = r?.status === "ready" ? "ready" : r?.status === "rejected" ? "rejected" : r?.status === "failed" ? "failed" : "";
     if (!status) return { ok: false };
     const secs = Number(r.seconds);
     this.sql.exec(`UPDATE jokes SET status=?, file=?, seconds=?, script=?, lease_until=0, ended_at=? WHERE id=? AND status IN ('preparing','pending')`,
       status, status === "ready" ? String(r.file ?? "") : null, Number.isFinite(secs) ? secs : null, clean(r.script ?? "", 1000),
       status === "ready" ? null : Date.now(), String(r.id));
+    // an "urgent announcement" the DJ found to be a joke: it waits its turn in the joke line (free play: it cuts in)
+    if (r.isJoke === true && !this.flags().freePlay)
+      this.sql.exec("UPDATE jokes SET kind='joke', urgent=0 WHERE id=? AND source='guest' AND urgent=1", String(r.id));
     return { ok: true };
   }
 
@@ -345,10 +356,11 @@ export class Party extends DurableObject<Env> {
     if (!Number.isInteger(n) || n < 1 || n > 5) return { ok: false, error: "No such button." };
     if (this.flags().stationOff) return { ok: false, error: "OrrFM is off the air. Requests open again when it's back." };
     if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
+    if (!this.flags().padGapS) return { ok: false, error: "The buttons are off right now." };
     if (!this.flags().freePlay) {
       const lim = this.padLimit(device);
-      if (lim.padInS) return { ok: false, error: `One sound a minute: the next in ${lim.padInS} s.` };
-      if (lim.partyPadInS) return { ok: false, error: "Someone just pressed one. Try again." };
+      if (lim.padInS) return { ok: false, error: `Your next sound in ${lim.padInS} s.`, padInS: lim.padInS };
+      if (lim.partyPadInS) return { ok: false, error: `Shared buttons: next sound in ${lim.partyPadInS} s.`, padInS: lim.partyPadInS };
     }
     const now = Date.now();
     this.sql.exec("INSERT INTO pad_presses(device, pad, at) VALUES(?,?,?)", device, n, now);
@@ -361,7 +373,7 @@ export class Party extends DurableObject<Env> {
     const now = Date.now(), left = (t: number, ms: number) => Math.max(0, Math.ceil((t + ms - now) / 1000));
     const mine = Number(this.one("SELECT MAX(at) AS t FROM pad_presses WHERE device=?", device)?.t ?? 0);
     const party = Number(this.one("SELECT MAX(at) AS t FROM pad_presses")?.t ?? 0);
-    return { padInS: mine ? left(mine, PAD_EVERY_MS) : 0, partyPadInS: party ? left(party, PAD_GAP_MS) : 0 };
+    return { padInS: mine ? left(mine, PAD_EVERY_MS) : 0, partyPadInS: party ? left(party, this.flags().padGapS * 1000) : 0 };
   }
 
   /** A guest takes back their own request before it plays. A song others asked for too keeps going
@@ -401,7 +413,7 @@ export class Party extends DurableObject<Env> {
   /** Songs with the waiting jokes worked in, one in front of each song, in the order they'll be told
    *  (a joke goes at a song change, so the next one is told before the next song). */
   private lineup<T>(songs: T[]): (T | { joke: true; id: string; title: string; artist: string; names: string })[] {
-    const jokes = this.all("SELECT id, name, kind, urgent, anon FROM jokes WHERE status IN ('ready','preparing','pending') ORDER BY urgent DESC, created_at")
+    const jokes = this.all("SELECT id, name, kind, urgent, anon FROM jokes WHERE status IN ('ready','preparing','pending') ORDER BY urgent DESC, kind='announcement' DESC, created_at")
       .map((j) => ({ joke: true as const, id: String(j.id), artist: "",
                      names: Number(j.anon) ? MYSTERY : displayText(String(j.name), "a guest"),
                      title: j.kind === "announcement" ? (j.urgent ? "An urgent announcement" : "An announcement") : "A joke" }));
@@ -410,18 +422,21 @@ export class Party extends DurableObject<Env> {
     return [...out, ...jokes.slice(songs.length)];
   }
 
-  /** A phone's songs: up to 2 at a time, and once both slots are used, none until both have played. */
+  /** A phone's songs: up to 2 at a time (1 while the line is long), and once every slot is used,
+   *  none until they've all played. Free play: no cap. */
   private songLimit(device: string) {
+    const max = this.flags().freePlay ? MAX_WAITING_PER_DEVICE
+      : Number(this.one(`SELECT COUNT(*) AS n FROM items WHERE status IN ${WAITING}`)?.n ?? 0) > LONG_LINE ? 1 : MAX_WAITING_PER_DEVICE;
     // songs asked for before the host released this phone's cooldown don't count against it
     const since = Number(this.one("SELECT at FROM song_release WHERE device=?", device)?.at ?? 0);
     const active = Number(this.one(`SELECT COUNT(*) AS n FROM requesters r JOIN items i ON i.id=r.item_id
       WHERE r.device=? AND r.created_at>? AND i.status IN ('pending','preparing','ready','queued','playing')`, device, since)?.n ?? 0);
-    let locked = active >= MAX_WAITING_PER_DEVICE;
+    let locked = active >= max;
     if (this.one("SELECT 1 AS l FROM song_locks WHERE device=?", device)) {
       if (active === 0) this.sql.exec("DELETE FROM song_locks WHERE device=?", device);   // both played: free again
       else locked = true;
     }
-    return { active, locked };
+    return { active, locked, max };
   }
 
   /** How many times this phone has asked for this song tonight (a cancelled ask doesn't count). */
@@ -473,8 +488,9 @@ export class Party extends DurableObject<Env> {
         .map((j) => ({ id: String(j.id), text: String(j.text), status: String(j.status), kind: String(j.kind ?? "joke"),
                        urgent: Boolean(j.urgent), anon: Boolean(j.anon) })),
       djOnBreak: Date.now() - this.health().at > OFFLINE_MS,
-      limits: { freePlay: this.flags().freePlay, songs: { ...this.songLimit(device), max: MAX_WAITING_PER_DEVICE },
-                ...this.messageLimit(device), padInS: this.flags().freePlay ? 0 : this.padLimit(device).padInS },
+      limits: { freePlay: this.flags().freePlay, songs: this.songLimit(device), ...this.messageLimit(device),
+                ...(() => { const p = this.padLimit(device), f = this.flags();
+                            return { padsOff: !f.padGapS, padInS: f.freePlay ? 0 : Math.max(p.padInS, p.partyPadInS) }; })() },
     };
   }
 
@@ -500,19 +516,23 @@ export class Party extends DurableObject<Env> {
       this.sql.exec("UPDATE jokes SET lease_until=? WHERE id=? AND status='preparing'", now + LEASE_MS, id);
     }
     this.sql.exec("UPDATE jokes SET status='pending', lease_until=0 WHERE status='preparing' AND lease_until<?", now);
+    // a joke that waited half an hour is stale: dropped, and the guest may send another (free play: none expire)
+    if (!this.flags().freePlay)
+      this.sql.exec(`UPDATE jokes SET status='expired', ended_at=? WHERE status IN ('pending','ready') AND urgent=0
+        AND kind='joke' AND created_at<?`, now, now - JOKE_STALE_MS);
     for (const id of Array.isArray(b.jokesPlayed) ? b.jokesPlayed : [])
       this.sql.exec("UPDATE jokes SET status='played', played_at=?, ended_at=? WHERE id=? AND status IN ('ready','deleted')", now, now, String(id));
     for (const a of Array.isArray(b.aired) ? b.aired.slice(0, 20) : [])   // bumpers the studio played (re-sent until acked)
       if (a && typeof a.kind === "string" && Number.isFinite(Number(a.at)))
         this.sql.exec("INSERT OR IGNORE INTO airlog(kind, text, at) VALUES(?,?,?)", a.kind.slice(0, 20), clean(a.text ?? "", 400), Number(a.at));
     // urgent announcements first (written up and told before anything else), then in the order sent
-    const jokeJobs = this.all("SELECT id, name, text, kind, urgent, source, anon FROM jokes WHERE status='pending' ORDER BY urgent DESC, created_at LIMIT ?",
+    const jokeJobs = this.all("SELECT id, name, text, kind, urgent, source, anon FROM jokes WHERE status='pending' ORDER BY urgent DESC, kind='announcement' DESC, created_at LIMIT ?",
       Math.max(0, Math.min(2, Number(b.wantJokes) || 0))).map((j) => {
       this.sql.exec("UPDATE jokes SET status='preparing', lease_until=? WHERE id=?", now + LEASE_MS, j.id);
       return { id: String(j.id), name: Number(j.anon) ? MYSTERY : String(j.name), text: String(j.text), kind: String(j.kind ?? "joke"),
                urgent: Boolean(j.urgent), source: String(j.source ?? "guest") };
     });
-    const nj = this.one("SELECT id, file, seconds, script, kind, urgent FROM jokes WHERE status='ready' ORDER BY urgent DESC, created_at LIMIT 1");
+    const nj = this.one("SELECT id, file, seconds, script, kind, urgent FROM jokes WHERE status='ready' ORDER BY urgent DESC, kind='announcement' DESC, created_at LIMIT 1");
     const nextJoke = nj ? { id: String(nj.id), file: String(nj.file), seconds: Number(nj.seconds), script: String(nj.script ?? ""),
                             kind: String(nj.kind ?? "joke"), urgent: Boolean(nj.urgent) } : null;
     this.sql.exec("UPDATE items SET status='pending', lease_until=0 WHERE status='preparing' AND lease_until<?", now);
@@ -625,19 +645,21 @@ export class Party extends DurableObject<Env> {
 
   async result(r: Result) {
     if (!r || (r.status !== "ready" && r.status !== "failed")) return { ok: false };
-    const item = this.one("SELECT status,redo FROM items WHERE id=?", r.id);
+    const item = this.one("SELECT status,redo,free_text FROM items WHERE id=?", r.id);
     if (item && r.status === "failed" && (item.status === "queued" || item.status === "ready")) {
       // the studio couldn't push it (file unreadable): fail it rather than hand it out forever
       this.sql.exec("UPDATE items SET status='failed', error=?, ended_at=? WHERE id=?", clean(r.error ?? "Song file unreadable", 300), Date.now(), r.id);
       return { ok: true };
     }
     if (!item || item.status !== "preparing") return { ok: false };
+    // a typed-in request the studio could only match weakly ("%%%" found a kids' clip): the host decides
+    const held = r.status === "ready" && Number(item.free_text) === 1 && typeof r.confidence === "number" && r.confidence < HOLD_BELOW;
     if (r.status === "ready" && item.redo) {
       this.sql.exec("UPDATE items SET status='pending', redo=0, redos=COALESCE(redos,0)+1, lease_until=0 WHERE id=?", r.id);
       return { ok: true, redo: true };
     }
     this.sql.exec(`UPDATE items SET status=?, file=?, duration_s=?, confidence=?, dj_line=?, tone=?,
-      voice=?, error=?, match_note=?, lease_until=0, ended_at=? WHERE id=?`, r.status, r.file ?? null, r.durationS ?? null,
+      voice=?, error=?, match_note=?, lease_until=0, ended_at=? WHERE id=?`, held ? "held" : r.status, r.file ?? null, r.durationS ?? null,
       r.confidence ?? null, r.djLine ?? null, r.tone ?? null, r.voice ?? null, r.error ?? null,
       r.matchNote ?? null, r.status === "failed" ? Date.now() : null, r.id);
     if (r.status === "ready") {   // the studio's Apple lookup: for every phone's record sleeve
@@ -651,9 +673,10 @@ export class Party extends DurableObject<Env> {
   // ---------- admin ----------
   async adminState() {
     const h = this.health();
+    const line = this.display(), waitingN = line.length;
     const items = [
       ...this.all("SELECT * FROM items WHERE status='playing'"),
-      ...this.display(),
+      ...line,
       // the last few finished, newest first ("+status": walk the ended_at index, stop after 15 rows)
       ...this.all("SELECT * FROM items WHERE ended_at IS NOT NULL AND +status IN ('failed','played') ORDER BY ended_at DESC LIMIT 15"),
     ];
@@ -686,12 +709,14 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "reset-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "party-fixes-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
-      jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, created_at"),
+      jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
               ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL AND +status<>'deleted' ORDER BY ended_at DESC LIMIT 10")]
         .map((j) => this.adminJoke(j)),
       items: items.map((i) => this.adminItem(i)),
+      held: this.all("SELECT * FROM items WHERE status='held' ORDER BY created_at").map((i) => this.adminItem(i)),
+      line: { songs: waitingN, oneEach: !this.flags().freePlay && waitingN > LONG_LINE },
     };
   }
   private adminItem(i: Row) {
@@ -710,7 +735,7 @@ export class Party extends DurableObject<Env> {
 
   async adminAction(a: {
     action: string; id?: string; dir?: -1 | 1; device?: string; pad?: number; track?: Track; name?: string; text?: string;
-    message?: string; settings?: Partial<Record<"accepting" | "stopAfterCurrent" | "somaOnly" | "freePlay" | "familyMode" | "stationOff", boolean>> & { breakEveryMin?: number };
+    message?: string; settings?: Partial<Record<"accepting" | "stopAfterCurrent" | "somaOnly" | "freePlay" | "familyMode" | "stationOff", boolean>> & { breakEveryMin?: number; padGapS?: number };
   }) {
     const status = a.id ? String(this.one("SELECT status FROM items WHERE id=?", a.id)?.status ?? "") : "";
     switch (a.action) {
@@ -739,6 +764,17 @@ export class Party extends DurableObject<Env> {
           return { ok: false, error: "no such joke waiting" };
         this.sql.exec("UPDATE jokes SET status='deleted', ended_at=? WHERE id=?", Date.now(), String(a.id));
         return { ok: true };
+      case "dropJokes": {   // every guest joke still waiting (announcements stay)
+        this.sql.exec(`UPDATE jokes SET status='deleted', ended_at=? WHERE status IN ('pending','preparing','ready')
+          AND kind='joke'`, Date.now());
+        return { ok: true };
+      }
+      case "approve": {   // a held request: into the line, at the end, ready to play
+        if (status !== "held") return { ok: false, error: "That one isn't waiting for you." };
+        const last = Number(this.one(`SELECT MAX(rank) AS r FROM items WHERE status IN ${WAITING}`)?.r ?? 0);
+        this.sql.exec("UPDATE items SET status='ready', rank=? WHERE id=?", last + 1, a.id!);
+        return { ok: true };
+      }
       case "replay":   // the DJ read of the song on air, over the PA again
         if (status !== "playing") return { ok: false, error: "Only the song on air can be replayed." };
         this.command("replay", a.id!);
@@ -754,7 +790,7 @@ export class Party extends DurableObject<Env> {
       }
       case "delete":
         if (!status) return { ok: false, error: "no such request" };
-        if (!["pending", "preparing", "ready", "queued", "playing"].includes(status)) return { ok: true };   // already gone
+        if (!["pending", "preparing", "ready", "queued", "playing", "held"].includes(status)) return { ok: true };   // already gone
         if (status === "playing") this.skip();   // before the status changes: the skip names this song
         this.sql.exec("UPDATE items SET status='deleted', ended_at=? WHERE id=?", Date.now(), a.id!);
         if (status === "queued") this.command("clear");
@@ -832,6 +868,7 @@ export class Party extends DurableObject<Env> {
         const every = a.settings?.breakEveryMin;
         if (typeof every === "number" && Number.isFinite(every))
           this.set("breakEveryMin", String(Math.min(30, Math.max(5, Math.round(every / 5) * 5))));
+        if (PAD_GAPS_S.includes(a.settings?.padGapS as number)) this.set("padGapS", String(a.settings!.padGapS));
         if (a.settings?.somaOnly === true) this.skip();   // the studio cuts the song on air: a skip, not a cut-off
         if (a.settings?.stationOff === true)   // the Pi drops what it holds when it switches off: back in line
           this.sql.exec("UPDATE items SET status='ready' WHERE status='queued'");

@@ -46,7 +46,7 @@ def main() -> None:
         log.error("YOUTUBE_API_KEY / APIFY_TOKEN missing: only cached songs can play")
     deps = prepare.Deps(cfg=cfg, claude=anthropic.Anthropic(max_retries=1), http=httpx.Client(),
                         aura=api.tts, names=tts.load_names(cfg.repo / "studio" / "names.toml"),
-                        search=sources.YouTubeSearch(yt_key, httpx.Client(), cfg.media_dir / "cache" / "search.json") if yt_key else None,
+                        search=sources.YouTubeSearch([yt_key, os.environ.get("YOUTUBE_API_KEY_2", "")], httpx.Client(), cfg.media_dir / "cache" / "search.json") if yt_key else None,
                         download=sources.downloaders(apify) if apify else None)
     soma_np = somafm.NowPlaying(httpx.Client())
     sched = breaks.Scheduler(now=time.monotonic())
@@ -205,7 +205,7 @@ def main() -> None:
                 log.warning("joke %s pause stretch failed; using it as made", jid)
             recorded = True
             body = {"id": jid, "status": "ready", "file": out.name, "seconds": round(seconds, 2),
-                    "script": djline.display(line.script)}
+                    "script": djline.display(line.script), **({"isJoke": True} if line.is_joke else {})}
             for attempt in range(5):   # a Worker blink must not turn a recorded joke into a failed one
                 try:
                     api.joke_result(body)
@@ -375,7 +375,8 @@ def main() -> None:
                 start_break(random.choice(["id", "goof"]), soma_only=False)
             soma = soma_np.last
             soma_age = time.time() - soma["since"] if soma else None
-            kind = sched.due(status, time.monotonic(), soma_age, joke_ready=bool(next_joke))
+            announce = bool(next_joke) and next_joke.get("kind") == "announcement"   # news: no 5-minute joke gap
+            kind = sched.due(status, time.monotonic(), soma_age, joke_ready=bool(next_joke), announce=announce)
             attached = {j for j, _, _ in joke_on.values()}
             if next_joke and next_joke.get("urgent") and joke_file(next_joke) and next_joke["id"] not in attached:
                 # urgent (and every host announcement): read now, over whatever is on air; the console
@@ -435,7 +436,8 @@ def main() -> None:
                             voice_s = feed.attach_joke(cfg.media_dir, item["id"], jf, replace=True)
                             joke_on[item["id"]] = (next_joke["id"], beat_no, time.time())
                             log.info("joke %s stands in for %s's intro", next_joke["id"], item["id"])
-                        elif voice.exists() and jf and not told_elsewhere and sched.joke_due(time.monotonic()):
+                        elif voice.exists() and jf and not told_elsewhere and (
+                                sched.joke_due(time.monotonic()) or next_joke.get("kind") == "announcement"):
                             voice_s = feed.attach_joke(cfg.media_dir, item["id"], jf)   # joke, then the shout-out
                             joke_on[item["id"]] = (next_joke["id"], beat_no, time.time())
                             log.info("joke %s rides in front of %s", next_joke["id"], item["id"])

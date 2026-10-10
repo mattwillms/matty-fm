@@ -53,7 +53,7 @@ def main() -> None:
     yt_key, apify = os.environ.get("YOUTUBE_API_KEY", ""), os.environ.get("APIFY_TOKEN", "")
     if not (yt_key and apify):
         sys.exit("YOUTUBE_API_KEY and APIFY_TOKEN are needed (~/.config/mattyfm/env)")
-    search = sources.YouTubeSearch(yt_key, httpx.Client(), cache / "search.json")
+    search = sources.YouTubeSearch([yt_key, os.environ.get("YOUTUBE_API_KEY_2", "")], httpx.Client(), cache / "search.json")
     download = sources.downloaders(apify)
     ok = 0
     for artist, title in todo[:args.max]:

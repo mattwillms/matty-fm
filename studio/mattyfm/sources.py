@@ -44,9 +44,21 @@ def safe_link(url: str) -> bool:
     return u.scheme == "https" and (u.host == "api.apify.com" or u.host.endswith(".apify.com"))
 
 
+def quota_day() -> str:
+    """YouTube's daily quota resets at midnight Pacific time."""
+    from datetime import datetime
+    from zoneinfo import ZoneInfo
+    return datetime.now(ZoneInfo("America/Los_Angeles")).strftime("%Y-%m-%d")
+
+
 class YouTubeSearch:
-    def __init__(self, key: str, http: httpx.Client, cache_file: Path):
-        self.key, self.http, self.cache_file = key, http, cache_file
+    """keys: one API key, or several from separate Google projects: when one's daily quota is
+    used up the next takes over, until the quota resets."""
+
+    def __init__(self, keys: str | list[str], http: httpx.Client, cache_file: Path):
+        self.keys = [k for k in ([keys] if isinstance(keys, str) else keys) if k]
+        self.spent: dict[str, str] = {}   # key -> the quota day it ran out
+        self.http, self.cache_file = http, cache_file
         self.cache = self._read()
         self.lock = threading.Lock()   # two prepare threads share this object (and its temp file name)
 
@@ -59,10 +71,19 @@ class YouTubeSearch:
     def __call__(self, query: str) -> list[Candidate]:
         if query in self.cache:
             return [Candidate(**c) for c in self.cache[query]]
-        hdr = {"x-goog-api-key": self.key}   # a header, never the URL: URLs end up in logs
-        r = self.http.get(f"{API}/search", timeout=10, headers=hdr, params={
-            "q": query, "part": "snippet", "type": "video", "videoCategoryId": "10", "maxResults": 8})
-        if r.status_code == 403 and "quota" in r.text.lower():
+        for n, key in enumerate(self.keys, 1):
+            if self.spent.get(key) == quota_day():
+                continue
+            hdr = {"x-goog-api-key": key}   # a header, never the URL: URLs end up in logs
+            r = self.http.get(f"{API}/search", timeout=10, headers=hdr, params={
+                "q": query, "part": "snippet", "type": "video", "videoCategoryId": "10", "maxResults": 8})
+            if r.status_code == 403 and "quota" in r.text.lower():
+                self.spent[key] = quota_day()
+                log.warning("YouTube key %d of %d: daily quota used up%s", n, len(self.keys),
+                            "; trying the next" if n < len(self.keys) else "")
+                continue
+            break
+        else:
             raise SongNotFound("YouTube Data API daily search quota is used up")
         if r.status_code != 200:
             raise SongNotFound(f"YouTube search failed (HTTP {r.status_code})")

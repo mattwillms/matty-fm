@@ -3,8 +3,9 @@
 Three clocks:
 - bumpers: every N minutes (the admin slider, 5 to 30, default 10), held at zero while a
   request is on air, so the first one comes a full gap after the requests end;
-- guests' jokes and regular announcements: one every 5 minutes, on their own clock (a joke
-  never moves the bumper clock, so station IDs keep coming on a busy joke night);
+- guests' jokes: one every 5 minutes, on their own clock (a joke never moves the bumper clock,
+  so station IDs keep coming on a busy joke night); a regular announcement doesn't wait for that
+  clock: it goes at the next song change (party test: "group photo now" aired 39 minutes late);
 - spacing: nobody talks within a minute of the last thing said.
 
 Like a real DJ, a due break waits for the next SomaFM song to start and talks over its
@@ -74,7 +75,8 @@ class Scheduler:
         """A bumper is due and waits for the next SomaFM song to start (shown on the admin page)."""
         return not self.on_requests and now >= self.last + self.gap_s
 
-    def due(self, status: dict, now: float, soma_age: float | None, joke_ready: bool = False) -> str | None:
+    def due(self, status: dict, now: float, soma_age: float | None, joke_ready: bool = False,
+            announce: bool = False) -> str | None:
         """The kind of break to play now, or None. `soma_age`: seconds since SomaFM's song began
         (None: unknown, so nothing waits for a song change)."""
         if status["source"] == "requests":
@@ -102,7 +104,7 @@ class Scheduler:
             return None
         lo, hi = BACKANNOUNCE_WINDOW_S
         fresh_song = soma_age is None or lo <= soma_age <= hi
-        if joke_ready and self.joke_due(now):
+        if joke_ready and (announce or self.joke_due(now)):
             if self.joke_waits is None:
                 self.joke_waits = now
             if fresh_song or soma_age is None or now - self.joke_waits >= JOKE_HOLD_S:

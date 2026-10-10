@@ -572,7 +572,7 @@ describe("QA round", () => {
     expect(up.map((u) => (u.joke ? `joke:${u.names}` : u.title))).toEqual(["joke:Matt", "Voulez-Vous", "joke:Nan", "Eagle"]);
     expect((await p.guestState("x")).waitingCount).toBe(2);   // songs only
   });
-  it("announcements: urgent ones go first, one urgent per phone per hour; jokes wait behind them", async () => {
+  it("announcements: urgent ones go first, then regular announcements, then jokes; one urgent per phone per hour", async () => {
     const p = stub("announce");
     const j = await p.submitJoke("me", { name: "Ray", text: "Why did the chicken cross the road? Worms." });
     const a = await p.submitJoke("you", { name: "Ann", text: "Cake is on the back table at 3 o'clock.", kind: "announcement" });
@@ -584,7 +584,7 @@ describe("QA round", () => {
     for (const x of [j, a, u]) await p.jokeResult({ id: x.id!, status: "ready", file: `${x.id}.mp3`, seconds: 8, script: "x" });
     expect((await p.beat(beat)).nextJoke).toEqual(expect.objectContaining({ id: u.id, urgent: true, kind: "announcement" }));
     const up = (await p.guestState("x")).upNext as { joke?: boolean; title: string }[];
-    expect(up.map((x) => x.title)).toEqual(["An urgent announcement", "A joke", "An announcement"]);
+    expect(up.map((x) => x.title)).toEqual(["An urgent announcement", "An announcement", "A joke"]);
   });
 
   it("the host's announcements are always urgent and need no phone", async () => {
