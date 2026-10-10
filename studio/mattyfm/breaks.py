@@ -27,6 +27,7 @@ MIN_GAP_S, MAX_GAP_S, STEP_S = 5 * 60, 30 * 60, 5 * 60
 BACKANNOUNCE_WINDOW_S = (10, 75)   # seconds after a SomaFM song started (its intro)
 ROTATION = ("backannounce", "id", "backannounce", "goof")
 JOKE_GAP_S = 5 * 60   # guests' jokes: one every 5 minutes (their own clock; requests don't delay it)
+BLEND_WAIT_S = 10 * 60   # a joke first waits this long to be worked into a DJ line; then it goes on its own
 BREAK_SPACING_S = 60  # never talk right on top of the last thing said
 JOKE_HOLD_S = 60      # a due joke waits this long for a SomaFM song change, then goes anyway
 BUMPER_HOLD_S = 150   # the same for a bumper

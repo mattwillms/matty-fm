@@ -72,10 +72,15 @@ def main() -> None:
                 url, seconds, text = f"breaks/{path.name}", float(joke["seconds"]), joke.get("script", "")
                 label = joke.get("kind") or "joke"   # "announcement" or "joke": shown as such on the admin page
             elif kind in ("backannounce", "return") and soma_np.last:
+                # a guest's joke or announcement waiting: worked into the line (kept only if it survives intact)
+                message = (joke or {}).get("script") or None
                 if kind == "return":   # requests just handed back: "that was <request>, back to ..."
-                    line = djline.backannounce(last_request or None, soma_np.last, deps.claude, returning=True)
+                    line = djline.backannounce(last_request or None, soma_np.last, deps.claude, returning=True, message=message)
                 else:
-                    line = djline.backannounce(soma_np.prev, soma_np.last, deps.claude)
+                    line = djline.backannounce(soma_np.prev, soma_np.last, deps.claude, message=message)
+                blended = bool(message) and not line.fallback
+                if message and not blended:
+                    joke = None   # it waits for the next chance, or airs on its own after BLEND_WAIT_S
                 stamp = int(time.time())
                 raw = cfg.media_dir / "breaks" / f"live-{stamp}.raw.mp3"
                 out = cfg.media_dir / "breaks" / f"live-{stamp}.mp3"
@@ -110,8 +115,11 @@ def main() -> None:
                 if kind != "joke":
                     with lock:
                         aired.append({"kind": label, "text": text, "at": int(time.time() * 1000)})
-                if kind == "joke":
+                if kind == "joke" or (kind in ("backannounce", "return") and joke):
                     told_joke(joke["id"])   # sent with every beat until the Worker has it
+                    if kind != "joke":
+                        sched.joke_told(time.monotonic())
+                        log.info("message %s blended into the %s", joke["id"], kind)
                 elif not url.startswith("breaks/live-"):   # a fresh back-announce isn't a clip in the rotation
                     rotation.played(url.rsplit("/", 1)[-1])
                 last_dj.update({"kind": label, "text": text, "at": int(time.time() * 1000)})
@@ -233,6 +241,36 @@ def main() -> None:
         finally:
             with lock:
                 joke_working.discard(jid)
+
+    joke_seen: dict[str, float] = {}   # message id -> when it first came up as the next one to tell
+    blends: dict[str, tuple[str, Path]] = {}   # request id -> (joke id, blended voice file) waiting to be swapped in
+
+    def blend_intro_job(item: dict, joke: dict) -> None:
+        """A request with no message of its own, a joke standing in for its intro: write and record one line with
+        both (the joke, then the song). The main loop swaps it in if the song hasn't started and still carries it."""
+        rid, jid = item["id"], joke["id"]
+        try:
+            line = djline.blend_intro(item, joke["script"], deps.claude)
+            if not line:
+                return
+            raw = cfg.media_dir / "voice" / f"{rid}.blend.raw.mp3"
+            out = cfg.media_dir / "voice" / f"{rid}.blend.mp3"
+            engine = tts.speak(line.script, line.tone, raw, http=deps.http, aura=deps.aura,
+                               assets=cfg.media_dir / "assets", names=deps.names)
+            if engine == "generic":   # no real voice: the recorded joke standing in is better than a stock clip
+                raw.unlink(missing_ok=True)
+                return
+            mix.prepare_voice(raw, out, cfg.sample_rate)
+            raw.unlink(missing_ok=True)
+            try:
+                mix.lengthen_pauses(out)
+            except Exception:
+                pass
+            with lock:
+                blends[rid] = (jid, out)
+            log.info("blend for %s ready via %s: %s", rid, engine, djline.display(line.script))
+        except Exception:
+            log.exception("blend for %s failed; the joke stands in as recorded", rid)
 
     def run_job(item: dict) -> None:
         nonlocal last_error
@@ -376,7 +414,11 @@ def main() -> None:
             soma = soma_np.last
             soma_age = time.time() - soma["since"] if soma else None
             announce = bool(next_joke) and next_joke.get("kind") == "announcement"   # news: no 5-minute joke gap
-            kind = sched.due(status, time.monotonic(), soma_age, joke_ready=bool(next_joke), announce=announce)
+            if next_joke:   # when this message first came up: a joke waits BLEND_WAIT_S for a line to ride in
+                joke_seen.setdefault(next_joke["id"], time.monotonic())
+            waited = time.monotonic() - joke_seen[next_joke["id"]] if next_joke else 0.0
+            kind = sched.due(status, time.monotonic(), soma_age, joke_ready=bool(next_joke) and (announce or waited >= breaks.BLEND_WAIT_S),
+                             announce=announce)
             attached = {j for j, _, _ in joke_on.values()}
             if next_joke and next_joke.get("urgent") and joke_file(next_joke) and next_joke["id"] not in attached:
                 # urgent (and every host announcement): read now, over whatever is on air; the console
@@ -384,7 +426,9 @@ def main() -> None:
                 if start_break("joke", soma_only=False, joke=next_joke):
                     next_joke = None   # it's this beat's break: not in front of a song too
             elif kind:
-                if start_break(kind, joke=next_joke if kind == "joke" else None) and kind == "joke":
+                blend = next_joke if next_joke and not next_joke.get("urgent") and next_joke["id"] not in attached \
+                    and kind in ("backannounce", "return") else None
+                if start_break(kind, joke=next_joke if kind == "joke" else blend) and (kind == "joke" or blend):
                     next_joke = None
             for action in feed.decide(status, reply):
                 if action[0] == "skip":
@@ -436,6 +480,8 @@ def main() -> None:
                             voice_s = feed.attach_joke(cfg.media_dir, item["id"], jf, replace=True)
                             joke_on[item["id"]] = (next_joke["id"], beat_no, time.time())
                             log.info("joke %s stands in for %s's intro", next_joke["id"], item["id"])
+                            if next_joke.get("script"):   # meanwhile: one line with both, swapped in if it's ready in time
+                                pool.submit(blend_intro_job, dict(item), dict(next_joke))
                         elif voice.exists() and jf and not told_elsewhere and (
                                 sched.joke_due(time.monotonic()) or next_joke.get("kind") == "announcement"):
                             voice_s = feed.attach_joke(cfg.media_dir, item["id"], jf)   # joke, then the shout-out
@@ -459,6 +505,18 @@ def main() -> None:
                         pushed_titles.pop(next(iter(pushed_titles)))
                     log.info("pushed %s: %s - %s (station was source=%s remaining=%.0fs)", item["id"],
                              item["artist"], item["title"], status["source"], status["remaining"])
+            with lock:
+                ready_blends = dict(blends); blends.clear()
+            for rid, (jid, path) in ready_blends.items():
+                # only onto the song still waiting in the console with that same joke on it
+                if last_push and last_push["id"] == rid and status["current"] != rid and joke_on.get(rid, ("",))[0] == jid and path.exists():
+                    voice = cfg.media_dir / "voice" / f"{rid}.mp3"
+                    path.replace(voice)
+                    last_push = {**last_push, "voiceS": mix.duration(voice)}
+                    station.push(last_push)
+                    log.info("blend swapped in for %s (joke %s)", rid, jid)
+                else:
+                    path.unlink(missing_ok=True)
             if joke_on != joke_on_saved:   # which queued song carries which joke: survives a studio restart
                 save_joke_on()
                 joke_on_saved = dict(joke_on)

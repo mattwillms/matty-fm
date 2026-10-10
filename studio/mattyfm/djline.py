@@ -336,9 +336,32 @@ with "you're hearing" or "this is", never "here's": it started a while ago.
 Reply with only a JSON object: {{"ok": true, "tone": "funny", "script": "..."}}"""
 
 
-def backannounce(prev: dict | None, cur: dict, client, returning: bool = False) -> DJLine:
+BLEND_RULE = ("- Work in the guest's message given in <message>: a joke or an announcement, already written for air. "
+              "Keep it word for word (you may trim a lead-in like \"Ann sent this one in\" only if you say who it's "
+              "from yourself), put it between the song talk and the song's name, and join them naturally. "
+              "A joke gets [long pause] right before its punchline. Longer is fine for this one: up to 70 words.")
+
+
+def _with_message(system: str, message: str | None) -> str:
+    return system.replace("\nReply with", f"\n{BLEND_RULE}\n\nReply with", 1) if message else system
+
+
+def _message_block(message: str | None) -> str:
+    return f"\n<message>\n{_safe(message)}\n</message>" if message else ""
+
+
+def _keeps(script: str, message: str) -> bool:
+    """The blended line still carries the message: most of its words, in order, made it in (a model that drops
+    the punchline or the announcement's facts mustn't get away with it)."""
+    want, got = _words(display(message)).split(), _words(display(script))
+    kept = sum(1 for w in want if f" {w} " in got)
+    return bool(want) and kept / len(want) >= .8
+
+
+def backannounce(prev: dict | None, cur: dict, client, returning: bool = False, message: str | None = None) -> DJLine:
     """A line over a new SomaFM song: optional "that was", the station, then the new song.
-    returning: the guests' requests just handed back to SomaFM, whose song is already underway."""
+    returning: the guests' requests just handed back to SomaFM, whose song is already underway.
+    message: a guest's joke or announcement (its recorded script) to work in; only blended if it survives intact."""
     if returning:
         fallback = DJLine(True, "funny", f"Back to the seventies on {STATION}. This is {_safe(cur['artist'])} with {_safe(cur['title'])}.", True)
         lines = ["coming back from the guests' requests to the music feed",
@@ -352,8 +375,8 @@ def backannounce(prev: dict | None, cur: dict, client, returning: bool = False) 
             lines.append(f"previous song: {_safe(prev['title'])} by {_safe(prev['artist'])}")
     try:
         msg = client.messages.create(
-            model=MODEL, max_tokens=512, output_config={"effort": "low"}, system=rated(BACKANNOUNCE_SYSTEM),
-            messages=[{"role": "user", "content": "<songs>\n" + "\n".join(lines) + "\n</songs>"}], timeout=15)
+            model=MODEL, max_tokens=768, output_config={"effort": "low"}, system=rated(_with_message(BACKANNOUNCE_SYSTEM, message)),
+            messages=[{"role": "user", "content": "<songs>\n" + "\n".join(lines) + "\n</songs>" + _message_block(message)}], timeout=15)
         if msg.stop_reason == "refusal":
             return fallback
         text = "".join(b.text for b in msg.content if b.type == "text")
@@ -362,9 +385,38 @@ def backannounce(prev: dict | None, cur: dict, client, returning: bool = False) 
     except Exception:
         return fallback
     script = pause_cues(speech_text(data.get("script", "")))
-    if not script or is_offensive(display(script)) or len(script) > 300:
+    if not script or is_offensive(display(script)) or len(script) > (700 if message else 300):
+        return fallback
+    if message and not _keeps(script, message):
+        log.info("blend dropped: the message didn't survive (%s)", display(script)[:120])
         return fallback
     return DJLine(True, "funny", script, False)
+
+
+def blend_intro(item: dict, message: str, client) -> DJLine | None:
+    """A request's intro with a guest's joke or announcement worked in (the song had no message of its own).
+    None when it can't be done well: the joke then stands in for the intro as before."""
+    try:
+        msg = client.messages.create(
+            model=MODEL, max_tokens=1024, output_config={"effort": "low"}, system=rated(_with_message(SYSTEM, message)),
+            messages=[{"role": "user", "content": _request_block(item) + _message_block(message)}], timeout=15)
+        if msg.stop_reason == "refusal":
+            return None
+        found = re.search(r"\{.*\}", "".join(b.text for b in msg.content if b.type == "text"), re.S)
+        data = json.loads(found.group(0)) if found else None
+    except Exception as e:
+        log.info("blend for %s skipped: %s", item.get("id", "?"), e)
+        return None
+    if not isinstance(data, dict) or not data.get("ok") or not isinstance(data.get("script"), str):
+        return None
+    script = pause_cues(speech_text(data["script"]))
+    if not script or is_offensive(display(script)) or len(script) > 700 or not _keeps(script, message):
+        log.info("blend for %s dropped: %s", item.get("id", "?"), display(script)[:120])
+        return None
+    if song_phrase(item) and not _names_song(script, item) and not SIGN_OFF.search(display(script)):
+        script = f"{script.rstrip()}{'' if script.rstrip()[-1:] in '.!?' else '.'} Here's {song_phrase(item)}."
+    tone = "sweet" if data.get("tone") == "sweet" else "funny"
+    return DJLine(True, tone, script, False)
 
 
 PAUSE = "[long pause]"   # measured: ElevenLabs v4 gives ~1.7 s for this, ~1.1 s for [pause] (too short to swell into)

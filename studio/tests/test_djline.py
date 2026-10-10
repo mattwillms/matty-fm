@@ -336,3 +336,17 @@ def test_an_urgent_joke_is_flagged():
     reply = json.dumps({"ok": True, "is_joke": True, "script": "Knock knock, says Pop-Pop."})
     assert djline.announce_line("Pop-Pop", "URGENT knock knock", True, False, FakeClient(reply)).is_joke
     assert not djline.announce_line("", "Cake at 3", True, True, FakeClient(reply)).is_joke   # the host's own: never
+
+
+def test_a_blend_must_keep_the_message():
+    joke = "Why did the scarecrow win an award? Because he was outstanding in his field."
+    good = json.dumps({"ok": True, "tone": "funny", "script": f"From Aunt Linda, and a joke first: {joke} Here's Earth, Wind and Fire with September."})
+    line = djline.blend_intro(item(), joke, FakeClient(good))
+    assert line and "outstanding in his field" in line.script and line.script.count("September") == 1
+    lost = json.dumps({"ok": True, "tone": "funny", "script": "From Aunt Linda, a scarecrow joke. Here's September."})
+    assert djline.blend_intro(item(), joke, FakeClient(lost)) is None   # the punchline went missing: no blend
+    over = djline.backannounce(None, {"title": "Ventura Highway", "artist": "America"}, FakeClient(json.dumps({"script": "You're on OrrFM. Here's America with Ventura Highway."})), message=joke)
+    assert over.fallback   # the message didn't make it into the SomaFM line: the plain line, and the joke waits
+    client = FakeClient(json.dumps({"script": f"You're on OrrFM. {joke} Here's America with Ventura Highway."}))
+    blended = djline.backannounce(None, {"title": "Ventura Highway", "artist": "America"}, client, message=joke)
+    assert not blended.fallback and "<message>" in client.calls[0]["messages"][0]["content"]
