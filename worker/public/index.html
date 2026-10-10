@@ -137,14 +137,14 @@
   /* only the slit turns: the head's highlight is the room's light and stays put */
   .slit { position: absolute; left: 1px; right: 1px; top: 4px; height: 2px; background: #2a200b; transform: rotate(var(--r)); }
   .screw.tl { top: 6px; left: 6px; } .screw.tr { top: 6px; right: 6px; } .screw.bl { bottom: 6px; left: 6px; } .screw.br { bottom: 6px; right: 6px; }
-  .dial { position: relative; height: 54px; margin-top: 12px; border-radius: var(--glass-r); background: linear-gradient(#1b1410, #2a201a);
+  .dial { position: relative; height: 42px; margin-top: 10px; border-radius: var(--glass-r); background: linear-gradient(#1b1410, #2a201a);
           box-shadow: inset 0 3px 8px #000d, 0 1px 0 #fff8; overflow: hidden; }
   /* the window's shadow and glare sit above the needle, so it runs on behind the faceplate */
   .dial::after { content: ""; position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none;
                  background: linear-gradient(170deg, #ffffff1c 0 30%, transparent 30%); box-shadow: inset 0 3px 8px #000d, inset 0 -3px 6px #000a; }
-  .scale { position: absolute; inset: 8px 12px auto; display: flex; justify-content: space-between;
+  .scale { position: absolute; inset: 5px 12px auto; display: flex; justify-content: space-between;
            font: 400 .6rem Michroma, sans-serif; color: var(--cream-dim); letter-spacing: .04em; }   /* hi-fi faceplate numerals */
-  .ticks { position: absolute; left: 12px; right: 12px; bottom: 10px; height: 12px;
+  .ticks { position: absolute; left: 12px; right: 12px; bottom: 7px; height: 10px;
            background: repeating-linear-gradient(90deg, #cdb59188 0 1px, transparent 1px 10px) 0 0 / calc(100% - 8px) 100% no-repeat; }   /* clear of the end stop */
   .ticks::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--cream-dim) 0 2px, transparent 2px 50px) 0 0 / calc(100% - 8px) 100% no-repeat; height: 12px; }
   .ticks::before { content: ""; position: absolute; right: 0; top: -2px; bottom: 0; width: 3px; background: var(--cream-dim); }   /* the scale's end stop */
@@ -325,7 +325,7 @@
      the light, the floor a shade darker than the plate. Nothing outside them: a shadow outside reads as
      letters standing on the plate, not cut into it */
   .brand .maker { position: relative; font: 400 clamp(.82rem, 4.1vw, 1.05rem)/1 Asset, "Arial Black", sans-serif;   /* very wide: narrows on small phones so the lamp clears the screw */ letter-spacing: .01em;
-                  color: #3e362a; filter: url(#engrave); }   /* the cut's floor: dark with the grime of years; its walls come from #engrave */
+                  color: #241e15; filter: url(#engrave); }   /* the cut's floor: dark with the grime of years; its walls come from #engrave */
   .brand .req { display: flex; align-items: center; gap: 8px; -webkit-tap-highlight-color: transparent; }
   /* the lamp, set in the panel like a real indicator: a polished chrome bezel in a hole (the hole's top
      edge in shade, its lower lip lit), a dark recess inside the ring, and a domed glass lens with the
@@ -352,11 +352,11 @@
                      opacity: calc(var(--g, .8) * .75); }
   .presets .preset { position: relative; z-index: 1; }
   .presets { --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .9 0 0 0 -.35'/%3E%3C/filter%3E%3Crect width='96' height='96' filter='url(%23g)'/%3E%3C/svg%3E"); }   /* fine pebble speckle: plain noise tiles seamlessly */
-  .presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px 8px; margin-top: 8px; padding: 8px 8px 10px;
+  .presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 7px; margin-top: 8px; padding: 6px 7px 8px;
              border-radius: var(--glass-r);   /* the circuit board behind the buttons, mostly in their shadow */
              background: linear-gradient(#00000010, #00000030 60%, #00000099), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='48'%3E%3Crect width='64' height='48' fill='%2313281a'/%3E%3Cg fill='none' stroke='%23b9893a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' opacity='.75'%3E%3Cpath d='M0 10h14l6 6h18'/%3E%3Cpath d='M38 16l6-6h20'/%3E%3Cpath d='M8 48V34l6-6h10'/%3E%3Cpath d='M24 28h16l6 6v14'/%3E%3Cpath d='M52 0v8'/%3E%3Cpath d='M56 48V30l-6-6h-8'/%3E%3Cpath d='M30 0v6l-4 4'/%3E%3Cpath d='M0 40h4'/%3E%3C/g%3E%3Cg fill='%23c79a45' opacity='.85'%3E%3Ccircle cx='38' cy='16' r='2.4'/%3E%3Ccircle cx='24' cy='28' r='2.4'/%3E%3Ccircle cx='42' cy='24' r='2.4'/%3E%3Ccircle cx='26' cy='10' r='2'/%3E%3Ccircle cx='4' cy='40' r='2'/%3E%3Ccircle cx='52' cy='8' r='2'/%3E%3C/g%3E%3Cg fill='%230b170f'%3E%3Ccircle cx='38' cy='16' r='.9'/%3E%3Ccircle cx='24' cy='28' r='.9'/%3E%3Ccircle cx='42' cy='24' r='.9'/%3E%3C/g%3E%3Crect x='10' y='18' width='8' height='4' rx='1' fill='%232a2a28' opacity='.9'/%3E%3C/svg%3E") 0 0 / 64px 48px;
              box-shadow: inset 0 2px 0 #000c, inset 0 9px 10px -3px #000e, inset 0 -1px 2px #0008, 0 1px 0 #fff8; }   /* the faceplate's edge over it, and its shadow */
-  .presets .preset { aspect-ratio: 1.75; padding: 0; border-radius: 5px; color: #fff; font-size: 1.3rem; line-height: 1;
+  .presets .preset { aspect-ratio: 2.2; padding: 0; border-radius: 5px; color: #fff; font-size: 1.3rem; line-height: 1;
                      display: grid; place-items: center; cursor: pointer; filter: none;
                      background: var(--grain) 0 0 / 96px 96px, linear-gradient(#2b2a29, #1f1e1d 45%, #171615 80%, #111010);
                      background-blend-mode: soft-light, normal;   /* the cap: lit from above, fine-grained plastic */
@@ -372,7 +372,7 @@
   .presets.resting .preset { filter: brightness(.55) saturate(.6); cursor: default; }   /* someone just played one: everyone waits */
   /* the emoji become white legends printed into the plastic, like old car-radio presets: drained of colour and
      pushed to white (some inner detail survives), with a dark lip above and a faint light one below, as if inset */
-  .presets .preset .ico { font-size: 1.45rem; filter: grayscale(1) contrast(2.1) brightness(1.02)
+  .presets .preset .ico { font-size: 1.15rem; filter: grayscale(1) contrast(2.1) brightness(1.02)
                           drop-shadow(0 0 .4px #000) drop-shadow(0 -1.3px 0 #000e) drop-shadow(0 1.3px 0 #ffffff70); }
                           /* drawn larger and pushed to white gently, so fine lines survive; a thin soft outline defines the edges;
                              the inset: a dark lip above, a bright one below */
@@ -637,7 +637,7 @@
   .plank-heart use { fill: none; stroke-linecap: round; stroke-linejoin: round; }
   .plank-heart .cut-shade { stroke: #0d0603; stroke-width: 3.6; transform: translate(-.5px, -.7px); }   /* the cut's upper wall, in shadow */
   .plank-heart .cut-wood { stroke: #8d633b; stroke-width: 1.7; }   /* the paler wood the knife opened */
-  .plank-heart text { font: 800 12.5px Fraunces, Georgia, serif; stroke-width: .9; paint-order: stroke; }
+  .plank-heart text { font: 900 13.5px "Arial Black", "Helvetica Neue", Arial, sans-serif; letter-spacing: .3px; stroke-width: .7; paint-order: stroke; }
   .plank-heart .cut-shade text { fill: #0d0603; } .plank-heart .cut-wood text { fill: #8d633b; stroke: none; }
   .plank-play { flex: none; height: 40px; padding: 0 16px; border-radius: 6px; font: 800 1rem/1 Fraunces, Georgia, serif; letter-spacing: .04em;
                  color: #3a2306; text-shadow: 0 1px 0 #ffeaa8;
@@ -763,22 +763,31 @@
   .od-burst b { display: block; font-size: 1.05rem; }
   /* the sound board's switch: a toggle at the side of the buttons, up for the speakers, down for this phone only.
      No labels: a toast says what it does when it's flipped. A black plate, a chrome bat lever on a pivot nut. */
-  .presets { grid-template-columns: repeat(4, minmax(0, 1fr)) 22px; }
-  .flip-sw { grid-column: 5; grid-row: 1 / span 2; position: relative; padding: 0; border-radius: 4px; cursor: pointer;
-             -webkit-tap-highlight-color: transparent; background: linear-gradient(90deg, #1c1b1a, #2b2a28 50%, #161514);
-             box-shadow: inset 0 1px 0 #ffffff1f, inset 0 -1px 0 #000, 0 2px 4px #000c; }
-  .flip-sw::before { content: ""; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
-                     background: radial-gradient(circle at 38% 32%, #f2f0ea, #9b978f 55%, #4b4843); box-shadow: 0 1px 2px #000c; }   /* the pivot nut */
-  .flip-sw .lever { position: absolute; left: 50%; width: 6px; margin-left: -3px; height: 26px; bottom: 50%; border-radius: 3px 3px 2px 2px;
-                    transform-origin: 50% 100%; transform: rotate(-4deg);
-                    background: linear-gradient(90deg, #6b6862, #f4f2ec 40%, #a9a59d 70%, #55524d); box-shadow: 0 2px 2px #000a;
-                    transition: transform .14s cubic-bezier(.3,1.6,.5,1); }
-  .flip-sw .lever::before { content: ""; position: absolute; left: -2px; top: -3px; width: 10px; height: 8px; border-radius: 50%;
-                            background: radial-gradient(circle at 40% 35%, #fff, #b3afa7 60%, #5d5a55); }   /* the rounded tip */
-  .flip-sw[aria-checked="true"] .lever { transform: rotate(184deg); }   /* thrown down: this phone only */
+  .presets { grid-template-columns: repeat(4, minmax(0, 1fr)); flex: 1; min-width: 0; margin-top: 0; }
+  .sb-wrap { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+  /* a panel toggle switch on the aluminum, as on old gear: a chrome plate with a red tab (speaker) above and a black
+     tab (phone) below, a hex nut, and a chrome bat lever thrown up or down */
+  .toggle-sw { position: relative; flex: none; width: 30px; height: 74px; padding: 0; background: none; box-shadow: none; cursor: pointer;
+               -webkit-tap-highlight-color: transparent; }
+  .toggle-sw .plate { position: absolute; left: 3px; right: 3px; top: 0; bottom: 0; border-radius: 4px;
+                      background: linear-gradient(90deg, #8d8a84, #f2f0ea 35%, #b9b5ad 65%, #75726c); box-shadow: 0 1px 2px #000a, inset 0 1px 0 #fff9; }
+  .toggle-sw .tab { position: absolute; left: 5px; right: 5px; height: 17px; border-radius: 2px; display: grid; place-items: center; }
+  .toggle-sw .tab svg { width: 13px; height: 13px; fill: #fff; }
+  .toggle-sw .tab.up { top: 3px; background: #b3261a; box-shadow: inset 0 1px 1px #0006; }
+  .toggle-sw .tab.dn { bottom: 3px; background: #141414; box-shadow: inset 0 1px 1px #000; }
+  .toggle-sw .nut { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
+                    clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
+                    background: linear-gradient(135deg, #f5f3ee, #a8a49c 50%, #6a6761); }
+  .toggle-sw .nut::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #e9e6df, #7a766f 70%, #3d3a36); }
+  .toggle-sw .lever { position: absolute; left: 50%; bottom: 50%; width: 6px; height: 24px; margin-left: -3px; border-radius: 3px 3px 2px 2px;
+                      transform-origin: 50% 100%; transform: rotate(-6deg); transition: transform .14s cubic-bezier(.3,1.6,.5,1);
+                      background: linear-gradient(90deg, #5e5b56, #f4f2ec 40%, #aaa69e 70%, #4e4b47); box-shadow: 1px 2px 2px #0009; }
+  .toggle-sw .lever::before { content: ""; position: absolute; left: -2px; top: -4px; width: 10px; height: 9px; border-radius: 50%;
+                              background: radial-gradient(circle at 40% 35%, #fff, #b3afa7 60%, #5d5a55); }
+  .toggle-sw[aria-checked="true"] .lever { transform: rotate(186deg); }   /* thrown down: this phone only */
   .presets.local .preset { filter: none; }
   /* a guest's own button: their picture as a legend, drained to grey and inset like the emoji */
-  .presets .preset .ico-img { width: 30px; height: 30px; border-radius: 50%; filter: grayscale(1) contrast(1.4) brightness(1.08)
+  .presets .preset .ico-img { width: 24px; height: 24px; border-radius: 50%; filter: grayscale(1) contrast(1.4) brightness(1.08)
                               drop-shadow(0 -1.3px 0 #000e) drop-shadow(0 1.3px 0 #ffffff60); }
 </style>
 </head>
@@ -849,10 +858,12 @@
           <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter></svg>
         <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="engrave" x="-5%" y="-10%" width="110%" height="120%">
           <feFlood flood-color="#120d06" flood-opacity=".85"/><feComposite in2="SourceAlpha" operator="out"/>
-          <feOffset dx=".9" dy="1.3"/><feGaussianBlur stdDeviation=".35"/><feComposite in2="SourceAlpha" operator="in" result="shade"/>
-          <feFlood flood-color="#fff" flood-opacity=".75"/><feComposite in2="SourceAlpha" operator="out"/>
-          <feOffset dx="-.7" dy="-1"/><feGaussianBlur stdDeviation=".3"/><feComposite in2="SourceAlpha" operator="in" result="light"/>
-          <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter></svg>
+          <feOffset dx="1.1" dy="1.5"/><feGaussianBlur stdDeviation=".15"/><feComposite in2="SourceAlpha" operator="in" result="shade"/>
+          <feFlood flood-color="#fff" flood-opacity=".9"/><feComposite in2="SourceAlpha" operator="out"/>
+          <feOffset dx="-.8" dy="-1.1"/><feGaussianBlur stdDeviation=".12"/><feComposite in2="SourceAlpha" operator="in" result="light"/>
+          <feOffset in="SourceAlpha" dx=".6" dy=".9" result="sh"/><feComposite in="sh" in2="SourceAlpha" operator="out" result="rim"/>
+          <feFlood flood-color="#fff" flood-opacity=".55"/><feComposite in2="rim" operator="in" result="lip"/>
+          <feMerge><feMergeNode in="lip"/><feMergeNode in="SourceGraphic"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter></svg>
         <span class="req"><span class="label">REQUESTED</span><span class="bezel" aria-hidden="true"><span class="lamp" id="lamp"></span></span></span>
       </div>
       <div class="glass" id="glass" role="button" tabindex="0" aria-label="Show the record sleeve">
@@ -864,7 +875,12 @@
         <div class="ticks"></div>
         <div class="needle" id="needle"></div>
       </div>
-      <div class="presets" id="presets" role="group" aria-label="Sound buttons"></div>
+      <div class="sb-wrap"><div class="presets" id="presets" role="group" aria-label="Sound buttons"></div>
+        <button class="toggle-sw" id="padMode" type="button" role="switch" aria-checked="false" aria-label="Sound buttons on my phone only">
+          <span class="plate"></span>
+          <span class="tab up" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></span>
+          <span class="tab dn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 1H8a2.5 2.5 0 0 0-2.5 2.5v17A2.5 2.5 0 0 0 8 23h8a2.5 2.5 0 0 0 2.5-2.5v-17A2.5 2.5 0 0 0 16 1zm-4 20.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM16.5 17h-9V4h9v13z"/></svg></span>
+          <span class="nut" aria-hidden="true"></span><span class="lever" aria-hidden="true"></span></button></div>
       <div class="lcd msg-screen" aria-live="polite">
         <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
       </div>
@@ -2104,15 +2120,20 @@ for (const id of ["msg", "joke", "ft", "fa", "q"]) $(id).addEventListener("input
 });
 // a name this phone kept from before: claimed once on load; if someone else has it now, this phone is a new guest
 // under it, numbered ("Ann 2"); a name tonight's rules don't allow is asked for again
-(async () => {
-  const n = myName(); if (!n) return;
+// (after the first check-in: that's what gives this phone its id; a refusal for any other reason keeps the name)
+let nameClaimed = false;
+async function reclaimName() {
+  const n = myName(); if (!n || nameClaimed) return;
   try {
     const r = await claimName(n, true);
-    if (r.ok) { if (r.name !== n) { keepName(r.name); toast(`You're ${r.name} tonight.`); } return; }
-    try { localStorage.removeItem("mfm_name"); } catch {} nameHere = ""; showName();
-    $("whoErr").textContent = r.error; $("whoErr").hidden = false;
+    if (r.ok) { nameClaimed = true; if (r.name !== n) { keepName(r.name); toast(`You're ${r.name} tonight.`); } return; }
+    if (/Letters only|different name/.test(r.error || "")) {   // only tonight's rules can take a name away
+      nameClaimed = true;
+      try { localStorage.removeItem("mfm_name"); } catch {} nameHere = ""; showName();
+      $("whoErr").textContent = r.error; $("whoErr").hidden = false;
+    }
   } catch {}
-})();
+}
 document.querySelectorAll(".rename").forEach((b) => b.onclick = () => {
   $("whoName").value = myName(); $("whoBack").hidden = false;
   document.body.classList.add("noname");
@@ -2352,11 +2373,6 @@ $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
   };
   return b;
 }));
-{
-  const sw = el("button", "flip-sw"); sw.type = "button"; sw.id = "padMode"; sw.setAttribute("role", "switch");
-  sw.setAttribute("aria-label", "Sound buttons on my phone only"); sw.append(el("span", "lever"));
-  $("presets").append(sw);
-}
 window.customReady = true;
 $("padMode").onclick = flipPadMode;
 showPadMode();
@@ -2418,6 +2434,7 @@ async function refresh() {
     showJokes(s.myJokes);
     showLimits();
     showEta(s);
+    reclaimName();   // once, now this phone has its id
     if (s.hunt) showHunt(s.hunt);
     // the host sent this phone back to the start: it forgets its name and asks again (once per kick)
     if (s.kicked) {
