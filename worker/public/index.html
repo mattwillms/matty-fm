@@ -2562,10 +2562,12 @@ function isSpent(t) {
   return !(limits && limits.freePlay) && spent.some((x) => normKey(x.artist) + "|" + normKey(baseTitle(x.title)) === key);
 }
 
+let stateLoaded = false;
 async function refresh() {
   if (!k) { $("gate").hidden = false; return; }
   try {
-    const s = await api("/api/state", { signal: AbortSignal.timeout(8000) });   // a hung poll never piles up
+    const s = await api(stateLoaded ? "/api/state" : "/api/state?load=1", { signal: AbortSignal.timeout(8000) });   // a hung poll never piles up
+    stateLoaded = true;   // the first one may hand this phone its id; polls don't
     if (!s || !Array.isArray(s.upNext)) return;   // an error reply is not "requests closed": keep what's shown
     setOffAir(Boolean(s.stationOff));
     $("onbreak").hidden = !s.djOnBreak || offAir;   // off air says it better
@@ -2770,7 +2772,7 @@ $("send").onclick = () => coinSend(async () => {
   try {
     let r = await send();
     if (!r.ok && /reload/i.test(r.error ?? "")) {   // no phone id yet (a busy minute at the door): get one, try once more
-      await api("/api/state", { signal: AbortSignal.timeout(8000) }).catch(() => null);
+      await api("/api/state?load=1", { signal: AbortSignal.timeout(8000) }).catch(() => null);
       r = await send();
       if (!r.ok && /reload/i.test(r.error ?? "")) r = { ok: false, error: "Busy moment. Tap Send again in a minute." };
     }

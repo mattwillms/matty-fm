@@ -9,7 +9,7 @@ describe("device cookie", () => {
       body: JSON.stringify({ track: { title: "Waterloo", artist: "ABBA" }, name: "x" }),
     });
     expect(forged.status).toBe(403);
-    const state = await SELF.fetch("https://fm.test/api/state?k=dev");
+    const state = await SELF.fetch("https://fm.test/api/state?k=dev&load=1");
     const cookie = (state.headers.get("set-cookie") ?? "").split(";")[0];
     expect(cookie).toMatch(/^mfm_dev=[0-9a-f-]{36}\.[A-Za-z0-9_-]{22}$/);
     const ok = await SELF.fetch("https://fm.test/api/request?k=dev", {
@@ -28,7 +28,7 @@ describe("device cookie", () => {
   it("new phone ids are handed out at a human pace per address", async () => {
     let issued = 0;
     for (let i = 0; i < 40; i++) {
-      const r = await SELF.fetch("https://fm.test/api/state?k=dev", { headers: { "cf-connecting-ip": "198.51.100.7" } });
+      const r = await SELF.fetch("https://fm.test/api/state?k=dev&load=1", { headers: { "cf-connecting-ip": "198.51.100.7" } });
       if (r.headers.get("set-cookie")) issued++;
     }
     expect(issued).toBeLessThanOrEqual(30);
@@ -36,11 +36,11 @@ describe("device cookie", () => {
   });
 
   it("junk posts don't use up the house's request allowance", async () => {
-    const state = await SELF.fetch("https://fm.test/api/state?k=dev", { headers: { "cf-connecting-ip": "198.51.100.8" } });
+    const state = await SELF.fetch("https://fm.test/api/state?k=dev&load=1", { headers: { "cf-connecting-ip": "198.51.100.8" } });
     const junkCookie = (state.headers.get("set-cookie") ?? "").split(";")[0];
     for (let i = 0; i < 130; i++)
       await SELF.fetch("https://fm.test/api/request?k=dev", { method: "POST", headers: { cookie: junkCookie, "cf-connecting-ip": "198.51.100.8" }, body: "{}" });
-    const fresh = await SELF.fetch("https://fm.test/api/state?k=dev", { headers: { "cf-connecting-ip": "198.51.100.8" } });
+    const fresh = await SELF.fetch("https://fm.test/api/state?k=dev&load=1", { headers: { "cf-connecting-ip": "198.51.100.8" } });
     const cookie = (fresh.headers.get("set-cookie") ?? "").split(";")[0];
     const ok = await SELF.fetch("https://fm.test/api/request?k=dev", {
       method: "POST", headers: { cookie, "content-type": "application/json", "cf-connecting-ip": "198.51.100.8" },
@@ -57,13 +57,13 @@ describe("device cookie", () => {
     let issued = 0;
     for (let i = 0; i < 30; i++) {
       await SELF.fetch("https://fm.test/api/cached?k=dev", { headers: ip });
-      if ((await SELF.fetch("https://fm.test/api/state?k=dev", { headers: ip })).headers.get("set-cookie")) issued++;
+      if ((await SELF.fetch("https://fm.test/api/state?k=dev&load=1", { headers: ip })).headers.get("set-cookie")) issued++;
     }
     expect(issued).toBe(30);
   });
   it("cancel works only from the phone that asked", async () => {
     const ip = { "cf-connecting-ip": "198.51.100.20" };
-    const cookieOf = async () => ((await SELF.fetch("https://fm.test/api/state?k=dev", { headers: ip })).headers.get("set-cookie") ?? "").split(";")[0];
+    const cookieOf = async () => ((await SELF.fetch("https://fm.test/api/state?k=dev&load=1", { headers: ip })).headers.get("set-cookie") ?? "").split(";")[0];
     const mine = await cookieOf(), other = await cookieOf();
     const sent = await (await SELF.fetch("https://fm.test/api/request?k=dev", {
       method: "POST", headers: { ...ip, cookie: mine, "content-type": "application/json" },
@@ -80,7 +80,7 @@ describe("device cookie", () => {
       method: "POST", headers: { ...ip, cookie, "content-type": "application/json" },
       body: JSON.stringify({ name: "Ray", text: "I used to hate facial hair, but then it grew on me." }) });
     expect((await joke("mfm_dev=00000000-0000-4000-8000-000000000000")).status).toBe(403);
-    const cookie = ((await SELF.fetch("https://fm.test/api/state?k=dev", { headers: ip })).headers.get("set-cookie") ?? "").split(";")[0];
+    const cookie = ((await SELF.fetch("https://fm.test/api/state?k=dev&load=1", { headers: ip })).headers.get("set-cookie") ?? "").split(";")[0];
     const r = await (await joke(cookie)).json() as { ok: boolean; id: string };
     expect(r.ok).toBe(true);
     const res = await SELF.fetch("https://fm.test/api/studio/joke", { method: "POST",

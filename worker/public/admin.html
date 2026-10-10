@@ -59,9 +59,9 @@
   .pads { margin-top: 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }   /* minmax: columns may shrink below their longest word */
   .pad { aspect-ratio: 1; padding: 4px; display: grid; place-content: center; justify-items: center; gap: 2px; border-radius: 12px;
          background: var(--raise); box-shadow: inset 0 -3px 0 #0004; transition: box-shadow .15s, background .15s, transform .08s; }
-  .pad .ico { font-size: 1.7rem; line-height: 1; }
+  .pad .ico { width: auto; height: auto; background: none; font-size: 1.7rem; line-height: 1; }   /* not the history list's icon chip */
   .pad .lbl { font-size: clamp(.56rem, 2.7vw, .68rem); font-weight: 500; color: var(--muted); line-height: 1.1; text-align: center; overflow-wrap: normal; hyphens: manual; }
-  .pad.hit { background: var(--walnut, #5B3A26); box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px #f0a92b66; }
+  .pad.hit { background: var(--line); box-shadow: inset 0 0 0 2px var(--gold), 0 0 14px #f0a92b66; }
 
   /* ---- interval slider ---- */
   .slider-row { padding: 12px 0 4px; border-top: 1px solid var(--line); }
@@ -100,7 +100,7 @@
   .seg .segb { flex: 1; background: transparent; color: var(--muted); border-radius: 9px; padding: 10px 6px; font-size: .95rem; }
   .switch-row.stack { grid-template-columns: 1fr; }   /* a choice of several: the buttons get the full width under the words */
   #padGap, #lineMode { margin: 0; }
-  #lineMode .segb, #padGap .segb { white-space: nowrap; padding: 10px 6px; }
+  #lineMode .segb { white-space: nowrap; padding: 10px 6px; }
   #padGap .segb { white-space: nowrap; padding: 10px 9px; }
   .backlog button { flex: none; white-space: nowrap; }
   .seg .segb[aria-pressed="true"] { background: var(--raise); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
@@ -375,16 +375,16 @@ function toast(msg, isErr) {
 async function busy(btn, work) {
   if (!btn || btn.disabled) return work();
   btn.disabled = true; btn.classList.add("busy");
-  try { return await work(); } finally { btn.disabled = false; btn.classList.remove("busy"); render(); }
+  try { return await work(); } finally { btn.disabled = false; btn.classList.remove("busy"); }   // act() reloads (and renders) already
 }
 async function call(path, body) {
   const r = await fetch(path, { method: body ? "POST" : "GET", headers: { "x-admin-token": token, "content-type": "application/json" }, body: body ? JSON.stringify(body) : undefined });
   if (r.status === 401) { $("auth").hidden = false; throw new Error("auth"); }
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
-  if (fromLink) { try { localStorage.setItem("mfm_t", token); } catch {} }   // a typo in the link never replaces a good token
+  if (fromLink && !call.saved) { call.saved = true; try { localStorage.setItem("mfm_t", token); } catch {} }   // once, after the link's token works
   return r.json();
 }
-const DONE = { kick: "Kicked: that phone starts over", giveCoin: "Quarter given", takeCoin: "Quarter taken back", resetHunt: "Hunt reset", partyStart: "Party clock started", partyEnd: "Party clock stopped",  announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
+const DONE = { approve: "In the line", dropJokes: "Jokes dropped", reset: "Party wiped", kick: "Kicked: that phone starts over", giveCoin: "Quarter given", takeCoin: "Quarter taken back", resetHunt: "Hunt reset", partyStart: "Party clock started", partyEnd: "Party ended and archived",  announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
   mute: "Phone muted", unmute: "Phone unmuted", release: "Released: they can pick two more", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
@@ -470,7 +470,7 @@ function renderNow() {
   $("skip").title = playing ? "Skip the request on air" : "Nothing to skip: SomaFM is on air";
 }
 
-// Five pads, each tied to a sound on the studio (media/breaks/pad-N.mp3), played on the PA.
+// Eight pads, each tied to a sound on the studio (media/breaks/pad-N.mp3), played on the PA.
 const PADS = [["🚨", "Siren"], ["🌮", "Bong"], ["💥", "Thud"], ["😏", "Rizz"], ["👏", "Applause"], ["🎉", "Yaaay"], ["😱", "Faaah"], ["💨", "Bark fart"]];
 $("pads").replaceChildren(...PADS.map(([ico, lbl], i) => {
   const b = el("button", "pad"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl}`);
@@ -623,7 +623,7 @@ function render() {
   // the message backlog: how many, and how long the oldest joke has waited (they expire at 30 min)
   const jw = jokesWaiting.filter((j) => j.kind !== "announcement"), aw = jokesWaiting.length - jw.length;
   const oldest = jw.length ? Math.round((state.serverNow - Math.min(...jw.map((j) => j.createdAt))) / 60000) : 0;
-  $("backlog").hidden = !jokesWaiting.length;
+  $("backlog").hidden = !jokesWaiting.length && !state.line?.oneEach;   // the long-line note shows even with no jokes
   $("backlogText").textContent = [jw.length ? `${jw.length} joke${jw.length > 1 ? "s" : ""} waiting, oldest ${oldest} min` : "",
     aw ? `${aw} announcement${aw > 1 ? "s" : ""}` : "", state.line?.oneEach ? "line over 20: one song per phone" : ""].filter(Boolean).join(" · ");
   $("dropJokes").hidden = !jw.length;
@@ -701,7 +701,7 @@ async function load() {
     const h = state.health || {};
     const key = JSON.stringify([state.items, state.jokes, state.history, state.muted, state.cooldowns, state.settings, state.nowPlaying, state.held, state.line, state.party,
                                 h.lastDj, h.source, h.current]);
-    if (key !== lastKey) { lastKey = key; render(); } else { renderStatus(); renderTimer(); }
+    if (key !== lastKey) { lastKey = key; render(); } else { renderStatus(); renderTimer(); renderNow(); }   // "N min ago" keeps counting
   }
   catch (e) { if (e.message !== "auth") renderStale(); }
 }
@@ -741,7 +741,8 @@ function renderParty() {
   $("partyGo").textContent = running ? "End" : p.end ? "Start again" : "Start";
   $("partyGo").className = running ? "sm ghost" : "sm primary";
   $("partyWipe").hidden = running;   // wiping is for before the party, not during it
-  if (p.start && (Date.now() - statsAt > 60000 || statsFor !== p.start + (p.end || 0))) {
+  // the night's numbers: once a minute while it runs; once more when it ends, then they're frozen
+  if (p.start && ((!p.end && Date.now() - statsAt > 60000) || statsFor !== p.start + (p.end || 0))) {
     statsAt = Date.now(); statsFor = p.start + (p.end || 0);
     call("/api/admin/action", { action: "stats" }).then((r) => {
       const t = r.stats; if (!t) return;
@@ -751,7 +752,7 @@ function renderParty() {
   }
   if (!p.start) $("partyStats").hidden = true;
 }
-setInterval(() => { if (state) renderParty(); }, 30000);   // the clock shows minutes: a tick every 30 s is enough
+setInterval(() => { if (state && document.visibilityState === "visible") renderParty(); }, 30000);   // the clock shows minutes: a tick every 30 s is enough
 $("partyGo").onclick = (e) => {
   const p = state?.party || {}, running = p.start && !p.end;
   if (running) {   // ending archives the night under a title of the host's choosing
@@ -810,13 +811,14 @@ $("archNext").onclick = () => { archAt++; showArchive(); };
 $("archDelete").onclick = async () => {
   const p = archive[archAt];
   if (!p || !confirm(`Delete "${p.title}" from the archive? This can't be undone.`)) return;
-  try { await call("/api/admin/action", { action: "deleteParty", id: String(p.id) }); } catch { toast("Couldn't reach the server", true); return; }
+  try { const r = await call("/api/admin/action", { action: "deleteParty", id: String(p.id) }); if (r?.ok === false) { toast(r.error || "That didn't work", true); return; } }
+  catch { toast("Couldn't reach the server", true); return; }
   toast("Deleted"); openArchive(archAt - (archAt >= archive.length - 1 ? 1 : 0));
 };
 // a fresh party: every song, guest name, message, joke, mute and limit goes (the test run's leftovers), the
 // request on air stops, settings stay; then the clock starts
 $("partyWipe").onclick = async (e) => {
-  if (!confirm("Wipe everything and start the party? Every song, name and message goes. This can't be undone.")) return;
+  if (!confirm("Wipe everything and start the party? Every song, name, message, joke, mute, quarter, medal, Orrdle game and the guest list goes. Settings and the archive stay. This can't be undone.")) return;
   if (await act({ action: "reset" }, e)) act({ action: "partyStart" });
 };
 // The guest list: fetched when opened (and every 30 s while open), not with the 3-second poll.

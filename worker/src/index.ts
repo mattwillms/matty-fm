@@ -5,9 +5,9 @@ import { isOffensive } from "./queue";
 
 export { Party };
 
-// Bump whenever party.ts changes. A deployed Durable Object kept running its first
-// version all evening (deploys did not restart it), so each queue-code change gets a
-// fresh instance. Queue state resets on a bump: never bump on party day.
+// The queue's instance name. Never bump it to make a change live: a deploy reaches the running queue by itself in
+// ~5 minutes (read back `code` from /api/admin/state). A bump is the last resort: the new queue takes over the old
+// one's state (exportState/importState).
 const QUEUE_VERSION = 21;
 
 const enc = new TextEncoder();
@@ -32,23 +32,29 @@ async function sign(id: string, env: Env): Promise<string> {
   return btoa(String.fromCharCode(...mac)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
-async function signedDevice(req: Request, env: Env): Promise<boolean> {
+/** The phone's id. Only the page load (`mint`: /api/state with load=1) hands a new phone one; its polls don't, so
+ *  a phone that won't keep the cookie isn't handed a fresh id (and a ghost in the guest list) every 15 s.
+ *  signed: the phone carries an id this Worker issued. */
+async function device(req: Request, env: Env, mint: boolean): Promise<{ id: string; cookie?: string; signed: boolean }> {
   const m = /(?:^|;\s*)mfm_dev=([0-9a-f-]{36})\.([A-Za-z0-9_-]{22})(?:;|$)/.exec(req.headers.get("cookie") ?? "");
-  return Boolean(m && same(m[2], await sign(m[1], env)));
-}
-
-/** The phone's id. Only the page load (`mint`) hands a new phone one: the page also fetches
- *  /api/cached at the same moment, and two ids per phone halved how many phones a house could add. */
-async function device(req: Request, env: Env, mint: boolean): Promise<{ id: string; cookie?: string }> {
-  const m = /(?:^|;\s*)mfm_dev=([0-9a-f-]{36})\.([A-Za-z0-9_-]{22})(?:;|$)/.exec(req.headers.get("cookie") ?? "");
-  if (m && same(m[2], await sign(m[1], env))) return { id: m[1] };
-  if (!mint) return { id: crypto.randomUUID() };
+  if (m && same(m[2], await sign(m[1], env))) return { id: m[1], signed: true };
+  if (!mint) return { id: crypto.randomUUID(), signed: false };
   // new phones are handed out at a human pace per address: a script minting hundreds of
   // identities (to dodge the 2-song cap or Mute) gets a few a minute
   const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-  if (!(await env.NEWDEV_LIMIT.limit({ key: ip })).success) return { id: crypto.randomUUID() };   // no cookie: can look, can't request
+  if (!(await env.NEWDEV_LIMIT.limit({ key: ip })).success) return { id: crypto.randomUUID(), signed: false };   // no cookie: can look, can't request
   const id = crypto.randomUUID();
-  return { id, cookie: `mfm_dev=${id}.${await sign(id, env)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` };
+  return { id, signed: true, cookie: `mfm_dev=${id}.${await sign(id, env)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` };
+}
+
+/** Every guest action that changes something: a phone id this Worker issued, and a human pace (per phone, and a loose
+ *  ceiling for the house's one address). Returns the refusal, or null to go ahead. */
+async function guard(req: Request, env: Env, dev: { id: string; signed: boolean }, extra: HeadersInit): Promise<Response | null> {
+  if (!dev.signed) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
+  const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+  if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
+    return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+  return null;
 }
 
 /** A song's words, from LRCLIB (free, no key): the exact match by artist, title and length, else its search. Cached a
@@ -199,7 +205,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
     }
 
     if (!same(url.searchParams.get("k"), env.PARTY_CODE)) return json({ error: "Ask the host for the party QR code." }, 403);
-    const dev = await device(req, env, path === "/api/state");
+    const dev = await device(req, env, path === "/api/state" && url.searchParams.get("load") === "1");
     const extra: HeadersInit = dev.cookie ? { "set-cookie": dev.cookie } : {};
     if (path === "/api/search") {
       const q = (url.searchParams.get("q") ?? "").trim();
@@ -211,7 +217,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
       return json(await cachedLyrics(String(u.get("artist") ?? "").slice(0, 200), String(u.get("title") ?? "").slice(0, 200),
         Number(u.get("s")) || 0, family !== false, ctx), 200, { ...extra, "cache-control": "max-age=3600" });
     }
-    if (path === "/api/state") return json({ ...(await party.guestState(dev.id)), page: await pageHash(env, "/index.html") }, 200, extra);
+    if (path === "/api/state") return json({ ...(await party.guestState(dev.id, dev.signed)), page: await pageHash(env, "/index.html") }, 200, extra);
     if (path === "/api/cached") {
       // Song keys the studio already has on disk (sent with each check-in): they play instantly.
       return json({ keys: await party.cachedKeys() }, 200, { ...extra, "cache-control": "max-age=60" });
@@ -219,59 +225,46 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
     if (path === "/api/request" && req.method === "POST") {
       // A request needs the signed phone id the page was handed when it loaded: dropping or
       // inventing a cookie no longer makes a fresh phone (that dodged the 2-song limit and Mute).
-      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
+      if (!dev.signed) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
       const input = await body(req);
       // only a real request spends the allowances: junk can't use up the house's
       if (typeof input.name !== "string" || !input.name.trim() || typeof input.track?.title !== "string")
         return json({ ok: false, error: "Pick a song and add your name." }, 400, extra);
-      const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-      // per phone (one person can't lock out the house, which shares one address), plus a loose house-wide ceiling
-      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
-        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
-      return json(await party.submit(dev.id, input, false, ip), 200, extra);
+      const stop = await guard(req, env, dev, extra);
+      if (stop) return stop;
+      return json(await party.submit(dev.id, input, false), 200, extra);   // no address stored: nothing ever read it
     }
     if (path === "/api/joke" && req.method === "POST") {   // a joke for the DJ to read on air
-      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
-      const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
-        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
-      return json(await party.submitJoke(dev.id, await body(req), ip), 200, extra);
+      const stop = await guard(req, env, dev, extra);
+      if (stop) return stop;
+      return json(await party.submitJoke(dev.id, await body(req)), 200, extra);
     }
     if (path === "/api/pad" && req.method === "POST") {   // a guest presses a preset button on the radio
-      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
-      const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
-        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+      const stop = await guard(req, env, dev, extra);
+      if (stop) return stop;
       const { pad } = await body(req);
       return json(await party.guestPad(dev.id, pad), 200, extra);
     }
     if (path === "/api/name" && req.method === "POST") {   // the name this phone goes by: one phone per name
-      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
-      const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
-        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+      const stop = await guard(req, env, dev, extra);
+      if (stop) return stop;
       const input = await body(req);
       return json(await party.claimName(dev.id, input.name, input.auto === true), 200, extra);
     }
     if (path === "/api/medal" && req.method === "POST") {   // the scavenger hunt: a medal the page saw earned
-      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
-      const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
-        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+      const stop = await guard(req, env, dev, extra);
+      if (stop) return stop;
       return json(await party.earnMedal(dev.id, (await body(req)).medal), 200, extra);
     }
     if ((path === "/api/orrdle/start" || path === "/api/orrdle/guess") && req.method === "POST") {   // the family Wordle
-      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
-      const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
-        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+      const stop = await guard(req, env, dev, extra);
+      if (stop) return stop;
       const input = await body(req);
       return json(path.endsWith("start") ? await party.orrdleStart(dev.id, input.name) : await party.orrdleGuess(dev.id, input), 200, extra);
     }
     if (path === "/api/cancel" && req.method === "POST") {   // a guest takes back their own request
-      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
-      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success)
-        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+      const stop = await guard(req, env, dev, extra);
+      if (stop) return stop;
       const { id } = await body(req);
       return json(await party.cancel(dev.id, String(id ?? "")), 200, extra);
     }

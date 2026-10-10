@@ -9,6 +9,10 @@ const T = (title: string, artist = "ABBA") => ({ title, artist, album: "", durat
 const beat = { source: "soma", current: "", remaining: -1, queued: 0, pushed: [], working: [], want: 0, ack: [], error: "" };
 const stub = (name: string) => env.PARTY.get(env.PARTY.idFromName(name));
 
+// finished songs and messages left the admin poll (the page reads them from history): ask the queue directly
+const statusOf = (p: { fetch: unknown }, id: string, table = "items") => runInDurableObject(p as never, async (_i: Party, st) =>
+  String(st.storage.sql.exec(`SELECT status FROM ${table} WHERE id=?`, id).toArray()[0]?.status ?? "deleted"));
+
 async function readyItem(p: ReturnType<typeof stub>, title: string, device = "d1") {
   const { id } = await p.submit(device, { track: T(title), name: "x" });
   await p.beat({ ...beat, want: 1 });
@@ -207,7 +211,7 @@ describe("QA round", () => {
     });
     const r = await p.beat({ ...beat, wantNext: true, recent: [{ id: x, agoS: 200 }] } as typeof beat);   // back on SomaFM; the Pi says x played
     expect(r.next?.id ?? null).not.toBe(x);
-    expect((await p.adminState()).items.find((i) => i.id === x)?.status).toBe("played");
+    expect(await statusOf(p, x)).toBe("played");
   });
 
   it("a resent song is not marked played by the Pi's memory of its first play", async () => {
@@ -507,8 +511,8 @@ describe("QA round", () => {
     });
     await p.beat({ ...beat, source: "soma" });
     const st = await p.adminState();
-    expect(st.items.find((i) => i.id === a)!.status).toBe("played");
-    expect(st.items.find((i) => i.id === b)!.status).toBe("played");
+    expect(await statusOf(p, a)).toBe("played");
+    expect(await statusOf(p, b)).toBe("played");
   });
 
   it("a song cut off twice is let go (a file that keeps failing can't loop)", async () => {
@@ -518,7 +522,7 @@ describe("QA round", () => {
       await p.beat({ ...beat, source: "requests", current: id, remaining: 150 });
       await p.beat({ ...beat, source: "soma" });
     }
-    expect((await p.adminState()).items.find((i) => i.id === id)!.status).toBe("played");
+    expect(await statusOf(p, id)).toBe("played");
   });
   it("a guest's joke goes to the studio, comes back recorded, is offered until played, then is done", async () => {
     const p = stub("jokes");
@@ -533,7 +537,7 @@ describe("QA round", () => {
     const r3 = await p.beat({ ...beat, jokesPlayed: [sent.id!] });
     expect(r3.nextJoke).toBeNull();
     expect((await p.guestState("me")).myJokes[0].status).toBe("played");
-    expect((await p.adminState()).jokes[0]).toEqual(expect.objectContaining({ name: "Uncle Ray", status: "played" }));
+    expect((await p.adminState()).history.find((h: { type: string }) => h.type === "joke")).toEqual(expect.objectContaining({ name: "Uncle Ray", status: "played" }));
   });
 
   it("jokes: a declined one tells the guest; slurs, empty text, muted phones and a second waiting joke are refused", async () => {

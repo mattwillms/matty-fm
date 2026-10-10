@@ -10,6 +10,7 @@ import asyncio
 import json
 import os
 import random
+import re
 import sys
 import time
 import uuid
@@ -20,7 +21,10 @@ import httpx
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "studio"))
 from mattyfm.config import load_env  # noqa: E402
 
-CREDIT_FLOOR = 15_000
+CREDIT_FLOOR = 12_000
+MEDALS = ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"]
+ORRDLE = ["LUCAS", "SETHY", "MARIE", "MATTY", "JULIE", "JULIA", "JAMES", "NANCY", "SHAWN", "BYRON", "AARON",
+          "GRIFF", "SARAH", "RYLEE", "TYLER", "JEFFY", "LYDIA", "FLORA", "REBEL", "DAWGS", "CAJUN"]
 PRECACHE = Path(__file__).with_name("precache.txt")
 
 FRESH = [   # not pre-downloaded: these go through the YouTube lookup and a download
@@ -115,11 +119,45 @@ class Guest:
         body = {"track": track, "name": self.name if name is None else name, "message": message, "freeText": free}
         return await self.call("POST", "/api/request", json=body)
 
+    async def claim(self, name=None):
+        """The name form: one phone per name. Taken: try with an initial, as a guest would."""
+        n = self.name if name is None else name
+        if self.persona != "clueless":   # the page lets only letters and spaces into the box
+            n = re.sub(r"[^A-Za-z ]", "", n).strip() or "Guest"
+        s, b = await self.call("POST", "/api/name", json={"name": n})
+        if s == 200 and b.get("ok"):
+            self.name = b["name"]
+            return True
+        if "already" in str(b.get("error", "")):
+            s, b = await self.call("POST", "/api/name", json={"name": f"{n} {random.choice('BCDKLMRST')}"[:24].replace(" ", " ")})
+            if s == 200 and b.get("ok"):
+                self.name = b["name"]
+                return True
+        return False
+
     async def joke(self, text, kind="joke", urgent=False, anon=False):
         return await self.call("POST", "/api/joke", json={"name": self.name, "text": text, "kind": kind, "urgent": urgent, "anon": anon})
 
     async def pad(self, n):
         return await self.call("POST", "/api/pad", json={"pad": n})
+
+    async def lyrics(self):
+        np = self.state.get("nowPlaying") or {}
+        if np.get("artist"):
+            return await self.call("GET", "/api/lyrics", params={"artist": np["artist"], "title": np.get("title", ""), "s": np.get("durationS") or ""})
+
+    async def orrdle(self):
+        s, b = await self.call("POST", "/api/orrdle/start", json={"name": self.name})
+        if s != 200 or not b.get("ok"):
+            return
+        for g in random.sample(ORRDLE, 6):
+            s, r = await self.call("POST", "/api/orrdle/guess", json={"id": b["id"], "guess": g})
+            await asyncio.sleep(random.uniform(3, 12))
+            if s != 200 or r.get("over"):
+                break
+
+    async def medal(self, m):
+        return await self.call("POST", "/api/medal", json={"medal": m})
 
     async def cancel(self, rid):
         return await self.call("POST", "/api/cancel", json={"id": rid})
@@ -138,6 +176,8 @@ class Guest:
         self.new_phone()
         self.log(g=self.id, persona=self.persona, name=self.name, call="ARRIVE")
         await self.poll()
+        if self.persona != "clueless" or random.random() < 0.6:
+            await self.claim()
         try:
             await getattr(self, self.persona)(time.time() + leave_s)
         except Exception as e:   # a crashed guest is a finding, not the end of the party
@@ -152,10 +192,14 @@ class Guest:
     async def regular(self, until):
         while not self.done(until):
             if len(self.mine()) < 2 and random.random() < 0.6:
-                q = random.choice(POOL) if random.random() < 0.65 else random.choice(FRESH)
+                q = random.choice(POOL) if random.random() < 0.9 else random.choice(FRESH)   # Apify credit is short: mostly songs on the shelf
                 await self.request(q, random.choice(MESSAGES), pick=random.choice([0, 0, 0, 1]))
             if random.random() < 0.12:
-                await self.pad(random.randint(1, 5))
+                await self.pad(random.randint(1, 8))
+            if random.random() < 0.3:
+                await self.lyrics()
+            if random.random() < 0.08:
+                await self.orrdle()
             if random.random() < 0.06:
                 await self.joke(random.choice(JOKES))
             if random.random() < 0.03:
@@ -170,7 +214,7 @@ class Guest:
                     await self.request(q, random.choice(NASTY + MESSAGES))
             elif r < 0.4:
                 for _ in range(random.randint(3, 8)):   # mashes the preset buttons
-                    await self.pad(random.randint(1, 5))
+                    await self.pad(random.randint(1, 8))
                     await asyncio.sleep(random.uniform(0.2, 1.5))
             elif r < 0.55:
                 await self.joke(random.choice(NASTY + JOKES), anon=random.random() < 0.5)
@@ -184,6 +228,11 @@ class Guest:
                 await asyncio.gather(*[self.call("POST", "/api/request", json=body) for _ in range(5)])   # five at once
             elif r < 0.78:
                 await self.call("POST", "/api/request", json={"track": {"title": "x" * 5000, "artist": "y" * 5000}, "name": "z" * 500})
+            elif r < 0.84:   # tries to cheat the hunt: every medal at once
+                await asyncio.gather(*[self.medal(m) for m in MEDALS])
+            elif r < 0.9:    # tries someone else's name, then an emoji one
+                await self.claim(random.choice(["Ava", "Marie", "Hadley", "Matt"]))
+                await self.claim("💀💀💀")
             await self.sleep(20, 120)
 
     async def clueless(self, until):
@@ -204,7 +253,7 @@ class Guest:
             elif r < 0.62:
                 await self.cancel(random.choice(["r1", "", "undefined", "r" + str(random.randint(100000, 999999))]))
             elif r < 0.7:
-                await self.pad(random.choice([0, 6, "2", None, 3]))
+                await self.pad(random.choice([0, 9, "2", None, 3]))
             elif r < 0.78:
                 await self.client.aclose()   # closes the tab, cleared cookies, comes back on a "new phone"
                 self.new_phone()
@@ -214,6 +263,27 @@ class Guest:
             elif r < 0.9:
                 await self.call("POST", "/api/request", json={"track": {"title": "Dancing Queen", "artist": "ABBA"}})   # no name field at all
             await self.sleep(120, 600)
+
+    async def gamer(self, until):   # here for Orrdle, the odd song
+        while not self.done(until):
+            await self.orrdle()
+            if random.random() < 0.3 and len(self.mine()) < 2:
+                await self.request(random.choice(POOL), "")
+            await self.sleep(60, 400)
+
+    async def hunter(self, until):   # works through the scavenger hunt at a person's pace, then spends the golden quarter
+        todo = random.sample(MEDALS, len(MEDALS))
+        while todo and not self.done(until):
+            m = todo[0]
+            s, b = await self.medal(m)
+            if s == 200 and b.get("ok"):
+                todo.pop(0)
+            await self.sleep(30, 240)
+        while not self.done(until):
+            if len(self.mine()) < 3:
+                await self.request(random.choice(POOL), random.choice(MESSAGES))
+            await self.lyrics()
+            await self.sleep(200, 700)
 
     async def lurker(self, until):
         await self.sleep(300, 1200)
@@ -286,14 +356,56 @@ async def monitor(base, admin, log, credits_log, stop, deadline, xi):
 POOL = precached()
 
 
+async def host_actor(base, admin, log, stop):
+    """The host at the admin page: now and then kicks a guest, gives a quarter, moves or skips a song, flips free play
+    or family mode for a few minutes, changes the button gap, drops stale jokes. Every action is logged."""
+    async with httpx.AsyncClient(base_url=base, timeout=20, headers={"x-admin-token": admin}) as c:
+        act = lambda body: c.post("/api/admin/action", json=body)
+        await asyncio.sleep(900)
+        while not stop.is_set():
+            try:
+                g = (await act({"action": "guests"})).json().get("guests", [])
+                st = (await c.get("/api/admin/state")).json()
+                waiting = [i for i in st.get("items", []) if i.get("status") in ("pending", "ready")]
+                r = random.random()
+                if r < 0.15 and g:
+                    d = random.choice(g); res = (await act({"action": "kick", "device": d["device"]})).json(); what = f"kick {d['names']}"
+                elif r < 0.3 and g:
+                    d = random.choice(g); res = (await act({"action": "giveCoin", "device": d["device"]})).json(); what = f"giveCoin {d['names']}"
+                elif r < 0.45 and len(waiting) > 2:
+                    i = random.choice(waiting); res = (await act({"action": "move", "id": i["id"], "dir": random.choice([-1, 1])})).json(); what = f"move {i['title']}"
+                elif r < 0.52:
+                    res = (await act({"action": "skip"})).json(); what = "skip"
+                elif r < 0.6:
+                    res = (await act({"action": "settings", "settings": {"freePlay": True}})).json(); what = "freePlay on"
+                    await asyncio.sleep(300); await act({"action": "settings", "settings": {"freePlay": False}}); what += " (5 min)"
+                elif r < 0.66:
+                    res = (await act({"action": "settings", "settings": {"familyMode": False}})).json(); what = "familyMode off"
+                    await asyncio.sleep(300); await act({"action": "settings", "settings": {"familyMode": True}}); what += " (5 min)"
+                elif r < 0.74:
+                    v = random.choice([0, 5, 20, 60]); res = (await act({"action": "settings", "settings": {"padGapS": v}})).json(); what = f"padGap {v}"
+                    if v == 0:
+                        await asyncio.sleep(120); await act({"action": "settings", "settings": {"padGapS": 20}}); what += " (2 min)"
+                elif r < 0.78:
+                    res = (await act({"action": "dropJokes"})).json(); what = "dropJokes"
+                elif r < 0.84 and st.get("held"):
+                    h = random.choice(st["held"]); res = (await act({"action": random.choice(["approve", "delete"]), "id": h["id"]})).json(); what = f"held {h['title']}"
+                else:
+                    res = (await act({"action": "stats"})).json(); what = "stats"
+                log(kind="host", what=what, ok=res.get("ok", True), err=res.get("error"))
+            except Exception as e:
+                log(kind="host-error", err=repr(e))
+            await asyncio.sleep(random.uniform(300, 900))
+
+
 async def main(out: Path, hours: float, base: str):
     load_env()
     out.mkdir(parents=True, exist_ok=True)
     glog, mlog, clog = Log(out / "guests.jsonl"), Log(out / "monitor.jsonl"), Log(out / "credits.jsonl")
     stop = asyncio.Event()
     total = hours * 3600
-    names = random.sample(FIRST, len(FIRST))
-    cast = ["regular"] * 9 + ["hammer"] * 3 + ["clueless"] * 4 + ["lurker"] * 2
+    names = (random.sample(FIRST, len(FIRST)) * 3)[:40]   # more guests than names: some share one (the page numbers them)
+    cast = ["regular"] * 12 + ["hammer"] * 4 + ["clueless"] * 5 + ["lurker"] * 4 + ["gamer"] * 3 + ["hunter"] * 3
     guests = [Guest(base, os.environ["PARTY_CODE"], p, names[i], glog, stop) for i, p in enumerate(cast)]
     tasks = []
     for g in guests:
@@ -301,10 +413,12 @@ async def main(out: Path, hours: float, base: str):
         stay = total - arrive if random.random() < 0.75 else random.uniform(1800, total - arrive)   # some leave early
         tasks.append(asyncio.create_task(g.run(arrive, stay)))
     mlog(kind="start", hours=hours, cast={p: cast.count(p) for p in set(cast)})
+    host = asyncio.create_task(host_actor(base, os.environ["ADMIN_TOKEN"], mlog, stop))
     mon = asyncio.create_task(monitor(base, os.environ["ADMIN_TOKEN"], mlog, clog, stop, time.time() + total, os.environ["ELEVENLABS_API_KEY"]))
     await asyncio.gather(*tasks)
     stop.set()
     await mon
+    await host
     mlog(kind="end")
 
 

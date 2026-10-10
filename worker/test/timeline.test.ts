@@ -6,6 +6,9 @@ import type { Party } from "../src/party";
 
 const T = (title: string, artist = "ABBA") => ({ title, artist, album: "", durationMs: 200000, explicit: false, artwork: "", source: "itunes" as const });
 const beat = { source: "soma", current: "", remaining: -1, queued: 0, pushed: [] as string[], working: [] as string[], want: 0, ack: [] as number[], error: "" };
+// finished songs and messages left the admin poll (the page reads them from history): ask the queue directly
+const statusOf = (p: { fetch: unknown }, id: string, table = "items") => runInDurableObject(p as never, async (_i: Party, st) =>
+  String(st.storage.sql.exec(`SELECT status FROM ${table} WHERE id=?`, id).toArray()[0]?.status ?? "deleted"));
 const stub = (name: string) => env.PARTY.get(env.PARTY.idFromName(name));
 type P = ReturnType<typeof stub>;
 
@@ -94,7 +97,7 @@ describe("smoke 1: timeline + end paths", () => {
     await p.beat({ ...beat, source: "requests", current: a, remaining: 190 });
     await p.beat({ ...beat });
     st = await p.adminState();
-    expect(st.items.find((i) => i.id === a)?.status).toBe("played");
+    expect(await statusOf(p, a)).toBe("played");
   });
 
   it("guest cancel, mute removal and recent-path plays all set ended_at (show in timeline)", async () => {

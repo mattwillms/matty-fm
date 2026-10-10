@@ -5,6 +5,9 @@ import type { Party } from "../src/party";
 
 const T = (title: string, artwork = "") => ({ title, artist: "ABBA", album: "", durationMs: 200000, explicit: false, artwork, source: "itunes" as const });
 const beat = { source: "soma", current: "", remaining: -1, queued: 0, pushed: [], working: [], want: 0, ack: [], error: "" };
+// finished songs and messages left the admin poll (the page reads them from history): ask the queue directly
+const statusOf = (p: { fetch: unknown }, id: string, table = "items") => runInDurableObject(p as never, async (_i: Party, st) =>
+  String(st.storage.sql.exec(`SELECT status FROM ${table} WHERE id=?`, id).toArray()[0]?.status ?? "deleted"));
 
 function stub(name: string) {
   return env.PARTY.get(env.PARTY.idFromName(name));
@@ -144,7 +147,7 @@ describe("party", () => {
     const waiting = st.items.filter((i) => ["pending", "preparing", "ready", "queued"].includes(i.status));
     expect(waiting.map((i) => i.id)).toEqual([b.id, copy.id]);
     expect(st.items.find((i) => i.id === copy.id)?.status).toBe("ready");
-    expect(st.items.find((i) => i.id === a.id)?.status).toBe("played");
+    expect(await statusOf(p, a.id!)).toBe("played");
   });
 
   it("the bumper button sends a break command to the studio", async () => {
