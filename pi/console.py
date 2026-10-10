@@ -6,7 +6,7 @@ Channels (each an ALSA softvol control into dmix on the USB card):
   deckA DeckAVol  requested songs (and backup songs), alternating with deckB
   deckB DeckBVol
   dj    DjVol     the DJ voice, always at full level
-  fx    FxVol     sound pads from the admin page: over everything, nothing ducks
+  fx    FxVol     sound pads from the admin page: over everything; the music dips a little under a pad
 
 One transition rule for every change (SomaFM->song, song->song, song->SomaFM,
 skips), with NO overlap between outgoing and incoming: the outgoing fades to
@@ -57,6 +57,10 @@ DUCK_ATTACK_S = 0.1     # ...and be fully down this fast
 DUCK_HOLD_S = 0.2       # after the last word of a phrase, hold this long...
 DUCK_RELEASE_S = 0.5    # ...then back up over this
 DUCK_MERGE_S = 0.9      # a breath shorter than this keeps the music down (no pumping)
+PAD_DUCK_PTS = 10       # a sound pad: the music (not the DJ) dips this many softvol points (10 = -6 dB) while it plays,
+PAD_ATTACK_S = 0.15     # down this fast as the pad starts,
+PAD_RELEASE_S = 0.6     # back up over this once it ends
+MUSIC = ("SomaVol", "DeckAVol", "DeckBVol")
 FIRST_FADE_S = 0.4      # the first dip of a break: the music fades down over about half a beat, then he talks
 DEAD_AFTER_S = 1.0      # a deck that stopped this long after starting is treated as ended
 TICK_S = 0.1
@@ -124,6 +128,8 @@ class Engine:
         self.on_air: tuple[str, dict | None] = ("soma", None)
         self.queued: dict | None = None
         self.ramps: list[tuple[str, int, int, float, float]] = []   # control, start, end, t0, dur
+        self.base = dict(mixer.level)   # each fader's own level; the speakers get it less any dip under a pad
+        self.pad_duck, self.duck_t = 0.0, None
         self.started_at: dict[str, float] = {}
         self.pending_dj: tuple[str, float] | None = None
         self.pending_play: tuple[str, str, float] | None = None
@@ -186,7 +192,7 @@ class Engine:
                 self.off = True
                 self.queued, self.pending_play, self.pending_dj, self.pending_break = None, None, None, None
                 self.transition_until = 0.0
-                self.ramps = [(c, lvl, 0, now, OFF_FADE_S) for c, lvl in self.mixer.level.items() if lvl > 0]
+                self.ramps = [(c, lvl, 0, now, OFF_FADE_S) for c, lvl in self.base.items() if lvl > 0]
                 self.stop_all_at = now + OFF_FADE_S + 0.2
                 self.on_air = ("off", None)
                 self.log(f"power off: fading to silence over {OFF_FADE_S:.0f}s")
@@ -194,8 +200,8 @@ class Engine:
                     self.on_power(True)
             elif on and self.off:
                 self.off, self.stop_all_at, self.ramps = False, None, []
-                for c in self.mixer.level:
-                    self.mixer.set(c, 0 if c in ("SomaVol", "DeckAVol", "DeckBVol") else 100)
+                for c in list(self.base):
+                    self._set(c, 0 if c in MUSIC else 100)
                 self.ramps.append(("SomaVol", 0, 100, now + 1.0, SOMA_UP_S))   # a second for the stream to reconnect
                 self.on_air = ("soma", None)
                 self.soma_down_since = self.soma_up_since = None
@@ -257,7 +263,7 @@ class Engine:
                 self.log(f"voice break waits for the transition ({self.transition_until - now:.1f}s)")
                 return True
             control = CONTROLS[ch]
-            level = self.mixer.level[control]
+            level = self.base[control]
             self.ramps = [r for r in self.ramps if r[0] != control]
             phrases = self._phrases(speech, voice_s)
             if phrases:   # duck with the speech itself: the music follows his words
@@ -296,6 +302,23 @@ class Engine:
             else:
                 out.append((start, end))
         return out
+
+    def _set(self, control: str, pct: int) -> None:
+        """A fader to its own level; the music sits PAD_DUCK_PTS lower while a pad plays."""
+        self.base[control] = pct
+        self.mixer.set(control, max(0, pct - round(self.pad_duck)) if control in MUSIC else pct)
+
+    def _pad_dip(self, now: float) -> bool:
+        """Moves the dip under a pad one tick toward where it belongs; True when the speakers' level changes."""
+        dt = min(max(now - self.duck_t, 0.0), 0.5) if self.duck_t is not None else TICK_S
+        self.duck_t = now
+        target = PAD_DUCK_PTS if self.players.running("fx") and not self.off else 0
+        before = self.pad_duck
+        if target > before:
+            self.pad_duck = min(target, before + PAD_DUCK_PTS * dt / PAD_ATTACK_S)
+        elif target < before:
+            self.pad_duck = max(target, before - PAD_DUCK_PTS * dt / PAD_RELEASE_S)
+        return round(self.pad_duck) != round(before)
 
     def fx(self, url: str) -> None:
         """A sound pad: its own channel, laid over whatever is on air. A new tap replaces the last."""
@@ -341,9 +364,9 @@ class Engine:
         in_start = now + down_s + GAP_S
         in_full = max(now + LEAD_PAD_S + voice_s, in_start + MIN_UP_S) if voice_url else in_start + up_s
         self.ramps = [r for r in self.ramps if r[0] not in (CONTROLS[from_ch], CONTROLS[to_ch])]
-        self.ramps.append((CONTROLS[from_ch], self.mixer.level[CONTROLS[from_ch]], 0, now, down_s))
+        self.ramps.append((CONTROLS[from_ch], self.base[CONTROLS[from_ch]], 0, now, down_s))
         self.ramps.append((CONTROLS[to_ch], 0, 100, in_start, in_full - in_start))
-        self.mixer.set(CONTROLS[to_ch], 0)
+        self._set(CONTROLS[to_ch], 0)
         if to_ch in DECKS:
             self.pending_play = (to_ch, self._url("ready", to_item), in_start)
         elif self.pending_play:   # skipped before it started: never start it at volume 0
@@ -389,7 +412,11 @@ class Engine:
                     current[control] = level_at(now - t0, start, end, dur)
             for control, lvl in current.items():
                 # sent every step: a softvol control created mid-fade must not keep its default
-                self.mixer.set(control, lvl)
+                self._set(control, lvl)
+            if self._pad_dip(now):   # the dip moved: faders not mid-ramp follow it too
+                for c in MUSIC:
+                    if c not in current and c in self.base:
+                        self._set(c, self.base[c])
             self.ramps = [r for r in self.ramps if now - r[3] < r[4]]
             if self.off:   # faded out: stop every player once the fade is done, then nothing more
                 if self.stop_all_at is not None and now >= self.stop_all_at:

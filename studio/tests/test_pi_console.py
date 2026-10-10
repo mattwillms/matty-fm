@@ -235,15 +235,42 @@ def test_a_pad_plays_on_its_own_channel_over_everything():
     eng.push(item("r1", voice_s=4.0))
     eng.tick()
     run(eng, clock, 0.6)                              # mid-transition, DJ talking
-    before = dict(mixer.level)
     eng.fx("breaks/pad-1.mp3")
     assert ("fx", "http://ws:8040/breaks/pad-1.mp3") in players.started
     assert players.running("dj")                      # the DJ keeps talking
-    assert mixer.level == before                      # nothing ducks or jumps
     eng.fx("breaks/pad-2.mp3")                        # a second tap replaces the first
     assert players.started[-1] == ("fx", "http://ws:8040/breaks/pad-2.mp3")
     run(eng, clock, 5)
     assert eng.status()["current"] == "r1"            # the transition finished as normal
+
+
+def test_the_music_dips_a_little_under_a_pad_and_comes_back():
+    eng, clock, players, mixer = make()
+    run(eng, clock, 1)
+    assert mixer.level["SomaVol"] == 100
+    eng.fx("breaks/pad-1.mp3")
+    run(eng, clock, 0.3)
+    assert mixer.level["SomaVol"] == 100 - console.PAD_DUCK_PTS   # down a bit, not all the way
+    assert mixer.level["DjVol"] == 100                            # the DJ never dips for a pad
+    assert mixer.level["DeckAVol"] == 0                           # a silent deck stays silent
+    run(eng, clock, 2)
+    assert mixer.level["SomaVol"] == 100 - console.PAD_DUCK_PTS   # held while the pad plays
+    players.alive.pop("fx")                                       # the pad ends
+    run(eng, clock, 1)
+    assert mixer.level["SomaVol"] == 100
+
+
+def test_a_fade_under_a_pad_lands_ducked_then_comes_back_to_its_own_level():
+    eng, clock, players, mixer = make()
+    eng.fx("breaks/pad-1.mp3")
+    eng.push(item("r1", voice_s=4.0))
+    eng.tick()
+    run(eng, clock, 8)
+    assert mixer.level["SomaVol"] == 0
+    assert mixer.level["DeckAVol"] + mixer.level["DeckBVol"] == 100 - console.PAD_DUCK_PTS
+    players.alive.pop("fx")
+    run(eng, clock, 1)
+    assert mixer.level["DeckAVol"] + mixer.level["DeckBVol"] == 100
 
 
 def test_a_short_soma_blip_does_not_flip_to_the_backup():
