@@ -1074,7 +1074,10 @@ function songRow(s, extra, chipClass) {
 // without its ending ("…here's Tears for Fears with Shout"): the display above already names the song.
 function shoutout(line, np) {
   let s = String(line || "").trim();
-  const cut = s.search(/(?:^|[,.;:!?\s])(?:so\s+)?(?:here'?s|here is|this is|now,? here'?s)\b/i);
+  // the sign-off ("..., here's Fleetwood Mac with Landslide.") is cut, so the song isn't said twice: the LAST one, and
+  // only where it starts a sentence or follows punctuation ("nobody here is going to pretend" is not a sign-off)
+  const offs = [...s.matchAll(/(?:^|[,.;:!?—]\s*)(?:(?:and|so)\s+)?(?:here'?s|here is|now,? here'?s)\b/gi)];
+  const cut = offs.length ? offs[offs.length - 1].index : -1;
   if (cut > 0) s = s.slice(0, cut);
   else for (const w of [np.title, np.artist]) { const i = w ? s.toLowerCase().lastIndexOf(cleanTitle(w).toLowerCase()) : -1; if (i > 0) s = s.slice(0, i); }
   // trim dangling punctuation and joining words until nothing changes ("crew, and" -> "crew")
