@@ -1,6 +1,6 @@
 // The one Durable Object ("party"): queue, settings, studio beats, admin actions.
 import { DurableObject } from "cloudflare:workers";
-import { clean, displayText, isOffensive, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, visible, type Waiting } from "./queue";
+import { clean, displayText, isOffensive, plain, namesPhrase, rankForNew, safeArtwork, songKey, swapRanks, visible, type Waiting } from "./queue";
 import type { Track } from "./search";
 
 const HEAVY_ROWS = 500;   // rows one query may read before it is logged
@@ -94,6 +94,7 @@ export class Party extends DurableObject<Env> {
       CREATE TABLE IF NOT EXISTS bonus(device TEXT PRIMARY KEY, coins INTEGER NOT NULL DEFAULT 0, golden_used INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS devices(device TEXT PRIMARY KEY, first_at INTEGER NOT NULL, last_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS kicked(device TEXT PRIMARY KEY, at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS names(device TEXT PRIMARY KEY, name TEXT NOT NULL, key TEXT NOT NULL UNIQUE);
       CREATE TABLE IF NOT EXISTS orrdle(id TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT NOT NULL, word TEXT NOT NULL,
         started INTEGER NOT NULL, ended INTEGER, won INTEGER, guesses INTEGER);
       CREATE TABLE IF NOT EXISTS parties(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, start INTEGER NOT NULL,
@@ -107,7 +108,7 @@ export class Party extends DurableObject<Env> {
                                 ["jokes", "kind TEXT DEFAULT 'joke'"], ["jokes", "urgent INTEGER DEFAULT 0"],
                                 ["jokes", "source TEXT DEFAULT 'guest'"],
                                 ["items", "ended_at INTEGER"], ["items", "skipped INTEGER DEFAULT 0"], ["jokes", "ended_at INTEGER"],
-                                ["jokes", "anon INTEGER DEFAULT 0"], ["orrdle", "tries TEXT DEFAULT '[]'"], ["requesters", "paid TEXT"]]) {
+                                ["jokes", "anon INTEGER DEFAULT 0"], ["orrdle", "tries TEXT DEFAULT '[]'"], ["requesters", "paid TEXT"], ["kicked", "name TEXT"]]) {
       try {
         this.sql.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`);
       } catch {
@@ -225,8 +226,10 @@ export class Party extends DurableObject<Env> {
     if (!asAdmin && !this.flags().accepting) return { ok: false, error: "Requests are closed for tonight." };
     if (!asAdmin && this.one("SELECT 1 AS m FROM muted WHERE device=?", device))
       return { ok: false, error: "Requests are paused for this phone." };
-    const name = clean(s.name, 40), message = clean(s.message ?? "", 280);
-    const title = clean(s.track?.title, 200), artist = clean(s.track?.artist, 200);
+    let name = clean(s.name, 40);
+    if (!asAdmin) { const n = await this.ensureName(device, s.name); if ("error" in n) return { ok: false, error: n.error }; name = n.name; }
+    const message = plain(s.message ?? "", 280);
+    const title = plain(s.track?.title, 200), artist = plain(s.track?.artist, 200);
     if (!visible(name)) return { ok: false, error: "Add your name (letters, not just emoji)." };
     if (!title) return { ok: false, error: "Add the song title." };
     if (!artist) return { ok: false, error: "Add the artist, or your best guess." };
@@ -335,7 +338,9 @@ export class Party extends DurableObject<Env> {
     if (this.flags().stationOff) return { ok: false, error: "OrrFM is off the air. Requests open again when it's back." };
     if (!this.flags().accepting) return { ok: false, error: "The DJ isn't taking jokes right now." };
     if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
-    const name = clean(j?.name, 40), text = clean(j?.text, 400);
+    const n = await this.ensureName(device, j?.name);
+    if ("error" in n) return { ok: false, error: n.error };
+    const name = n.name, text = plain(j?.text, 400);
     if (!visible(name)) return { ok: false, error: "Add your name (letters, not just emoji)." };
     if (text.replace(/[^\p{L}\p{N}]/gu, "").length < 8) return { ok: false, error: kind === "joke" ? "Type out the joke." : "Type out the announcement." };
     if (isOffensive(text) || isOffensive(name)) return { ok: false, error: "The DJ can't read that one on air." };
@@ -376,6 +381,40 @@ export class Party extends DurableObject<Env> {
     return { ok: true };
   }
 
+  /** The name a phone goes by tonight: one phone per name (case doesn't count), English letters and spaces only.
+   *  A phone the host kicked that comes back asking for its old name gets it numbered ("Ava 2"), if that's free. */
+  async claimName(device: string, raw: unknown, auto = false) {   // auto: taken, so take the next number (a new guest: "Ann 2")
+    const asked = String(raw ?? "").replace(/\s+/g, " ").trim();
+    if (!/^[A-Za-z]+( [A-Za-z]+)*$/.test(asked) || asked.length > 24)
+      return { ok: false, error: "Letters only (A to Z), please: no numbers, emoji or symbols." };
+    if (isOffensive(asked)) return { ok: false, error: "Pick a different name." };
+    const mine = this.one("SELECT name FROM names WHERE device=?", device);
+    if (mine && String(mine.name).toLowerCase().replace(/ \d+$/, "") === asked.toLowerCase()) return { ok: true, name: String(mine.name) };   // already yours
+    const was = String(this.one("SELECT name FROM kicked WHERE device=?", device)?.name ?? "");
+    let name = asked;
+    if (was && was.toLowerCase().replace(/ \d+$/, "") === asked.toLowerCase())   // back after a kick, same name: numbered
+      for (let n = 2; ; n++) { name = `${asked} ${n}`; if (!this.one("SELECT 1 AS t FROM names WHERE key=? AND device<>?", name.toLowerCase(), device)) break; }
+    const holder = this.one("SELECT name FROM names WHERE key=? AND device<>?", name.toLowerCase(), device);
+    if (holder && auto)
+      for (let n = 2; ; n++) { name = `${asked} ${n}`; if (!this.one("SELECT 1 AS t FROM names WHERE key=? AND device<>?", name.toLowerCase(), device)) break; }
+    else if (holder) return { ok: false, error: `Someone here is already ${holder.name}. Add a last initial or a nickname.` };
+    const key = name.toLowerCase();
+    this.sql.exec("INSERT INTO names(device, name, key) VALUES(?,?,?) ON CONFLICT(device) DO UPDATE SET name=excluded.name, key=excluded.key", device, name, key);
+    return { ok: true, name };
+  }
+
+  /** The name to put on what a phone sends: its registered one; a page from before names were registered sends one,
+   *  which is claimed now (taken or not allowed: the guest is asked to change it). */
+  private async ensureName(device: string, sent: unknown): Promise<{ name: string } | { error: string }> {
+    const r = this.one("SELECT name FROM names WHERE device=?", device);
+    if (r) return { name: String(r.name) };
+    // not registered yet (a page from before names were): what it sent, cleaned to letters; taken: a new guest, numbered
+    const base = String(sent ?? "").replace(/[^A-Za-z ]/g, "").replace(/\s+/g, " ").trim().slice(0, 24);
+    if (!base) return { error: "Tell us your name first: tap Change by your name." };
+    const c = await this.claimName(device, base, true);
+    return c.ok ? { name: c.name! } : { error: `${c.error} Tap Change by your name.` };
+  }
+
   /** A new Orrdle game: a name from the list this phone hasn't had yet (any, once it's had them all). The answer
    *  stays here: the server scores each guess and keeps the clock, so a win and its time can't be made up. */
   async orrdleStart(device: string, name: unknown) {
@@ -385,7 +424,8 @@ export class Party extends DurableObject<Env> {
     const pool = fresh.length ? fresh : ORRDLE_WORDS;
     const word = pool[Math.floor(Math.random() * pool.length)];
     const id = "o" + this.newId().slice(1);
-    this.sql.exec("INSERT INTO orrdle(id, device, name, word, started) VALUES(?,?,?,?,?)", id, device, clean(name, 40) || "a guest", word, Date.now());
+    const who = await this.ensureName(device, name);
+    this.sql.exec("INSERT INTO orrdle(id, device, name, word, started) VALUES(?,?,?,?,?)", id, device, "name" in who ? who.name : "a guest", word, Date.now());
     return { ok: true, id, stats: this.orrdleMine(device) };
   }
 
@@ -855,7 +895,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "hunt-3",
+      code: "names-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -934,10 +974,8 @@ export class Party extends DurableObject<Env> {
       case "guests": {   // every phone that opened the page this party, newest visit first
         const list = this.all("SELECT * FROM devices ORDER BY last_at DESC LIMIT 300").map((d) => {
           const dev = String(d.device), n = (q: string) => Number(this.one(q, dev)?.n ?? 0);
-          const names = [...new Set([
-            ...this.all("SELECT name FROM requesters WHERE device=? ORDER BY id DESC LIMIT 5", dev),
-            ...this.all("SELECT name FROM jokes WHERE device=? ORDER BY created_at DESC LIMIT 5", dev),
-            ...this.all("SELECT name FROM orrdle WHERE device=? ORDER BY started DESC LIMIT 5", dev)].map((r) => String(r.name)).filter(Boolean))];
+          const reg = this.one("SELECT name FROM names WHERE device=?", dev)?.name;   // the name it goes by now (none after a kick)
+          const names = reg ? [String(reg)] : [];
           const x = this.extra(dev);
           return { device: dev, names, firstAt: Number(d.first_at), lastAt: Number(d.last_at),
                    requests: n("SELECT COUNT(*) AS n FROM requesters WHERE device=?"),
@@ -970,7 +1008,9 @@ export class Party extends DurableObject<Env> {
         this.sql.exec("UPDATE jokes SET status='deleted', ended_at=? WHERE device=? AND status IN ('pending','preparing','ready')", Date.now(), dev);
         this.sql.exec("DELETE FROM song_locks WHERE device=?", dev);
         this.sql.exec("INSERT INTO song_release(device, at) VALUES(?,?) ON CONFLICT(device) DO UPDATE SET at=excluded.at", dev, Date.now());
-        this.sql.exec("INSERT INTO kicked(device, at) VALUES(?,?) ON CONFLICT(device) DO UPDATE SET at=excluded.at", dev, Date.now());
+        const had = this.one("SELECT name FROM names WHERE device=?", dev)?.name ?? null;
+        this.sql.exec("DELETE FROM names WHERE device=?", dev);
+        this.sql.exec("INSERT INTO kicked(device, at, name) VALUES(?,?,?) ON CONFLICT(device) DO UPDATE SET at=excluded.at, name=excluded.name", dev, Date.now(), had);
         return { ok: true };
       }
       case "resetHunt":   // this phone's medals and golden quarter, from scratch
@@ -1017,7 +1057,7 @@ export class Party extends DurableObject<Env> {
         this.seenAt.clear();
         const onAir = this.one("SELECT id FROM items WHERE status='playing' LIMIT 1");
         const held = this.one("SELECT 1 AS q FROM items WHERE status='queued' LIMIT 1");
-        for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands", "orrdle", "medals", "bonus", "devices", "kicked"])
+        for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands", "orrdle", "medals", "bonus", "devices", "kicked", "names"])
           this.sql.exec(`DELETE FROM ${t}`);
         if (onAir) this.command("skip", String(onAir.id));   // the console drops the old party's song and pushed item
         if (held) this.command("clear");
@@ -1126,6 +1166,7 @@ export class Party extends DurableObject<Env> {
     this.sql.exec("UPDATE jokes SET name='', text='', script=NULL, ip=NULL, device=''");
     this.sql.exec("UPDATE airlog SET text=''");
     this.sql.exec("UPDATE orrdle SET name='', device=''");
+    this.sql.exec("DELETE FROM names"); this.sql.exec("UPDATE kicked SET name=NULL");
     // the archive keeps the numbers, not who: Orrdle's best and most-wins names go
     for (const p of this.all("SELECT id, stats FROM parties")) {
       const st = JSON.parse(String(p.stats));

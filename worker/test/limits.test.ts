@@ -544,3 +544,39 @@ describe("kick and the golden quarter on air", () => {
     expect(jobs.find((j) => j.title === "Fernando")!.requesters[0].golden).toBeUndefined();
   });
 });
+
+describe("names", () => {
+  it("one phone per name (any case), letters only; a kicked phone coming back with its name gets it numbered", async () => {
+    const p = stub("names-1");
+    expect(await p.claimName("d1", "Ava")).toEqual({ ok: true, name: "Ava" });
+    expect((await p.claimName("d2", "ava")).ok).toBe(false);                 // taken, whatever the case
+    expect((await p.claimName("d2", "Ava 😀")).ok).toBe(false);              // letters only
+    expect((await p.claimName("d2", "Ava2")).ok).toBe(false);
+    expect(await p.claimName("d2", "Mary  Ann")).toEqual({ ok: true, name: "Mary Ann" });
+    await p.adminAction({ action: "kick", device: "d1" });
+    const g = (await p.adminAction({ action: "guests" })) as { guests: { device: string; names: string[] }[] };
+    expect(g.guests.find((x) => x.device === "d1")?.names ?? []).toEqual([]);   // the kicked phone's name is gone
+    expect(await p.claimName("d1", "AVA")).toEqual({ ok: true, name: "AVA 2" });   // back, same name: numbered
+    expect(await p.claimName("d3", "Ava")).toEqual({ ok: true, name: "Ava" });     // the plain name was free again
+    const r = await p.submit("d3", { ...T("SOS"), name: "Somebody" });          // sends something else: its own name wins
+    expect((await p.adminState()).items.find((i: { id: string }) => i.id === r.id)?.requesters[0].name).toBe("Ava");
+  });
+
+  it("typed text loses emoji and symbols; accents stay", async () => {
+    const p = stub("names-2");
+    await p.claimName("d1", "Ann");
+    const r = await p.submit("d1", { track: { ...T("Beyoncé 🔥 Halo").track, artist: "Beyoncé" }, name: "Ann", message: "love you 😘❤️ mom" });
+    const it = (await p.adminState()).items.find((i: { id: string }) => i.id === r.id)!;
+    expect([it.title, it.requesters[0].message]).toEqual(["Beyoncé Halo", "love you mom"]);
+  });
+});
+
+describe("names, coming back", () => {
+  it("a phone whose kept name is taken now is a new guest, numbered; the form itself still says it's taken", async () => {
+    const p = stub("names-3");
+    await p.claimName("d1", "Ann");
+    expect((await p.claimName("d2", "ann")).error).toMatch(/already Ann\./);   // named as its holder spelled it
+    expect(await p.claimName("d2", "ann", true)).toEqual({ ok: true, name: "ann 2" });
+    expect(await p.claimName("d3", "Ann", true)).toEqual({ ok: true, name: "Ann 3" });
+  });
+});

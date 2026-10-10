@@ -66,6 +66,13 @@ export function clean(text: unknown, max: number): string {
   return t.replace(/[\p{Cc}\p{Cf}\u115F\u1160\u3164\uFFA0\u2800]/gu, "").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
+/** Typed text as it may go on air or on screens: letters (accents fine), digits, spaces and ordinary punctuation.
+ *  Emoji, pictographs and other symbols are dropped. */
+export function plain(text: unknown, max: number): string {
+  return clean(text, max * 2).replace(/[\uFE00-\uFE0F\u200D\u20E3]|\p{Emoji_Modifier}/gu, "")   // emoji's invisible joiners and selectors
+    .replace(/[^\p{L}\p{M}\p{N} .,!?'"’‘“”\-–—:;()&/#%+@$]/gu, "").replace(/\s+/g, " ").trim().slice(0, max);
+}
+
 /** Visible: at least one letter or digit once combining marks and variation selectors are set aside. */
 export function visible(text: string): boolean {
   return /[\p{L}\p{N}]/u.test(text.replace(/[\p{M}\uFE00-\uFE0F]/gu, ""));

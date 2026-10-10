@@ -895,8 +895,9 @@
   <section class="panel" id="who" aria-labelledby="whoH">
     <h2 id="whoH">Who's listening?</h2>
     <p class="hint" style="margin-top:0">Your first name goes on your requests, so the DJ can give you a shout-out.</p>
-    <form id="whoForm"><input id="whoName" maxlength="40" autocomplete="given-name" aria-label="Your first name" required>
+    <form id="whoForm"><input id="whoName" maxlength="24" autocomplete="given-name" aria-label="Your first name" required>
       <button type="submit">That's me</button></form>
+    <p class="hint" id="whoErr" hidden style="color:var(--bad)"></p>
     <p class="hint" id="whoBack" hidden><button class="link" id="whoKeep" type="button">Keep my name</button></p>
   </section>
 
@@ -2053,15 +2054,45 @@ function showName() {
   document.body.classList.toggle("noname", !n);
   document.querySelectorAll(".myName").forEach((b) => b.textContent = n);
 }
-$("whoForm").onsubmit = (e) => {
+// The name is claimed with the Worker: one phone per name tonight (any case), letters only. It may come back
+// numbered ("Ava 2": this phone was kicked and asked for its old name again).
+async function claimName(n, auto = false) {
+  return api("/api/name", { method: "POST", headers: { "content-type": "application/json" },
+    body: JSON.stringify({ name: n, auto }), signal: AbortSignal.timeout(10000) });
+}
+function keepName(n) { nameHere = n; try { localStorage.setItem("mfm_name", n); } catch {} showName(); }
+$("whoForm").onsubmit = async (e) => {
   e.preventDefault();
-  const n = $("whoName").value.trim();
+  const n = $("whoName").value.replace(/\s+/g, " ").trim();
   if (!n) { $("whoName").focus(); return; }
-  nameHere = n;
-  try { localStorage.setItem("mfm_name", n); } catch {}
-  showName();
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  const b = $("whoForm").querySelector("button[type=submit]"); b.disabled = true;
+  try {
+    const r = await claimName(n);
+    if (!r.ok) { $("whoErr").textContent = r.error; $("whoErr").hidden = false; $("whoName").focus(); return; }
+    $("whoErr").hidden = true;
+    keepName(r.name);
+    if (r.name !== n) toast(`You're ${r.name} tonight.`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  } catch { $("whoErr").textContent = "Couldn't reach the DJ booth. Try again."; $("whoErr").hidden = false; }
+  finally { b.disabled = false; }
 };
+// letters and spaces only in the name; no emoji or odd symbols anywhere a guest types
+$("whoName").addEventListener("input", (e) => { const v = e.target.value.replace(/[^A-Za-z ]/g, "").replace(/ {2,}/g, " "); if (v !== e.target.value) e.target.value = v; });
+for (const id of ["msg", "joke", "ft", "fa", "q"]) $(id).addEventListener("input", (e) => {
+  const v = e.target.value.replace(/[\uFE00-\uFE0F\u200D\u20E3]|\p{Emoji_Modifier}/gu, "").replace(/[^\p{L}\p{M}\p{N}\s.,!?'"’‘“”\-–—:;()&/#%+@$]/gu, "");
+  if (v !== e.target.value) e.target.value = v;
+});
+// a name this phone kept from before: claimed once on load; if someone else has it now, this phone is a new guest
+// under it, numbered ("Ann 2"); a name tonight's rules don't allow is asked for again
+(async () => {
+  const n = myName(); if (!n) return;
+  try {
+    const r = await claimName(n, true);
+    if (r.ok) { if (r.name !== n) { keepName(r.name); toast(`You're ${r.name} tonight.`); } return; }
+    try { localStorage.removeItem("mfm_name"); } catch {} nameHere = ""; showName();
+    $("whoErr").textContent = r.error; $("whoErr").hidden = false;
+  } catch {}
+})();
 document.querySelectorAll(".rename").forEach((b) => b.onclick = () => {
   $("whoName").value = myName(); $("whoBack").hidden = false;
   document.body.classList.add("noname");

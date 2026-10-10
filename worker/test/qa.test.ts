@@ -384,7 +384,7 @@ describe("QA round", () => {
     const p = stub("which-field");
     expect((await p.submit("d1", { track: T("SOS", ""), name: "Ann" })).error).toMatch(/artist/i);
     expect((await p.submit("d1", { track: T("", "ABBA"), name: "Ann" })).error).toMatch(/title/i);
-    expect((await p.submit("d1", { track: T("SOS"), name: "🎉🎉" })).error).toMatch(/name/i);
+    expect((await p.submit("d2", { track: T("SOS"), name: "🎉🎉" })).error).toMatch(/name/i);   // a phone's first name, emoji only: refused
   });
 
   it("a guest who joins a song that's already lined up is told the DJ may not read their message", async () => {
@@ -543,7 +543,7 @@ describe("QA round", () => {
     await p.jokeResult({ id: id!, status: "rejected" });
     expect((await p.guestState("me")).myJokes[0].status).toBe("rejected");
     expect((await p.submitJoke("me", { name: "Ann", text: "  " })).ok).toBe(false);
-    expect((await p.submitJoke("me", { name: "", text: "A real joke here" })).ok).toBe(false);
+    expect((await p.submitJoke("nobody", { name: "", text: "A real joke here" })).ok).toBe(false);   // no name registered, none sent
     expect((await p.submitJoke("me", { name: "Ann", text: "you fucking idiot" })).ok).toBe(false);
     expect((await p.submitJoke("me", { name: "Ann", text: "Joke one, a long enough one." })).ok).toBe(true);
     expect((await p.submitJoke("me", { name: "Ann", text: "Joke two, a long enough one." })).ok).toBe(false);   // one regular waiting at a time
