@@ -14,7 +14,7 @@ import threading
 import webbrowser
 
 PI, TAP_PORT, PORT = "192.168.86.31", 8043, 8045
-PAGE = b"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>OrrFM monitor</title>
+PAGE = b"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>WORR monitor</title>
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   :root { color-scheme: dark; }
@@ -30,7 +30,7 @@ PAGE = b"""<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Orr
   #msg { margin-top: 18px; min-height: 1.4em; font-size: .9rem; }
   input { width: 200px; margin-top: 18px; accent-color: #e2621b; }
 </style></head><body><main>
-<h1>OrrFM monitor</h1><p>What the party speakers are playing, a few seconds behind.</p>
+<h1>WORR monitor</h1><p>What the party speakers are playing, a few seconds behind.</p>
 <button id="b" type="button">Play</button>
 <div><input id="v" type="range" min="0" max="1" step="0.05" value="0.8" aria-label="Volume"></div>
 <div id="msg" role="status"></div>
@@ -105,7 +105,7 @@ class Handler(http.server.BaseHTTPRequestHandler):
 def main():
     srv = http.server.ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     url = f"http://127.0.0.1:{PORT}/"
-    print(f"OrrFM monitor: {url}  (Ctrl-C to stop)")
+    print(f"WORR monitor: {url}  (Ctrl-C to stop)")
     if "--no-open" not in sys.argv:
         webbrowser.open(url)
     srv.serve_forever()

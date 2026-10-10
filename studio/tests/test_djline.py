@@ -105,9 +105,9 @@ def test_fullwidth_brackets_cannot_close_the_tag():
 
 
 def test_station_name_is_one_setting():
-    assert djline.STATION == "OrrFM"
-    assert "OrrFM" in djline.SYSTEM and "MattyFM" not in djline.SYSTEM
-    assert "OrrFM" in djline.template(item()).script
+    assert djline.STATION == "WORR"
+    assert "WORR" in djline.SYSTEM and "MattyFM" not in djline.SYSTEM
+    assert "WORR" in djline.template(item()).script
 
 
 def test_prompt_rules_short_no_assumed_relationships_ends_with_artist_and_song():
@@ -123,7 +123,7 @@ def test_template_ends_with_artist_and_song():
 
 
 def test_backannounce_line_ends_with_the_new_song():
-    reply = json.dumps({"ok": True, "tone": "funny", "script": "That was Al Stewart. You're on OrrFM, here's America with Ventura Highway."})
+    reply = json.dumps({"ok": True, "tone": "funny", "script": "That was Al Stewart. You're on WORR, here's America with Ventura Highway."})
     client = FakeClient(reply)
     line = djline.backannounce({"artist": "Al Stewart", "title": "On The Border"},
                                {"artist": "America", "title": "Ventura Highway"}, client)
@@ -212,10 +212,10 @@ def test_prompt_says_the_requester_sends_the_song_not_receives_it():
 
 
 def test_backannounce_keeps_one_pause_cue_and_drops_other_tags():
-    reply = json.dumps({"script": "You're on OrrFM. [pause] [whispers] Here's America with Ventura Highway. [pause] [laughs]"})
+    reply = json.dumps({"script": "You're on WORR. [pause] [whispers] Here's America with Ventura Highway. [pause] [laughs]"})
     line = djline.backannounce(None, {"title": "Ventura Highway", "artist": "America"}, FakeClient(reply))
     assert line.script.count(djline.PAUSE) == 1 and "whispers" not in line.script and "laughs" not in line.script
-    assert djline.display(line.script) == "You're on OrrFM. Here's America with Ventura Highway."
+    assert djline.display(line.script) == "You're on WORR. Here's America with Ventura Highway."
 
 
 def test_backannounce_prompt_invites_an_occasional_pause():
@@ -297,7 +297,7 @@ def test_the_joke_and_announcement_writers_never_make_up_a_sender():
 
 
 def test_the_intro_writer_is_told_to_make_plain_sense():
-    # "a 2012 song, which for OrrFM is practically a new release, so enjoy the wait" went on air
+    # "a 2012 song, which for WORR is practically a new release, so enjoy the wait" went on air
     assert "plain sense" in djline.SYSTEM and "enjoy the wait" in djline.SYSTEM
 
 
@@ -345,8 +345,8 @@ def test_a_blend_must_keep_the_message():
     assert line and "outstanding in his field" in line.script and line.script.count("September") == 1
     lost = json.dumps({"ok": True, "tone": "funny", "script": "From Aunt Linda, a scarecrow joke. Here's September."})
     assert djline.blend_intro(item(), joke, FakeClient(lost)) is None   # the punchline went missing: no blend
-    over = djline.backannounce(None, {"title": "Ventura Highway", "artist": "America"}, FakeClient(json.dumps({"script": "You're on OrrFM. Here's America with Ventura Highway."})), message=joke)
+    over = djline.backannounce(None, {"title": "Ventura Highway", "artist": "America"}, FakeClient(json.dumps({"script": "You're on WORR. Here's America with Ventura Highway."})), message=joke)
     assert over.fallback   # the message didn't make it into the SomaFM line: the plain line, and the joke waits
-    client = FakeClient(json.dumps({"script": f"You're on OrrFM. {joke} Here's America with Ventura Highway."}))
+    client = FakeClient(json.dumps({"script": f"You're on WORR. {joke} Here's America with Ventura Highway."}))
     blended = djline.backannounce(None, {"title": "Ventura Highway", "artist": "America"}, client, message=joke)
     assert not blended.fallback and "<message>" in client.calls[0]["messages"][0]["content"]

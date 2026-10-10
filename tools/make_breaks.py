@@ -76,7 +76,8 @@ def main() -> None:
             index.append(old[f"{name}.mp3"])
             continue
         voice_raw, voice, fx = work / f"{name}-v.raw.mp3", work / f"{name}-v.mp3", work / f"{name}-fx.mp3"
-        engine = tts.speak(line, tone, voice_raw, http=http, aura=lambda t: b"", assets=cfg.media_dir / "assets", names={})
+        engine = tts.speak(line, tone, voice_raw, http=http, aura=lambda t: b"", assets=cfg.media_dir / "assets",
+                           names=tts.load_names(cfg.repo / "studio" / "names.toml"))   # WORR is spelled out, not "war"
         mix.prepare_voice(voice_raw, voice, cfg.sample_rate)
         sfx(sound, fx, 1.2 if kind == "skip" else 1.8)
         fx_s = mix.duration(fx)

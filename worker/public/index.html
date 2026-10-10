@@ -3,11 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>OrrFM</title>
+<title>WORR</title>
 <meta name="theme-color" content="#2A1A12">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="OrrFM">
+<meta name="apple-mobile-web-app-title" content="WORR">
 <link rel="apple-touch-icon" href="/icon-180.png">
 <link rel="icon" type="image/png" href="/icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -102,7 +102,7 @@
   .fx.beam { border-radius: 40%; background: repeating-linear-gradient(0deg, #ffffff22 0 1px, transparent 1px 3px),
              linear-gradient(90deg, #fff0, #ffe9c255 25%, #fffbecc0 50%, #ffe9c255 75%, #fff0); filter: blur(.4px); }
   .fx.mote { width: 2px; height: 2px; background: #fffbe8; box-shadow: 0 0 4px #ffd89a; }
-  /* same height as the OrrFM letters: their ink measures 0.71 of the font size at every width */
+  /* same height as the WORR letters: their ink measures 0.71 of the font size at every width */
   .hen { flex: none; width: calc(var(--logo) * 1.125); aspect-ratio: 1; border-radius: 50%; overflow: hidden;
          margin-top: calc(var(--logo) * -.08); }   /* top of the hen = top of the letters */
   .hen img { display: block; width: 100%; height: 100%; object-fit: cover; }
@@ -832,7 +832,7 @@
 <main>
   <header class="mark">
     <div class="mark-top">
-      <h1>OrrFM</h1>
+      <h1>WORR</h1>
       <picture class="hen"><source srcset="/hen.webp" type="image/webp"><img src="/hen.png" alt="" width="180" height="180"></picture>
     </div>
   </header>
@@ -977,7 +977,7 @@
   <section class="panel" id="find">
     <div class="h2row"><h2>Request a song</h2>
       <span class="slots" id="slots" role="img" aria-label="Song picks"><b class="ghost" title="Earn another quarter"></b><i></i><i></i></span></div>
-    <div class="closed-sign" aria-label="Closed: OrrFM is off the air"><b>CLOSED</b><span>OrrFM is off the air</span></div>
+    <div class="closed-sign" aria-label="Closed: WORR is off the air"><b>CLOSED</b><span>WORR is off the air</span></div>
     <p class="allow" id="songAllow" hidden></p>
     <input id="q" type="search" autocomplete="off" aria-label="Search for a song or artist" placeholder="Search a song or artist">
     <ul id="results"></ul>
@@ -1056,19 +1056,19 @@
     <div class="medals" id="medals" role="list" aria-label="Medals"></div>
   </section>
 
-  <footer class="made-by"><button id="aboutBtn" type="button" aria-label="Made by matty: how OrrFM was made">
+  <footer class="made-by"><button id="aboutBtn" type="button" aria-label="Made by matty: how WORR was made">
     <span>Made by</span><img src="/matty-sig.webp" alt=""></button></footer>
 </main>
-  <dialog class="sleeve-box about-box" id="about" aria-label="About OrrFM">
+  <dialog class="sleeve-box about-box" id="about" aria-label="About WORR">
     <div class="sleeve-bar" aria-hidden="true"></div>
     <button class="sleeve-close" id="aboutClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <article class="about">
       <img class="ab-sig" src="/matty-sig.webp" alt="matty">
-      <p class="ab-lede">OrrFM is a radio station made for one night: the Orr family reunion.</p>
+      <p class="ab-lede">WORR is a radio station made for one night: the Orr family reunion.</p>
       <h3>Who made it</h3>
       <p>Matt Williams (matty) builds websites and software. He works on two Arch Linux computers he built himself, set up exactly
         alike. He builds with an AI partner: Claude, made by Anthropic, working in a tool called Claude Code.</p>
-      <p>OrrFM came together over a few days and nights before the reunion.</p>
+      <p>WORR came together over a few days and nights before the reunion.</p>
       <h3>How a request travels</h3>
       <svg class="ab-flow" viewBox="0 0 320 508" role="img" aria-label="How a request travels: your phone, the queue in the cloud, the studio at home, the console by the speakers, the party">
   <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#f0a92b"/></marker></defs>
@@ -1124,7 +1124,7 @@
         locked, or after it has sat untouched for a minute and a half.</p>
       <p>Bigger pieces follow a set routine: talk the idea through, write a short plan, then write each test before the code it
         checks.</p>
-      <p>Before the night, OrrFM sat through practice parties. The biggest ran for four hours: 31 pretend guests (careful ones,
+      <p>Before the night, WORR sat through practice parties. The biggest ran for four hours: 31 pretend guests (careful ones,
         button-mashers and baffled ones) plus three real web browsers tapping every button, all to find what breaks first.</p>
       <h3>The notebook: mathom and the four tiers</h3>
       <p>Matt keeps a notebook of hard-won lessons called mathom. The word comes from the hobbits: a mathom is something kept
@@ -1190,7 +1190,7 @@ function cleanTitle(t) {
     .replace(/\s*[(\[][^)\]]*(remaster|version|edit|mono|stereo|mix|single|live|from)[^)\]]*[)\]]/gi, "")
     .replace(/\s+-\s+.*(remaster|version|edit|mono|stereo).*$/i, "").trim();
 }
-// No cover anywhere (some SomaFM deep cuts aren't in any catalog): the OrrFM hen cover.
+// No cover anywhere (some SomaFM deep cuts aren't in any catalog): the WORR hen cover.
 function noCover(cls) { const img = el("img", cls); img.alt = ""; img.src = "/nocover.webp"; return img; }
 function art(src) {
   if (!src) return noCover();
@@ -1310,7 +1310,7 @@ flick(document.querySelector(".msg-screen"), (t) => t.closest(".lcd-line"));
 flick($("display"), (t) => t.closest(".vfd .t, .vfd .a"));
 function lcd(np) {
   if (offAir) {
-    const msg = "OrrFM is off the air. Requests open again when it's back.";
+    const msg = "WORR is off the air. Requests open again when it's back.";
     if (msg !== lcdKey) { lcdKey = msg; setLine("lcdMsg", msg, true, SCROLL_PX_S); }
     return;
   }
@@ -1510,7 +1510,7 @@ function dropEgg(layer, h) {
       .finished.then(() => egg.remove());
   }
 }
-// Three quick taps on the OrrFM logo: its colours roll back through the stack, like an old TV show's
+// Three quick taps on the WORR logo: its colours roll back through the stack, like an old TV show's
 // title card: each step moves every colour one layer outward (red to the face, cream to the first copy...);
 // twelve steps is three times round, ending on the cream face it started with.
 (() => {
@@ -2546,7 +2546,7 @@ $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
       b.classList.add("down"); setTimeout(() => b.classList.remove("down"), 160);
       return;
     }
-    if (offAir) { toast("OrrFM is off the air."); return; }
+    if (offAir) { toast("WORR is off the air."); return; }
     if (padsOff) { toast("The buttons are off right now."); return; }
     const wait = padUntil - Date.now(), share = shareUntil - Date.now();
     if (wait > 0) { toast(`Your next sound in ${Math.ceil(wait / 1000)} s.`); return; }
@@ -3015,7 +3015,7 @@ const MEDAL = {
   snap: { name: "Snap!", metal: "silver", enamel: "#1f6e6a", field: "#134845", desc: "For breaking a priceless antique.", why: "A tube you tapped snapped off at the socket." },
   needle: { name: "Needle Breaker", metal: "bronze", enamel: "#e7d4ae", field: "#cdb591", desc: "For tuning a little too hard.", why: "You tapped the dial until the needle snapped." },
   static: { name: "Bad Connection", metal: "steel", enamel: "#4b3a78", field: "#2f2450", desc: "For services to television repair.", why: "You jiggled the loose plug and the screen fritzed." },
-  colors: { name: "Color Roll", metal: "gold", enamel: "#2a1a12", field: "#f3e3c3", desc: "For excellence in title cards.", why: "Three quick taps on the OrrFM logo rolled its colors." },
+  colors: { name: "Color Roll", metal: "gold", enamel: "#2a1a12", field: "#f3e3c3", desc: "For excellence in title cards.", why: "Three quick taps on the WORR logo rolled its colors." },
   screws: { name: "Loose Screws", metal: "steel", enamel: "#8a8f3c", field: "#5f6328", desc: "For having a few.", why: "You set all four screws spinning at once." },
   gnat: { name: "Gnat Whisperer", metal: "bronze", enamel: "#6f8f2e", field: "#4b6320", desc: "For finding life in an empty slot.", why: "A gnat flew out of an empty coin slot." },
   polish: { name: "Elbow Grease", metal: "gold", enamel: "#1d3b6e", field: "#132848", desc: "For a shine you could shave in.", why: "You rubbed the Orrdle sign until it gleamed." },
@@ -3036,7 +3036,7 @@ function medalFront(id) {
     <circle cx="60" cy="60" r="56" fill="none" stroke="${c}" stroke-width="2.4" stroke-dasharray="1.2 1.9" opacity=".7"/>
     <circle cx="60" cy="60" r="49" fill="${m.enamel}" stroke="${c}" stroke-width="2.5"/>
     <circle cx="60" cy="60" r="33" fill="${m.field}" stroke="${b}" stroke-width="2"/>
-    <text font-family="Georgia,serif" font-weight="700" font-size="7.4" letter-spacing=".9" fill="${ring}"><textPath href="#t" startOffset="50%" text-anchor="middle">OrrFM Scavenger Hunt</textPath></text>
+    <text font-family="Georgia,serif" font-weight="700" font-size="7.4" letter-spacing=".9" fill="${ring}"><textPath href="#t" startOffset="50%" text-anchor="middle">WORR Scavenger Hunt</textPath></text>
     ${[-26, -13, 0, 13, 26].map((d) => { const a = (90 + d) * Math.PI / 180, x = 60 + 41 * Math.cos(a), y = 60 + 41 * Math.sin(a);
       return `<path transform="translate(${x.toFixed(2)} ${y.toFixed(2)}) rotate(${d})" d="M0-3.3l.9 2.1 2.3.2-1.7 1.5.5 2.2L0 1.5l-2 1.2.5-2.2-1.7-1.5 2.3-.2z" fill="${ring}"/>`; }).join("")}
     <svg x="40" y="40" width="40" height="40" viewBox="${ICON_BOX[id]}" overflow="visible">${ICONS[id].replaceAll("INK", ink)}</svg>

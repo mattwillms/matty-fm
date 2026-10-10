@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
 <meta name="theme-color" content="#2A1A12">
-<title>OrrFM Booth</title>
+<title>WORR Booth</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,100,1&family=Jost:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
@@ -221,7 +221,7 @@
 <body>
 <main>
   <div class="top">
-    <h1>OrrFM Booth</h1>
+    <h1>WORR Booth</h1>
     <div class="status" id="status"></div>
   </div>
   <p id="auth" hidden>Open this page from your admin link.</p>
@@ -706,9 +706,9 @@ async function load() {
   catch (e) { if (e.message !== "auth") renderStale(); }
 }
 function renderStale() {   // the Worker can't be reached: don't let old data look live
-  if (!lastGood) { $("status").replaceChildren(dotted("var(--bad)", "Can't reach OrrFM")); return; }
+  if (!lastGood) { $("status").replaceChildren(dotted("var(--bad)", "Can't reach WORR")); return; }
   const ago = Math.round((Date.now() - lastGood) / 1000);
-  if (ago >= 10) $("status").replaceChildren(dotted("var(--bad)", `Can't reach OrrFM: showing data from ${ago}s ago`));
+  if (ago >= 10) $("status").replaceChildren(dotted("var(--bad)", `Can't reach WORR: showing data from ${ago}s ago`));
 }
 
 let skippedId = null, skippedAt = 0;   // the song a skip was sent for: Skip stays off until it changes (or 25 s pass)

@@ -10,7 +10,7 @@ from dataclasses import dataclass
 MODEL = "claude-haiku-5-5"
 # The on-air name. One setting: change it here (or MATTYFM_STATION_NAME) for next year.
 log = logging.getLogger("mattyfm.djline")
-STATION = os.environ.get("MATTYFM_STATION_NAME", "OrrFM")
+STATION = os.environ.get("MATTYFM_STATION_NAME", "WORR")
 # Word stems that are never spoken on air. Checked per word after undoing common
 # disguises (look-alike characters, punctuation, spaced-out letters).
 DENY_STEMS = ("fuck", "shit", "cunt", "bitch", "whore", "slut", "retard", "nigg", "fag", "pussy", "pussi")
@@ -334,7 +334,7 @@ and every jab is about something real in the line: the song, the artist, the sta
 - Mention {STATION}.
 - Always end with the new song's artist and title, like: "...here's America with Ventura Highway."
 - Like a real DJ talking over the music, about one time in three put a single [pause] where \
-the music should breathe, such as right after the station name: "You're on OrrFM. [pause] Here's ..."
+the music should breathe, such as right after the station name: "You're on WORR. [pause] Here's ..."
 - If the songs say you're coming back from the guests' requests, say so the way a DJ would \
 ("that was ... for the family, now back to the seventies"), and name the song already playing \
 with "you're hearing" or "this is", never "here's": it started a while ago.

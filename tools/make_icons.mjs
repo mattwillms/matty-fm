@@ -1,4 +1,4 @@
-// Home-screen icons: the "O" of the OrrFM wordmark, drawn by the page's own font and 70s
+// Home-screen icons: the "W" of the WORR wordmark, drawn by the page's own font and 70s
 // offset stack on the cocoa ground. Renders in headless Chromium so the letter is the real
 // Fraunces glyph, then writes worker/public/icon-{512,192,180}.png.
 // Usage: NODE_PATH=<dir with playwright>/node_modules node tools/make_icons.mjs
@@ -19,7 +19,7 @@ const html = `<!doctype html><html><head>
       text-shadow: .022em .022em 0 #2A1A12, .05em .05em 0 #F0A92B, .072em .072em 0 #2A1A12,
                    .1em .1em 0 #E2621B, .122em .122em 0 #2A1A12, .15em .15em 0 #B2361F;
       transform: translate(-.075em, -.03em); }   /* centre the letter and its stack together */
-</style></head><body><b>O</b></body></html>`;
+</style></head><body><b>W</b></body></html>`;
 
 const browser = await chromium.launch();
 const page = await browser.newPage({ viewport: { width: 1024, height: 1024 } });

@@ -233,7 +233,7 @@ export class Party extends DurableObject<Env> {
 
   // ---------- guests ----------
   async submit(device: string, s: SubmitIn, asAdmin = false, ip = "") {
-    if (!asAdmin && this.flags().stationOff) return { ok: false, error: "OrrFM is off the air. Requests open again when it's back." };
+    if (!asAdmin && this.flags().stationOff) return { ok: false, error: "WORR is off the air. Requests open again when it's back." };
     if (!asAdmin && !this.flags().accepting) return { ok: false, error: "Requests are closed for tonight." };
     if (!asAdmin && this.one("SELECT 1 AS m FROM muted WHERE device=?", device))
       return { ok: false, error: "Requests are paused for this phone." };
@@ -342,7 +342,7 @@ export class Party extends DurableObject<Env> {
     const urgent = kind === "announcement" && j?.urgent === true;
     const anon = j?.anon === true;   // read on air as "a mystery guest"; the host still sees the name and phone
     if (anon && urgent) return { ok: false, error: "An urgent one can't be anonymous." };
-    if (this.flags().stationOff) return { ok: false, error: "OrrFM is off the air. Requests open again when it's back." };
+    if (this.flags().stationOff) return { ok: false, error: "WORR is off the air. Requests open again when it's back." };
     if (!this.flags().accepting) return { ok: false, error: "The DJ isn't taking jokes right now." };
     if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
     const n = await this.ensureName(device, j?.name);
@@ -485,7 +485,7 @@ export class Party extends DurableObject<Env> {
   async guestPad(device: string, pad: unknown) {
     const n = typeof pad === "number" ? pad : NaN;
     if (!Number.isInteger(n) || n < 1 || n > 8) return { ok: false, error: "No such button." };
-    if (this.flags().stationOff) return { ok: false, error: "OrrFM is off the air. Requests open again when it's back." };
+    if (this.flags().stationOff) return { ok: false, error: "WORR is off the air. Requests open again when it's back." };
     if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
     if (!this.flags().padGapS) return { ok: false, error: "The buttons are off right now." };
     if (!this.flags().freePlay) {
@@ -600,7 +600,7 @@ export class Party extends DurableObject<Env> {
       const id = "j" + this.newId().slice(1);
       this.sql.exec(`INSERT INTO jokes(id,device,name,text,status,created_at,kind,urgent,source)
         VALUES(?, 'host', 'the host', ?, 'pending', ?, 'announcement', 0, 'host')`, id,
-        `Stop the presses: ${who} is the first tonight to find every medal in the OrrFM scavenger hunt, and wins the golden quarter. A round of applause for our champion!`, Date.now());
+        `Stop the presses: ${who} is the first tonight to find every medal in the WORR scavenger hunt, and wins the golden quarter. A round of applause for our champion!`, Date.now());
     }
     return { ok: true, hunt: this.hunt(device) };
   }
@@ -922,7 +922,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "named-1",
+      code: "worr-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),

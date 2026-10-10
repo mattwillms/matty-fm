@@ -1,3 +1,5 @@
 # How the DJ should say family names. Key = as typed, value = how to spell it for the voice.
 # Fill from the guest list on Saturday and test each with tools/say.py.
 [names]
+# the station's call letters, spelled out on air (not "war")
+WORR = "W. O. R. R."
