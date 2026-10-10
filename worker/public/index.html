@@ -689,7 +689,7 @@
 
   /* ---- scavenger hunt: medals in a case of round slots, like coins in a collector's board ---- */
   #hunt { position: relative; }
-  #hunt.done h2, #hunt.done #huntSay { margin-right: 64px; }   /* clear of the ribbon */
+  #hunt.done h2, #hunt.done #huntSay { margin-right: 40px; }   /* clear of the ribbon */
   .medals { display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; gap: 14px 22px; margin: 14px 0 4px; }
   .mslot { position: relative; width: 64px; height: 64px; border-radius: 50%; padding: 0;
            background: radial-gradient(circle at 50% 42%, #120a06 0 58%, #2a1a12 70%);
@@ -699,14 +699,18 @@
                   filter: drop-shadow(0 2px 2px #000c); }
   .mslot.new .mface { animation: medalIn .9s cubic-bezier(.2,1.4,.4,1) both; }
   @keyframes medalIn { 0% { transform: translateY(-40px) scale(1.6) rotate(-30deg); opacity: 0; } 60% { opacity: 1; } }
-  /* the Completed ribbon: a gold band across the top right corner, its ends folding round the panel's edges */
-  .hunt-ribbon { position: absolute; top: -6px; right: -6px; width: 118px; height: 118px; overflow: hidden; pointer-events: none; z-index: 2; }
-  .hunt-ribbon span { position: absolute; top: 28px; right: -34px; width: 170px; transform: rotate(45deg); text-align: center;
-                      background: linear-gradient(#f2c860, #c8901f 55%, #a87418); color: #2a1608; font: 800 .74rem/1 Fraunces, Georgia, serif;
-                      letter-spacing: .1em; padding: 7px 0 6px; text-transform: uppercase; text-shadow: 0 1px 0 #ffe9a8;
-                      box-shadow: 0 3px 6px #000a, inset 0 1px 0 #fff6, inset 0 -1px 0 #0004; }
-  .hunt-ribbon::before, .hunt-ribbon::after { content: ""; position: absolute; border: 3px solid #6b4a0c; border-top-color: transparent; border-right-color: transparent; }
-  .hunt-ribbon::before { top: 0; left: 0; }      /* the band's end, folded back over the top edge */
+  /* the Completed ribbon: a gold band across the top right corner, wrapped round the panel. Its inner edge runs
+     along the box's diagonal, so it leaves through the box's top left and bottom right corners: there, 8px outside
+     the panel, the folded ends (darker, behind the band) wrap over the panel's top and right edges.
+     Box 118px, band 26px tall: centre on y = x - 26/sqrt(2), crossing the box's middle at (68.2, 49.8). */
+  .hunt-ribbon { position: absolute; top: -8px; right: -8px; width: 118px; height: 118px; overflow: hidden; pointer-events: none; z-index: 2; }
+  .hunt-ribbon span { position: absolute; left: -21.8px; top: 36.8px; width: 180px; height: 26px; transform: rotate(45deg);
+                      display: grid; place-items: center; background: linear-gradient(#f2c860, #c8901f 55%, #a87418); color: #2a1608;
+                      font: 800 .7rem/1 Fraunces, Georgia, serif; letter-spacing: .12em; text-transform: uppercase; text-shadow: 0 1px 0 #ffe9a8;
+                      box-shadow: 0 3px 5px #0009, inset 0 1px 0 #fff6, inset 0 -1px 0 #0004; }
+  .hunt-ribbon::before, .hunt-ribbon::after { content: ""; position: absolute; z-index: -1; border: 4px solid #6b4a0c;
+                                              border-top-color: transparent; border-right-color: transparent; }
+  .hunt-ribbon::before { top: 0; left: 0; }      /* the end folded back over the top edge */
   .hunt-ribbon::after { bottom: 0; right: 0; }   /* and over the right edge */
   /* the medal up close: out of its slot, spinning, then hanging in the air slightly cocked and turning slowly; drag to turn it */
   .mview { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; touch-action: none;
