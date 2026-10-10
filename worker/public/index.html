@@ -278,6 +278,7 @@
   body.off-air #find #slots, body.off-air #find #songAllow, body.off-air #find #q, body.off-air #find #results,
   body.off-air #find .hint, body.off-air #find #closed, body.off-air #form, body.off-air #jokeBox { display: none !important; }
   body.off-air .presets .preset { cursor: default; }
+  .allow a { color: var(--gold); font-weight: 700; text-underline-offset: 3px; }
   .allow { margin: -4px 0 12px; color: var(--cream-dim); font-size: .95rem; line-height: 1.35; }
   .allow b { color: var(--cream); font-weight: 600; }
   .allow:has(+ #q[hidden]) { margin-bottom: 0; }   /* no search box under it: no gap either */
@@ -492,7 +493,8 @@
   .hint { margin: 12px 0 0; color: var(--cream-dim); font-size: .95rem; }
   /* who's listening: asked once, then every request and message goes out under that name */
   #who { display: none; } body.noname #who { display: block; }
-  body.noname #find, body.noname #form, body.noname #jokeBox, body.noname #mineBox { display: none; }
+  /* first visit, before a name: only the radio and the name panel. Every other section goes, including any added later */
+  body.noname main > section:not(.cabinet):not(#who) { display: none !important; }
   #who h2 { margin-bottom: 4px; }
   #who form { display: flex; gap: 10px; margin-top: 12px; } #who input { flex: 1; min-width: 0; } #who button { flex: none; }
   .as { margin: 14px 0 0; color: var(--cream-dim); font-size: .95rem; }
@@ -723,6 +725,11 @@
     <p id="jokeErr" class="hint" style="color:var(--bad)"></p>
     <p class="jokes-head" id="myJokesHead" hidden>Yours</p>
     <ul id="myJokes" class="jokes"></ul>
+  </section>
+
+  <section class="panel" id="hunt" aria-labelledby="huntH">
+    <h2 id="huntH">Scavenger hunt</h2>
+    <p class="hint" style="margin-top:0">Coming soon: find what's hidden around the party and earn an extra quarter for a song.</p>
   </section>
 
 </main>
@@ -1868,7 +1875,8 @@ function showLimits() {
                                 : "The line is long: <b>one song at a time</b> for now.")
     : st.locked ? (sg.active === 1 ? "<b>One to go.</b> Pick two more once your other song plays."
                                    : "<b>Both picks are in.</b> Pick two more once they've played.")
-    : sg.active === 1 ? "One picked. <b>Room for one more.</b>" : "Pick up to two songs.");
+    : sg.active === 1 ? "One picked. <b>Room for one more.</b>"
+    : 'Pick two songs. You\'ll get more quarters later, and you can earn an extra one in the <a href="#hunt">scavenger hunt</a>.');
   if (!$("closed").hidden) say("songAllow", "");
   $("q").disabled = !$("closed").hidden || !st.can;
   $("q").hidden = $("results").hidden = $("q").disabled;   // no picks left (or closed): no box at all, the sentence above says why
