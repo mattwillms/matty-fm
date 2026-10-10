@@ -97,6 +97,9 @@
   /* ---- segmented switch, filter chips, groups ---- */
   .seg { display: flex; gap: 4px; background: var(--bg); padding: 4px; border-radius: 12px; margin-bottom: 12px; }
   .seg .segb { flex: 1; background: transparent; color: var(--muted); border-radius: 9px; padding: 10px 6px; font-size: .95rem; }
+  #padGap { margin: 0; flex: none; }
+  #padGap .segb { white-space: nowrap; padding: 10px 9px; }
+  .backlog button { flex: none; white-space: nowrap; }
   .seg .segb[aria-pressed="true"] { background: var(--raise); color: var(--ink); box-shadow: inset 0 0 0 1.5px var(--line); }
   .h2row { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
   .h2row h2 { margin: 0; }
@@ -172,6 +175,7 @@
            transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: #B23A22; color: #fff; }   /* 4.5:1 for white text */
   @media (prefers-reduced-motion: reduce) { button, .toggle::after { transition: none; } }
+  .backlog { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -4px 0 10px; font-size: .9rem; color: var(--muted); }
 </style>
 </head>
 <body>
@@ -214,8 +218,16 @@
     </div>
   </section>
 
+  <section aria-label="Check these" id="heldBox" hidden>
+    <h2>Check these<span class="count" id="heldCount"></span></h2>
+    <div class="why">The DJ doubts these are real songs. The guest was told to bring you a beer. Play puts it at the end of the line.</div>
+    <div id="held"></div>
+  </section>
+
   <section aria-label="Up next">
     <h2>Up next<span class="count" id="upCount"></span></h2>
+    <div class="backlog" id="backlog" hidden><span id="backlogText"></span>
+      <button class="sm ghost" id="dropJokes" type="button">Drop all jokes</button></div>
     <div id="up"></div>
   </section>
 
@@ -241,8 +253,13 @@
       <button class="toggle" role="switch" id="accepting" aria-label="Requests open"></button>
     </div>
     <div class="switch-row">
-      <div><div class="what">Free play</div><div class="why">No limits per phone: any number of songs, jokes and urgent announcements. Off: 2 songs (then none until both play), 1 message waiting, 1 urgent an hour.</div></div>
+      <div><div class="what">Free play</div><div class="why">No limits: any number of songs, jokes and urgent announcements, preset buttons any time, jokes never expire. Off: 2 songs (1 while over 20 wait; then none until they play), 1 message waiting, 1 urgent an hour, jokes dropped after 30 min unread, the button gap below.</div></div>
       <button class="toggle warn" role="switch" id="freePlay" aria-label="Free play"></button>
+    </div>
+    <div class="switch-row">
+      <div><div class="what">Preset buttons</div><div class="why">The guests' five sound buttons. The whole house shares them: after any press they all rest for this long. Each phone also gets one a minute.</div></div>
+      <div class="seg" role="group" aria-label="Preset buttons" id="padGap">
+        <button type="button" class="segb" data-gap="0">Off</button><button type="button" class="segb" data-gap="5">5 s</button><button type="button" class="segb" data-gap="20">20 s</button><button type="button" class="segb" data-gap="60">60 s</button></div>
     </div>
     <div id="coolBox" hidden>
       <div class="h2row sub"><div class="what">Waiting for their songs to play</div>
@@ -414,6 +431,7 @@ function renderSwitches() {
   set("stopAfterCurrent", s.stopAfterCurrent, "stopAfterCurrent");
   set("somaOnly", s.somaOnly, "somaOnly");
   set("freePlay", s.freePlay, "freePlay");
+  for (const b of document.querySelectorAll("#padGap .segb")) b.setAttribute("aria-pressed", String(Number(b.dataset.gap) === (s.padGapS ?? 20)));
   set("familyMode", s.familyMode, "familyMode");
   set("stationOff", s.stationOff, "stationOff");
   if (!s.stationOff) {   // switching off silences the party: ask first (switching back on doesn't)
@@ -532,7 +550,25 @@ function render() {
   const waiting = state.items.filter((i) => ["pending", "preparing", "ready", "queued"].includes(i.status));
   // guests' jokes, worked in as they'll be told: one at each song change, before the next song
   const jokes = state.jokes || [];
-  const jokesWaiting = jokes.filter((j) => ["pending", "preparing", "ready"].includes(j.status)).sort((a, b) => (b.urgent - a.urgent) || (a.createdAt - b.createdAt));   // as they'll be told: urgent first
+  const jokesWaiting = jokes.filter((j) => ["pending", "preparing", "ready"].includes(j.status))   // as they'll be told: urgent, then announcements, then jokes
+    .sort((a, b) => (b.urgent - a.urgent) || ((b.kind === "announcement") - (a.kind === "announcement")) || (a.createdAt - b.createdAt));
+  // the message backlog: how many, and how long the oldest joke has waited (they expire at 30 min)
+  const jw = jokesWaiting.filter((j) => j.kind !== "announcement"), aw = jokesWaiting.length - jw.length;
+  const oldest = jw.length ? Math.round((state.serverNow - Math.min(...jw.map((j) => j.createdAt))) / 60000) : 0;
+  $("backlog").hidden = !jokesWaiting.length;
+  $("backlogText").textContent = [jw.length ? `${jw.length} joke${jw.length > 1 ? "s" : ""} waiting, oldest ${oldest} min` : "",
+    aw ? `${aw} announcement${aw > 1 ? "s" : ""}` : "", state.line?.oneEach ? "line over 20: one song per phone" : ""].filter(Boolean).join(" · ");
+  $("dropJokes").hidden = !jw.length;
+  const held = state.held || [];
+  $("heldBox").hidden = !held.length;
+  $("heldCount").textContent = held.length ? String(held.length) : "";
+  $("held").replaceChildren(...held.map((h) => {
+    const r = el("div", "item-row"); r.style.gridTemplateColumns = "1fr auto auto";
+    const who = (h.requesters || []).map((x) => x.name).join(", ");
+    const info = el("div"); info.append(el("div", null, `${h.title} · ${h.artist}`), el("div", "why", `${who ? who + ": " : ""}${h.error || ""}`));
+    r.append(info, btn("sm", "Play", (e) => act({ action: "approve", id: h.id }, e)), btn("sm danger", "Drop", (e) => act({ action: "delete", id: h.id }, e)));
+    return r;
+  }));
   $("upCount").textContent = waiting.length || jokesWaiting.length ? String(waiting.length + jokesWaiting.length) : "";
   const songRows = waiting.map((it, i) => {
     const up = btn("icon", "▲", (e) => act({ action: "move", id: it.id, dir: -1 }, e), "Move up"); up.disabled = i === 0;
@@ -583,8 +619,8 @@ const UP_SHOWN = 10;
 let upAll = false, histFilter = "all", histShown = 20;
 for (const c of document.querySelectorAll(".chip")) c.onclick = () => { histFilter = c.dataset.f; histShown = 20; render(); };
 // Put on air: one panel, two forms
-for (const b of document.querySelectorAll(".segb")) b.onclick = () => {
-  for (const x of document.querySelectorAll(".segb")) x.setAttribute("aria-pressed", String(x === b));
+for (const b of document.querySelectorAll(".segb[data-mode]")) b.onclick = () => {
+  for (const x of document.querySelectorAll(".segb[data-mode]")) x.setAttribute("aria-pressed", String(x === b));
   $("modeAnnounce").hidden = b.dataset.mode !== "announce"; $("modeSong").hidden = b.dataset.mode !== "song";
 };
 let lastGood = 0;
@@ -594,7 +630,7 @@ async function load() {
     state = await call("/api/admin/state"); state.loadedAt = lastGood = Date.now();
     // the lists rebuild only when what they show changed: a rebuild under a finger loses the tap
     const h = state.health || {};
-    const key = JSON.stringify([state.items, state.jokes, state.history, state.muted, state.cooldowns, state.settings, state.nowPlaying,
+    const key = JSON.stringify([state.items, state.jokes, state.history, state.muted, state.cooldowns, state.settings, state.nowPlaying, state.held, state.line,
                                 h.lastDj, h.source, h.current]);
     if (key !== lastKey) { lastKey = key; render(); } else { renderStatus(); renderTimer(); }
   }
@@ -626,6 +662,9 @@ $("skip").onclick = (e) => {
     .finally(() => load());
 };
 $("releaseAll").onclick = (e) => act({ action: "release" }, e);
+$("dropJokes").onclick = (e) => confirm("Drop every joke still waiting? Announcements stay.") && act({ action: "dropJokes" }, e);
+for (const b of document.querySelectorAll("#padGap .segb"))
+  b.onclick = (e) => act({ action: "settings", settings: { padGapS: Number(b.dataset.gap) } }, e);
 $("resetParty").onclick = (e) => confirm("Wipe the whole party? Every song, name and message goes. This can't be undone.") && act({ action: "reset" }, e);
 $("bumper").onclick = (e) => studioUp() ? act({ action: "break" }, e) : offline();
 

@@ -246,7 +246,7 @@ describe("preset sound buttons", () => {
     expect((await p.guestState("d1")).limits.padInS).toBeGreaterThan(50);
     const other = await p.guestPad("d2", 1);   // someone else, right away: the house gap
     expect(other).toMatchObject({ ok: false, error: expect.stringMatching(/Shared buttons: next sound in \d+ s/) });
-    expect((await p.guestState("d2")).limits.padInS).toBeGreaterThan(15);   // the dimmed buttons count this down
+    expect((await p.guestState("d2")).limits.padShareInS).toBeGreaterThan(15);   // the dimmed buttons count this down
     await sql(p, "UPDATE pad_presses SET at=at-6000");
     expect((await p.guestPad("d2", 1)).ok).toBe(false);   // 6 s: still inside 20
     await sql(p, "UPDATE pad_presses SET at=at-15000");
@@ -354,23 +354,26 @@ describe("party test fixes", () => {
     expect((await p.submit("d1", T("SOS"))).ok).toBe(true);
   });
 
-  it("a typed-in request needs letters, and a weak match waits for the host", async () => {
+  it("a request needs letters, and one the studio doubts waits for the host", async () => {
     const p = stub("held-1");
     const junk = { ...T("%%%"), track: { ...T("%%%").track, artist: "%%" }, freeText: true };
     expect(await p.submit("d1", junk)).toMatchObject({ ok: false, error: "Type the song's name in words." });
     const a = await p.submit("d1", { ...T("lol"), freeText: true });
     await p.beat({ ...beat, want: 1 });
-    await p.result({ id: a.id!, status: "ready", file: "x.mp3", durationS: 20, confidence: 10 });
+    await p.result({ id: a.id!, status: "ready", file: "x.mp3", durationS: 20, confidence: 90, hold: "a single common word" });
     expect((await p.guestState("d1")).mine[0].status).toBe("held");
-    expect((await p.guestState("d1")).limits.songs.active).toBe(0);   // a held one doesn't use a slot
-    expect((await p.adminState()).held.map((h) => h.id)).toEqual([a.id]);
+    expect((await p.guestState("d1")).limits.songs.active).toBe(1);   // a held one uses a slot: junk can't pile up downloads
+    expect((await p.adminState()).held.map((h) => [h.id, h.error])).toEqual([[a.id, "a single common word"]]);
     await p.adminAction({ action: "approve", id: a.id });
     expect((await p.adminState()).held).toEqual([]);
     expect((await p.guestState("d1")).mine[0].status).toBe("ready");
-    const b = await p.submit("d2", { ...T("Dancing Queen"), freeText: false });   // picked from search: never held
+    const b = await p.submit("d2", { ...T("Dancing Queen"), freeText: false });   // "picked from search" is the page's word: held too
     await p.beat({ ...beat, want: 1 });
-    await p.result({ id: b.id!, status: "ready", file: "y.mp3", durationS: 200, confidence: 10 });
-    expect((await p.guestState("d2")).mine[0].status).toBe("ready");
+    await p.result({ id: b.id!, status: "ready", file: "y.mp3", durationS: 200, confidence: 10, hold: "a reading, not a song" });
+    expect((await p.guestState("d2")).mine[0].status).toBe("held");
+    expect((await p.submit("d3", { ...junk, freeText: false })).ok).toBe(false);   // letters checked on every request
+    await p.adminAction({ action: "mute", device: "d2" });
+    expect((await p.adminState()).held).toEqual([]);   // a muted phone's held songs go too
   });
 
   it("a joke not told in 30 minutes expires; announcements don't; free play keeps them", async () => {

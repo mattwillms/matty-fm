@@ -145,6 +145,10 @@
   .needle { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--orange);
             box-shadow: 0 0 8px var(--orange); left: 0; will-change: transform; }   /* placed and moved by transform only (see the dial script) */
   .dial { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  /* a faint amber glow from behind the dial glass, like the board behind the buttons: the tubes' pulse, dark when off */
+  .dial::before { content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
+                  background: radial-gradient(ellipse 75% 130% at 50% 100%, #ffa040, #ff8a2a55 45%, #ff8a2a00 80%);
+                  opacity: calc(var(--g, .8) * .4); }
   /* an empty coin slot's dust, and the odd gnat */
   .dust { position: fixed; pointer-events: none; border-radius: 50%; z-index: 20; }   /* fixed to the screen: flying off it never widens the page */
   .dust.cloud { width: 30px; height: 30px; background: radial-gradient(circle, #b9a58acc, #8a75604d 55%, #8a756000 72%); }
@@ -235,6 +239,7 @@
   .slots i::after { background-image: var(--back); transform: rotateY(180deg); }
   .slots i.used { --face: var(--empty); --back: var(--empty); }
   .slots i.used::before, .slots i.used::after { filter: none; }
+  .slots i.gone { cursor: default; }   /* the line is long: one pick for now, the other coin's slot stands empty */
   .slots i.spin { animation: coinspin .8s steps(16) both; }
   @keyframes coinspin {   /* the arcade coin: hops up, turns over twice (the other side showing each time), lands face up */
     0% { transform: translateY(0) rotateY(0); } 25% { transform: translateY(-11px) rotateY(180deg); }
@@ -279,14 +284,12 @@
   /* the top strip of the faceplate: the maker's wordmark left, the SPECIAL REQUEST lamp right,
      both engraved and ink-filled dark, as on a 70s receiver */
   .brand { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: -6px 14px 12px; }
-  /* the wordmark, engraved into the aluminum (Asset, only these 5 letters loaded). The letters carry
-     the cut's edges as shadows: the upper-left wall in shade, the lower-right lip polished bright; a copy
-     laid over them is the cut's floor, dark ink deepest under the top wall, catching a little light lower down */
+  /* the wordmark, engraved into the aluminum (Asset, only these 5 letters loaded). Everything happens
+     inside the letters (the #engrave filter): the upper-left wall in shade, the lower-right wall catching
+     the light, the floor a shade darker than the plate. Nothing outside them: a shadow outside reads as
+     letters standing on the plate, not cut into it */
   .brand .maker { position: relative; font: 400 clamp(.82rem, 4.1vw, 1.05rem)/1 Asset, "Arial Black", sans-serif;   /* very wide: narrows on small phones so the lamp clears the screw */ letter-spacing: .01em;
-                  color: #1c150a; text-shadow: -.5px -1px 0 #000000b0, .5px 1px 0 #ffffffe6, 1px 1.5px .5px #ffffff70; }
-  .brand .maker::after { content: attr(data-t); position: absolute; inset: 0; text-shadow: none; color: transparent;
-                         background: linear-gradient(#060402, #1f170a 40%, #3d2f15 80%, #574420);
-                         -webkit-background-clip: text; background-clip: text; }
+                  color: #6c6558; filter: url(#engrave); }   /* the cut's floor: the plate, a shade darker; its walls come from #engrave */
   .brand .req { display: flex; align-items: center; gap: 8px; }
   /* the lamp, set in the panel like a real indicator: a polished chrome bezel in a hole (the hole's top
      edge in shade, its lower lip lit), a dark recess inside the ring, and a domed glass lens with the
@@ -322,13 +325,20 @@
                      background: var(--grain) 0 0 / 32px 32px, linear-gradient(#262524, #1c1b1a 40%, #141313 75%, #0f0e0e);
                      background-blend-mode: overlay, normal;   /* the cap: lit from above, pebble-grained plastic */
                      box-shadow: inset 0 1px 0 #ffffff45, inset 1px 0 0 #ffffff1a, inset -1px 0 0 #00000080, inset 0 -1px 0 #000,
-                                 0 4px 0 #4a4845, 0 5px 0 #141312, 0 9px 7px #000000e0;   /* the side wall, its bottom edge, the shadow on the board */
+                                 0 9px 7px #000000e0;   /* the shadow on the board (the side wall is ::after) */
                      transform: translateY(-3px); transition: transform .05s, box-shadow .05s, background .05s; }
   .presets .preset:hover { filter: none; }
+  /* the button's side wall below the cap: the same pebble-grained plastic, catching less light, its bottom edge dark */
+  .presets .preset::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% - 2px); height: 6px; z-index: -1;
+                            border-radius: 0 0 4px 4px; pointer-events: none;
+                            background: var(--grain) 0 2px / 32px 32px, linear-gradient(#4a4845, #383634 70%, #262523);
+                            background-blend-mode: overlay, normal; box-shadow: 0 1px 0 #141312, inset 1px 0 0 #ffffff12, inset -1px 0 0 #0006; }
+  .presets .preset:active::after, .presets .preset.down::after { display: none; }   /* sunk: no side wall */
   .presets .preset:active, .presets .preset.down {
     transform: translateY(1px); background: var(--grain) 0 0 / 32px 32px, linear-gradient(#21201f, #161515 45%, #0c0c0c);
     box-shadow: inset 0 1px 0 #ffffff30, inset 0 2px 3px #0009, 0 1px 0 #3a3936, 0 2px 2px #000a; }   /* sunk: no side wall */
   .presets .preset.down { filter: brightness(.8); }
+  .presets.resting .preset { filter: brightness(.55) saturate(.6); cursor: default; }   /* someone just played one: everyone waits */
   /* the emoji become white legends printed into the plastic, like old car-radio presets: drained of colour and
      pushed to white (some inner detail survives), with a dark lip above and a faint light one below, as if inset */
   .presets .preset .ico { font-size: 1.5rem; filter: grayscale(1) contrast(1.5) brightness(1.35)
@@ -483,6 +493,7 @@
   .song .meta { flex: 1; min-width: 0; }
   .song .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .song .a { color: var(--cream-dim); font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .song.held .a { white-space: normal; line-height: 1.3; }   /* the note to bring Matt a beer: read in full */
   .chip { flex: none; font-size: .78rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #2f1f15; color: var(--cream-dim); }
   .chip.playing { background: var(--orange); color: #2A1A12; } .chip.up { background: var(--avocado); color: #1c1a08; }
   .chip.bad { background: #5a2420; color: #ffc2b4; }
@@ -569,6 +580,12 @@
       <i class="screw bl"><b class="slit" style="--r: 81deg"></b></i><i class="screw br"><b class="slit" style="--r: 167deg"></b></i>
       <div class="brand">
         <span class="maker" data-t="matty" aria-hidden="true">matty</span>
+        <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="engrave" x="-5%" y="-10%" width="110%" height="120%">
+          <feFlood flood-color="#120d06" flood-opacity=".85"/><feComposite in2="SourceAlpha" operator="out"/>
+          <feOffset dx=".9" dy="1.3"/><feGaussianBlur stdDeviation=".35"/><feComposite in2="SourceAlpha" operator="in" result="shade"/>
+          <feFlood flood-color="#fff" flood-opacity=".75"/><feComposite in2="SourceAlpha" operator="out"/>
+          <feOffset dx="-.7" dy="-1"/><feGaussianBlur stdDeviation=".3"/><feComposite in2="SourceAlpha" operator="in" result="light"/>
+          <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter></svg>
         <span class="req"><span class="label">REQUESTED</span><span class="bezel" aria-hidden="true"><span class="lamp" id="lamp"></span></span></span>
       </div>
       <div class="glass" id="glass" role="button" tabindex="0" aria-label="Show the record sleeve">
@@ -1287,11 +1304,22 @@ function withOriginals(list) {
   }
   return out.sort((a, b) => (b.original ? 1 : 0) - (a.original ? 1 : 0) || (a.cover ? 1 : 0) - (b.cover ? 1 : 0));
 }
-function mergeResults(a, b) {
+// A version of the song rather than the song: listed after the originals, unless the guest typed the word
+// (party test: guests tapped "Let's Groove (Instrumental)" and a piano Rick Astley over the real ones)
+const VERSION_WORDS = /\b(instrumental|remix(es|ed)?|live|karaoke|cover|piano|acoustic|sped up|slowed|extended|rework|tribute|reverb|8d|nightcore|lullaby|cappella|demo)\b/i;
+function isVersion(t, q) {
+  // only the version tag ("(Piano Version)", " - Live") and the album: "Piano Man" is the song itself
+  const title = String(t.title), tag = title.slice(baseTitle(title).length);
+  const words = (tag + " " + String(t.album || "")).match(new RegExp(VERSION_WORDS, "gi")) || [];
+  return words.some((w) => !new RegExp(`\\b${w}\\b`, "i").test(q));
+}
+function mergeResults(a, b, q = "") {
   const seen = new Set(), out = [];
   for (const t of [...a, ...b]) { const k = songKeyOf(t); if (!seen.has(k)) { seen.add(k); out.push(t); } }
-  // songs already on the station's shelf play right away: list them first
-  return withOriginals(out).map((t, i) => ({ t, i, c: isCached(t) })).sort((x, y) => (y.c - x.c) || (x.i - y.i))
+  // originals first; among them, songs already on the station's shelf (they play right away). A cached
+  // remix doesn't jump the original.
+  return withOriginals(out).map((t, i) => ({ t, i, c: isCached(t), v: !t.original && (t.cover || isVersion(t, q)) }))
+    .sort((x, y) => (x.v - y.v) || (y.c - x.c) || (x.i - y.i))
     .map((x) => ({ ...x.t, cached: x.c })).slice(0, 12);
 }
 async function api(path, opts) {
@@ -1317,6 +1345,7 @@ function badge(m) {
     case "playing": return ["On air", "playing"];
     case "played": return [m.skipped ? "Skipped" : "Played", ""];
     case "failed": return ["Couldn't find it", "bad"];
+    case "held": return ["With Matt", "prep"];
     case "deleted": return ["Removed", "bad"];
     default: return [m.status, ""];
   }
@@ -1327,7 +1356,7 @@ let pollTimer = null, lastNextKey = "", lastMineKey = "";
 // Jokes: written up in the DJ's voice by the studio and told between songs.
 const JOKE_STATUS = { pending: ["The DJ is reading it over", "prep"], preparing: ["The DJ is reading it over", "prep"],
   ready: ["Coming up on air", "up"], played: ["Told on air", "playing"], rejected: ["The DJ passed on this one", "bad"],
-  failed: ["Didn't make it on air", "bad"] };
+  failed: ["Didn't make it on air", "bad"], expired: ["The DJ ran out of time for this one. Send another!", "bad"] };
 // Tap a coin: it flips. Tap an empty slot: a puff of dust, and about one time in seven a gnat flies out. Just for fun.
 [...$("slots").children].forEach((c) => {
   c.onclick = () => {
@@ -1365,11 +1394,15 @@ function layCables() {
   const d1 = `M${L + 2} ${ry}C${L - 10} ${ry + 3} ${p1 + 9} ${top1 - 16} ${p1} ${top1}`;
   // the loop: out of the right end, up and round in a curl, then down into the right plug
   const lx = R + 8, ly = ry - 11;   // a tight curl, low, so it stays clear of the hen
-  const d2At = (a) => {   // a: the plug's tilt in degrees; the cord's end rides the top of the plug's spring
+  // a: the plug's tilt in degrees; the cord's end rides the top of the plug's spring. b: the tilt a moment
+  // ago: the rest of the cord follows that, more weakly the nearer the riser, so the shake runs along it
+  const d2At = (a, b = a) => {
     const t = a * Math.PI / 180, h = edge - top2, ex = p2 + h * Math.sin(t), ey = edge - h * Math.cos(t);
     const cx = ex - 6 * Math.cos(t) + 14 * Math.sin(t), cy = ey - 14 * Math.cos(t) - 6 * Math.sin(t);
-    return `M${R - 2} ${ry}C${R + 6} ${ry} ${lx + 6} ${ly + 6} ${lx + 5} ${ly}C${lx + 4} ${ly - 6} ${lx - 5} ${ly - 6} ${lx - 5} ${ly}` +
-           `C${lx - 4} ${ly + 6} ${lx + 5} ${ly + 5} ${lx + 8} ${ly - 1}C${lx + 11} ${ly - 6} ${cx.toFixed(1)} ${cy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`;
+    const tb = b * Math.PI / 180, sx = h * Math.sin(tb) * 2.2, sy = h * (1 - Math.cos(tb)) * 2.2;   // the lagged swing, whipped wider
+    const P = (x, y, w) => `${(x + sx * w).toFixed(1)} ${(y + sy * w).toFixed(1)}`;
+    return `M${R - 2} ${ry}C${P(R + 6, ry, .05)} ${P(lx + 6, ly + 6, .25)} ${P(lx + 5, ly, .35)}C${P(lx + 4, ly - 6, .45)} ${P(lx - 5, ly - 6, .5)} ${P(lx - 5, ly, .5)}` +
+           `C${P(lx - 4, ly + 6, .55)} ${P(lx + 5, ly + 5, .65)} ${P(lx + 8, ly - 1, .75)}C${P(lx + 11, ly - 6, .85)} ${cx.toFixed(1)} ${cy.toFixed(1)} ${ex.toFixed(1)} ${ey.toFixed(1)}`;
   };
   const d2 = d2At(0);
   let svg = cab.querySelector(".cables");
@@ -1390,10 +1423,11 @@ function jiggle(e) {
   glass._flicker = true;
   const svg = g.ownerSVGElement, cords = svg.querySelectorAll(".cord"), [px, py] = svg._pivot, t0 = performance.now();
   const wobble = (now) => {   // a damped shake: the plug rocks in its jack and the cord's end goes with it
-    const t = (now - t0) / 1000, a = t > .7 ? 0 : -14 * Math.sin(t * Math.PI * 2 * 3.6) * Math.exp(-t * 4.2);
+    const tilt = (t) => t < 0 || t > .7 ? 0 : -14 * Math.sin(t * Math.PI * 2 * 3.6) * Math.exp(-t * 4.2);
+    const t = (now - t0) / 1000, a = tilt(t), b = tilt(t - .07);   // the cord's body a beat behind the plug
     g.setAttribute("transform", a ? `rotate(${a.toFixed(2)} ${px} ${py})` : "");
-    const d = svg._d2At(a); cords.forEach((c) => c.setAttribute("d", d));
-    if (a) requestAnimationFrame(wobble);
+    const d = svg._d2At(a, b); cords.forEach((c) => c.setAttribute("d", d));
+    if (t < .8) requestAnimationFrame(wobble);
   };
   requestAnimationFrame(wobble);
   const fx = el("div", "tvfx"); glass.append(fx);
@@ -1405,6 +1439,7 @@ function jiggle(e) {
   }
   const disp = $("display");
   disp.animate(frames, { duration: 850, easing: "steps(15)" });
+  $("meter").animate(frames, { duration: 850, easing: "steps(15)" });   // the progress line is on the same screen
   fx.animate([{ opacity: .9, backgroundPositionY: "0px, 0px" }, { opacity: .7, backgroundPositionY: "40px, 120px", offset: .5 }, { opacity: 0, backgroundPositionY: "80px, 260px" }],
              { duration: 850, easing: "linear" }).onfinish = () => { fx.remove(); glass._flicker = false; };
 }
@@ -1422,7 +1457,7 @@ function jiggle(e) {
   });
   seats.forEach((seat, i) => seat.querySelector(".tube").replaceWith(fresh[i]));
 })();
-const tubeEls = [...document.querySelectorAll(".tube")], boardEl = $("presets");
+const tubeEls = [...document.querySelectorAll(".tube")], boardEl = $("presets"), dialEl = document.querySelector(".dial");
 let tubePower = 1;   // eases to 0 when the station is switched off, back to 1 when it's on
 function tubeFrame(now) {
   const t = now / 1000;
@@ -1437,7 +1472,8 @@ function tubeFrame(now) {
     }
     el.style.setProperty("--g", el.classList.contains("gone") ? 0 : (v * tubePower).toFixed(3));
   });
-  boardEl.style.setProperty("--g", ((g[0] + g[1]) / 2 * tubePower).toFixed(3));
+  const glow = ((g[0] + g[1]) / 2 * tubePower).toFixed(3);
+  boardEl.style.setProperty("--g", glow); dialEl.style.setProperty("--g", glow);
 }
 const fxBit = (cls, x, y, css = {}) => { const e = el("i", "fx " + cls); Object.assign(e.style, { left: x + "px", top: y + "px", ...css }); document.body.append(e); return e; };
 function sparks(x, y, n, opts = {}) {   // thrown out, then pulled down by gravity
@@ -1770,10 +1806,13 @@ function showLimits() {
   $("slots").hidden = free;
   $("slots").classList.toggle("locked", !st.can);
   const usedN = st.locked ? sg.max : Math.min(sg.active, sg.max);   // coins are spent from the right
-  [...$("slots").children].forEach((i, n) => i.classList.toggle("used", n >= sg.max - usedN));
+  // a long line takes one coin away: its slot shows empty (a coin past max is gone, not spent)
+  [...$("slots").children].forEach((i, n) => { i.classList.toggle("gone", n >= sg.max); i.classList.toggle("used", n >= sg.max - usedN); });
   $("slots").setAttribute("aria-label", free ? "" : `${sg.max - usedN} of ${sg.max} song picks left`);
   const say = (id, html) => { $(id).hidden = !html; $(id).innerHTML = html || ""; };
   say("songAllow", free ? "<b>Free play:</b> request as many songs as you like."
+    : sg.max === 1 ? (st.locked ? "<b>Yours is in.</b> The line is long, so it's one song at a time for now."
+                                : "The line is long: <b>one song at a time</b> for now.")
     : st.locked ? (sg.active === 1 ? "<b>One to go.</b> Pick two more once your other song plays."
                                    : "<b>Both picks are in.</b> Pick two more once they've played.")
     : sg.active === 1 ? "One picked. <b>Room for one more.</b>" : "Pick up to two songs.");
@@ -1792,9 +1831,13 @@ function showLimits() {
   const blocked = !free && limits.waiting && !urgent;
   say("msgAllow", free ? "<b>Free play:</b> send as many as you like."
     : limits.waiting ? "<b>Yours is in line.</b> Send another once the DJ has read it." : "");
-  // preset buttons: the server's countdown (another phone of yours, a reload)
-  if (free) { if (padUntil - Date.now() > 400) padUntil = 0; }
-  else if (limits.padInS) padUntil = Math.max(padUntil, limitsAt + limits.padInS * 1000);
+  // preset buttons: the server's countdowns (another phone of yours, a reload; someone else's press)
+  padsOff = Boolean(limits.padsOff);
+  if (free) { if (padUntil - Date.now() > 400) padUntil = 0; shareUntil = 0; }
+  else {
+    if (limits.padInS) padUntil = Math.max(padUntil, limitsAt + limits.padInS * 1000);
+    if (limits.padShareInS) shareUntil = Math.max(shareUntil, limitsAt + limits.padShareInS * 1000);
+  }
   showPresets();
   // anonymous: one a night, never urgent (urgent and anonymous switch each other off)
   const anonUsed = !free && limits.anonLeft === false;
@@ -1805,30 +1848,36 @@ function showLimits() {
   if (!$("jsend").classList.contains("busy")) $("jsend").disabled = !accepting || blocked;
 }
 setInterval(showLimits, 10000);   // the urgent countdown
-// The preset buttons: the host's five sound pads, one press a minute per phone (Free play: no limit).
+// The preset buttons: the host's five sound pads. One press a minute per phone (the pressed one latches
+// down), and the whole house shares them: after anyone's press they all dim for the gap (admin: 5-60 s).
+// Free play: no limit. The host can switch them off.
 const PRESETS = [["📯", "Air horn"], ["🥁", "Rimshot"], ["👏", "Applause"], ["🎺", "Sad trombone"], ["🐔", "Cluck"]];
-let padUntil = 0, padDown = -1, padTimer = null;
+let padUntil = 0, shareUntil = 0, padDown = -1, padTimer = null, padsOff = false;
 function showPresets() {
-  const wait = padUntil - Date.now();
+  const now = Date.now(), wait = padUntil - now, share = shareUntil - now;
   [...$("presets").children].forEach((b, i) => {
     b.classList.toggle("down", wait > 0 && i === padDown);
-    b.setAttribute("aria-disabled", String(wait > 0));
+    b.setAttribute("aria-disabled", String(wait > 0 || share > 0 || padsOff));
   });
+  $("presets").classList.toggle("resting", padsOff || (share > 0 && wait <= 0));
   clearTimeout(padTimer);
-  if (wait > 0) padTimer = setTimeout(showPresets, wait + 50);   // pops back up when the minute is over
+  const next = Math.max(wait, share);
+  if (next > 0) padTimer = setTimeout(showPresets, next + 50);   // pops back up when the wait is over
 }
 $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
   const b = el("button", "preset"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl} on the speakers`);
   b.append(el("span", "ico", ico));
   b.onclick = async () => {
     if (offAir) { toast("OrrFM is off the air."); return; }
-    const wait = padUntil - Date.now();
-    if (wait > 0) { toast(`One sound a minute: the next in ${Math.ceil(wait / 1000)} s.`); return; }
+    if (padsOff) { toast("The buttons are off right now."); return; }
+    const wait = padUntil - Date.now(), share = shareUntil - Date.now();
+    if (wait > 0) { toast(`Your next sound in ${Math.ceil(wait / 1000)} s.`); return; }
+    if (share > 0) { toast(`Shared buttons: next sound in ${Math.ceil(share / 1000)} s.`); return; }
     padDown = i; padUntil = Date.now() + 60000; showPresets();   // latches down at once, like the real thing
     try {
       const r = await api("/api/pad", { method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ pad: i + 1 }), signal: AbortSignal.timeout(10000) });
-      if (!r.ok) { padUntil = 0; toast(r.error, true); }
+      if (!r.ok) { padUntil = 0; if (r.shareInS) shareUntil = Date.now() + r.shareInS * 1000; toast(r.error, true); }
       else if (limits && limits.freePlay) padUntil = Date.now() + 400;   // free play: a quick press, no wait
       else toast(`${lbl}! On the speakers in a moment.`);
     } catch { padUntil = 0; toast("Didn't send. Check your connection.", true); }
@@ -1916,7 +1965,7 @@ async function refresh() {
     }
     $("mineBox").hidden = !s.mine.length;
     // what's still to play first, then the last few played; the rest of the night folds away
-    const live = s.mine.filter((m) => ["pending", "preparing", "ready", "queued", "playing"].includes(m.status));
+    const live = s.mine.filter((m) => ["pending", "preparing", "ready", "queued", "playing", "held"].includes(m.status));
     const done = s.mine.filter((m) => !live.includes(m));
     const keep = Math.max(0, 3 - live.length) || 1;
     const shown = showEarlier ? s.mine : [...live, ...done.slice(0, keep)];
@@ -1928,10 +1977,11 @@ async function refresh() {
       const changed = lastBadge.has(m.id) && lastBadge.get(m.id) !== label;
       lastBadge.set(m.id, label);
       const row = songRow(m.status === "failed" ? { ...m, names: "" } : m, label, cls + (changed ? " flash" : ""));
-      if (["pending", "preparing", "ready", "queued"].includes(m.status)) {   // the status and its Cancel side by side
+      if (["pending", "preparing", "ready", "queued", "held"].includes(m.status)) {   // the status and its Cancel side by side
         const side = el("div", "side"); side.append(row.querySelector(".chip"), cancelButton(m)); row.append(side);
       }
       if (m.status === "failed") row.querySelector(".a").textContent = "Try a different version, or another song";
+      else if (m.status === "held") row.classList.add("held"), row.querySelector(".a").textContent = "The DJ wasn't sure about this one; bring Matt a beer and he will take a look";
       else if (m.artist) sleeveOnTap(row, m);   // a hidden (offensive) title has no artist: nothing to look up
       if (m.status === "played" && m.artist) {   // the status and its "Request again" stacked on the right
         const side = el("div", "side"); side.append(row.querySelector(".chip"), againButton(m)); row.append(side);
@@ -1957,7 +2007,7 @@ $("q").addEventListener("input", () => {
     const fromWorker = worker.status === "fulfilled" ? worker.value.results || [] : [];
     const fromApple = apple.status === "fulfilled" ? apple.value : [];
     if (worker.status === "rejected" && worker.reason?.message === "gate") { $("results").replaceChildren(el("li", "empty", $("gate").textContent)); return; }
-    const results = mergeResults(fromApple, fromWorker);
+    const results = mergeResults(fromApple, fromWorker, q);
     if (!results.length && worker.status === "rejected") {
       $("results").replaceChildren(el("li", "empty", "Search didn't go through. Try again in a moment."));
       return;

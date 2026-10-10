@@ -91,6 +91,9 @@ def prepare(item: dict, deps: Deps) -> dict:
         log.exception("%s song lookup failed", rid)
         return {"id": rid, "status": "failed", "error": f"Song lookup failed: {type(e).__name__}: {e}"[:300]}
     confidence, note = check_match(song, item)
+    held = djline.doubt(item, song.title or "", song.channel or "", deps.claude)   # junk ("%%%") waits for the host
+    if held:
+        log.info("%s held for the host: %s", rid, held)
     log.info("%s song ready in %.1fs: %s (video %s, confidence %.0f -> %.0f): %s", rid, time.monotonic() - t0,
              song.path.name, song.video_id, song.confidence, confidence, note)
     mixing = False   # only a failure while mixing the song file blames the cached song
@@ -140,4 +143,4 @@ def prepare(item: dict, deps: Deps) -> dict:
                                           ("artwork", "artworkUrl")) if info.get(k1)}
     return {**extra, "id": item["id"], "status": "ready", "file": f"{item['id']}.mp3", "durationS": seconds,
             "confidence": confidence, "matchNote": note, "djLine": screen_text(line.script), "tone": line.tone, "voice": engine,
-            "voiceS": voice_s}
+            "voiceS": voice_s, **({"hold": held} if held else {})}
