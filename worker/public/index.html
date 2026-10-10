@@ -657,7 +657,8 @@
                             padding: calc(18px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom)); }
   html.od-open, html.od-open body { overflow: hidden; }
   .od-keys, .od-stats { margin-top: auto; }
-  .od-title { margin: 4px 0 0; font: 900 2.2rem/1 Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
+  /* the title and its burst, one group centred between the corner buttons: both shrink on a small phone */
+  .od-title { display: flex; align-items: center; gap: 4px; width: max-content; margin: 4px auto 0; font: 900 clamp(1.55rem, 8.4vw, 2.2rem)/1 Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
                letter-spacing: .06em; color: var(--cream);
                text-shadow: .04em .04em 0 var(--cocoa), .07em .07em 0 var(--gold), .1em .1em 0 var(--cocoa), .13em .13em 0 var(--orange); }
   .od-board { display: grid; grid-template-rows: repeat(6, 1fr); gap: 6px; width: min(300px, 76vw, calc((100dvh - 330px) * .8)); flex: none; }
@@ -761,15 +762,15 @@
   /* Orrdle: a starburst, like a sticker on a box of cereal */
   /* Orrdle: a starburst on the title's right corner, tilted right, like the sticker on a cereal box: a darker burst behind as its edge,
      a shaded yellow face, a shadow on the page */
-  .od-burst { position: absolute; top: calc(2px + env(safe-area-inset-top)); left: calc(50% + 72px); width: 66px; height: 66px; z-index: 2;
+  .od-burst { position: relative; flex: none; width: clamp(74px, 21vw, 80px); aspect-ratio: 1; z-index: 2; letter-spacing: 0;
               pointer-events: none; transform: rotate(14deg); filter: drop-shadow(0 3px 3px #000a); }
   .od-burst i, .od-burst em { position: absolute; inset: 0; clip-path: polygon(50% 0%, 59% 13%, 75% 6%, 76% 22%, 93% 25%, 86% 40%, 100% 50%, 86% 60%, 93% 75%, 76% 78%, 75% 94%, 59% 87%, 50% 100%, 41% 87%, 25% 94%, 24% 78%, 7% 75%, 14% 60%, 0% 50%, 14% 40%, 7% 25%, 24% 22%, 25% 6%, 41% 13%); }
   .od-burst i { background: #b2361f; transform: translate(2px, 3px); }   /* the burst's edge, seen below its face */
   .od-burst em { background: radial-gradient(circle at 40% 32%, #fff4a8, #ffd23f 42%, #f0a92b 85%); }
-  .od-burst span { position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
+  .od-burst > span { position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
                    color: #b2361f; font: 900 .75rem/1 Fraunces, Georgia, serif; text-transform: uppercase; letter-spacing: .02em;
                    text-shadow: 0 1px 0 #fff6c9; }
-  .od-burst b { display: block; font-size: .8rem; margin-top: 1px; }
+  .od-burst b { display: block; font-size: .75rem; margin-top: 1px; }
   /* the sound board's switch: a toggle at the side of the buttons, up for the speakers, down for this phone only.
      No labels: a toast says what it does when it's flipped. A black plate, a chrome bat lever on a pivot nut. */
   .presets { grid-template-columns: repeat(4, minmax(0, 1fr)); flex: 1; min-width: 0; margin-top: 0; }
@@ -806,7 +807,11 @@
   .made-by { display: grid; place-items: center; margin: 0 0 -22px; }   /* 18px below, as above: the page's own 40px bottom padding, less 22 */
   .made-by button { display: grid; justify-items: center; gap: 2px; padding: 8px 18px; background: none; box-shadow: none; color: var(--cream-dim); }
   .made-by span { font: 500 1rem/1 Jost, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
-  .made-by img { width: 120px; height: auto; filter: drop-shadow(0 1px 0 #000a) drop-shadow(0 0 8px #f0a92b44); }
+  /* "read how" tucked under "matt", left of where the y's tail sweeps down */
+  .made-by .sig { position: relative; display: block; font-style: normal; }
+  .made-by em { position: absolute; left: 13%; top: 70%; font: italic 500 1rem/1 Jost, sans-serif; color: var(--cream-dim);
+    text-decoration: underline; text-decoration-color: #cdb59166; text-underline-offset: 3px; white-space: nowrap; }
+  .made-by img { display: block; width: 140px; height: auto; filter: drop-shadow(0 1px 0 #000a) drop-shadow(0 0 8px #f0a92b44); }
   .made-by button:active img { transform: scale(.97); }
   .about { width: min(90vw, 520px); margin: 0 auto; padding: calc(70px + env(safe-area-inset-top)) 0 48px; color: var(--cream); }
   .about .ab-sig { display: block; width: 190px; margin: 0 auto 10px; filter: drop-shadow(0 0 10px #f0a92b55); }
@@ -825,12 +830,12 @@
   .about .ab-parts li::before { content: ""; position: absolute; left: 3px; top: .62em; width: 7px; height: 7px; border-radius: 50%;
                                 background: var(--gold); box-shadow: 0 0 6px #f0a92b88; }   /* gold bullets */
   .about .ab-gh { margin: 40px 0 0; text-align: center; }
-  .about .ab-gh p { margin: 0 0 12px; font: 600 1.15rem/1.4 Jost, sans-serif; color: var(--cream); }
+  .about .ab-gh p { margin: 0 0 12px; text-wrap: balance; font: 600 1.15rem/1.4 Jost, sans-serif; color: var(--cream); }
+  .about .ab-love { margin: 28px 0 0; text-align: center; text-wrap: balance; font: 800 1.6rem/1.2 Fraunces, Georgia, serif; color: var(--cream); }
   .about .ab-gh-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px; border-radius: 999px;
     background: var(--gold); color: #2A1A12; font: 700 1.1rem/1 Jost, sans-serif; text-decoration: none; }
-  .about .ab-gh-btn svg { width: 22px; height: 22px; }
+  .about .ab-gh-btn svg { width: 22px; height: 22px; flex: none; }
   .about .ab-gh-btn:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
-  .about .ab-love { margin: 28px 0 0; text-align: center; font: 800 1.6rem/1.2 Fraunces, Georgia, serif; color: var(--cream); }
 </style>
 </head>
 <body>
@@ -954,8 +959,7 @@
 
   <dialog class="sleeve-box orrdle-box" id="orrdleBox" aria-label="Orrdle">
     <button class="sleeve-close" id="orrdleClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <div class="od-burst" aria-hidden="true"><i></i><em></em><span>For<b>Marie!</b></span></div>
-    <h2 class="od-title">ORRDLE</h2>
+    <h2 class="od-title">ORRDLE<span class="od-burst" aria-hidden="true"><i></i><em></em><span>For<b>Marie!</b></span></span></h2>
     <button class="sleeve-close od-statsbtn" id="odMine" type="button" aria-label="Your stats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-9"/></svg></button>
     <div class="od-board" id="odBoard"></div>
     <div class="od-msg" id="odMsg" role="status"></div>
@@ -1063,7 +1067,7 @@
   </section>
 
   <footer class="made-by"><button id="aboutBtn" type="button" aria-label="Made by matty: how WORR was made">
-    <span>Made by</span><img src="/matty-sig.webp" alt=""></button></footer>
+    <span>Made by</span><i class="sig"><img src="/matty-sig.webp" alt=""><em>read how</em></i></button></footer>
 </main>
   <dialog class="sleeve-box about-box" id="about" aria-label="About WORR">
     <div class="sleeve-bar" aria-hidden="true"></div>
@@ -1162,7 +1166,8 @@
           <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
           See it on GitHub</a>
       </div>
-      <p class="ab-love" id="abLove" hidden>I love you <span aria-hidden="true">💖</span></p>
+      <p class="ab-love" id="abLove">I love you <span aria-hidden="true">💖</span></p>
+      </div>
     </article>
   </dialog>
 
@@ -3256,7 +3261,8 @@ document.querySelectorAll(".screw").forEach((sc) => sc.addEventListener("click",
 }));
 // Made by: the story of the app, for anyone who asks
 $("aboutBtn").onclick = () => { const d = $("about"); if (overlayUp(d)) return;
-  $("abLove").hidden = !/^(marie|hadley|ava)\b/i.test(myName());   // just for them
+  const dear = /^(marie|hadley|ava)\b/i.exec(myName());   // by name, just for them
+  $("abLove").firstChild.textContent = dear ? `I love you, ${dear[1][0].toUpperCase() + dear[1].slice(1).toLowerCase()} ` : "I love you ";
   fadeShow(d); document.documentElement.classList.add("od-open"); };
 $("aboutClose").onclick = () => fadeClose($("about"));
 $("about").addEventListener("close", () => document.documentElement.classList.remove("od-open"));
