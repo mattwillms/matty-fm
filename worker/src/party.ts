@@ -595,6 +595,7 @@ export class Party extends DurableObject<Env> {
   async guestState(device: string) {
     const nowMs = Date.now();
     if (nowMs - (this.seenAt.get(device) ?? 0) > 60_000) {   // the host's guest list: first and last seen
+      if (this.seenAt.size > 2000) this.seenAt.clear();   // a memo of recent writes, not a record: never let it grow
       this.seenAt.set(device, nowMs);
       this.sql.exec("INSERT INTO devices(device, first_at, last_at) VALUES(?,?,?) ON CONFLICT(device) DO UPDATE SET last_at=excluded.last_at",
         device, nowMs, nowMs);
@@ -851,7 +852,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "hunt-1",
+      code: "hunt-2",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),

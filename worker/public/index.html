@@ -569,39 +569,53 @@
   .flip .ap { position: absolute; left: 2.5px; top: 2.5px; font: 600 .36rem/1 Oswald, sans-serif; font-style: normal; color: #f4f1ea; letter-spacing: .04em; }
   .flip .colon { width: 5px; height: 16px; background: radial-gradient(circle at 50% 3px, #f4f1ea 0 2px, transparent 2.5px),
                  radial-gradient(circle at 50% 13px, #f4f1ea 0 2px, transparent 2.5px); }
-  /* Send and Back as a coin door on an old jukebox: tap the quarter (or anywhere on its side) and it turns edge-on
-     and drops into the lit slot; the request goes. If it doesn't go, the coin comes back out. Back is the
-     chrome coin-return button. */
-  .coinop { display: grid; grid-template-columns: auto 1fr; gap: 12px; align-items: stretch; margin-top: 16px; padding: 10px;
-            border-radius: 12px; background: linear-gradient(#3b3836, #2a2826 55%, #211f1e);
-            box-shadow: inset 0 1px 0 #ffffff26, inset 0 -1px 0 #0009, 0 2px 6px #0007; }
+  /* Send and Back on a coin mechanism off a 70s jukebox or soda machine: a worn chrome plate (scratches, pitting,
+     a little rust round the screws) with the price stamped in, a raised bezel round a tall coin slot, and the round
+     COIN RETURN button: Back. Tap the quarter and it rolls over, turns edge-on and drops in; if the request doesn't
+     go, it comes back out and rolls home. */
+  .coinop { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
   .coinop button { -webkit-tap-highlight-color: transparent; }
-  .coin-return { display: grid; justify-items: center; align-content: center; gap: 6px; width: 76px; padding: 8px 0; border-radius: 9px;
-                 background: linear-gradient(#2d2b29, #1d1c1b); box-shadow: inset 0 2px 4px #000c, 0 1px 0 #ffffff1a; color: #cfc8bb; }
-  .cr-knob { width: 34px; height: 34px; border-radius: 50%;
-             background: radial-gradient(circle at 38% 32%, #fbfaf7, #b9b5ad 38%, #77736c 70%, #3f3c38);
-             box-shadow: 0 3px 0 #1a1918, 0 4px 5px #000c, inset 0 -2px 3px #0006; transition: transform .06s, box-shadow .06s; }
-  .coin-return:active .cr-knob { transform: translateY(2px); box-shadow: 0 1px 0 #1a1918, 0 1px 2px #000c, inset 0 -1px 2px #0006; }
-  .cr-lbl { font: 600 .7rem/1 Michroma, sans-serif; letter-spacing: .08em; text-transform: uppercase; }
-  .coin-send { position: relative; display: flex; align-items: center; gap: 12px; padding: 8px 12px 8px 10px; border-radius: 9px; text-align: left;
-               background: linear-gradient(#2d2b29, #1d1c1b); box-shadow: inset 0 2px 4px #000c, 0 1px 0 #ffffff1a; color: var(--cream); perspective: 200px; }
-  .cq { flex: none; width: 46px; height: 46px; border-radius: 50%; background: var(--heads) center / 100% 100%;
-        filter: drop-shadow(0 2px 2px #000c); transform: rotate(-8deg); }
-  .cs-plate { position: relative; flex: none; display: grid; justify-items: center; gap: 5px; width: 40px; padding: 6px 0 8px; border-radius: 5px;
-              background: linear-gradient(90deg, #6f6b65, #e9e6df 35%, #a7a39b 60%, #5d5a55); box-shadow: 0 1px 2px #000c, inset 0 1px 0 #fff8; z-index: 1; }
-  .cs-price { padding: 1px 4px; border-radius: 3px; background: #1b0d08; color: #ffb35a; font: 700 .62rem/1.2 Michroma, sans-serif;
-              text-shadow: 0 0 4px #ff8a2a; box-shadow: inset 0 0 3px #000; }
-  .cs-slot { width: 6px; height: 30px; border-radius: 3px; background: #060505; box-shadow: inset 0 0 0 1px #2a2826, 0 0 6px #ff9a3a66; }
+  .mech { position: relative; flex: none; display: grid; justify-items: center; align-content: start; gap: 4px; width: 78px; padding: 9px 0 8px;
+          border-radius: 7px;
+          background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='130'%3E%3Cg stroke='%23ffffff' stroke-opacity='.35' stroke-width='.5' stroke-linecap='round'%3E%3Cpath d='M6 20l22 7M40 9l24 4M12 60l30-6M50 70l20 9M8 98l18 4M44 112l26-5M30 40l12 2M58 34l14 9'/%3E%3C/g%3E%3Cg stroke='%23000' stroke-opacity='.3' stroke-width='.5' stroke-linecap='round'%3E%3Cpath d='M10 33l16 2M46 52l20-8M20 82l26 4M60 98l12-9M14 118l20-3'/%3E%3C/g%3E%3Cg fill='%237a4a1e'%3E%3Ccircle cx='9' cy='113' r='2.2' opacity='.45'/%3E%3Ccircle cx='12' cy='117' r='1.2' opacity='.4'/%3E%3Ccircle cx='70' cy='14' r='1.6' opacity='.4'/%3E%3Ccircle cx='66' cy='120' r='2.6' opacity='.35'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 100% 100%,
+                      linear-gradient(90deg, #6c6964 0%, #d9d6cf 18%, #f4f2ec 32%, #a9a59d 50%, #e2dfd8 68%, #8d8a83 86%, #5b5853 100%);
+          box-shadow: inset 0 1px 0 #fff9, inset 0 -2px 2px #0007, inset 1px 0 0 #fff5, inset -1px 0 0 #0005, 0 3px 6px #000b, 0 0 0 1px #2a2826; }
+  .mech::before, .mech::after { content: ""; position: absolute; top: 5px; width: 6px; height: 6px; border-radius: 50%;
+                                background: radial-gradient(circle at 35% 35%, #f2f0ea, #7d7a73 60%, #3a3833);
+                                box-shadow: 0 0 0 1px #5a3a1a55, 0 1px 1px #0008; }   /* two screws, a little rust round them */
+  .mech::before { left: 5px; } .mech::after { right: 5px; }
+  .mech-price { padding: 1px 6px; border-radius: 3px; font: 800 .72rem/1.2 Michroma, sans-serif; color: #f3e3c3; background: #8e1f12;
+                box-shadow: inset 0 1px 2px #0009, 0 1px 0 #fff6; text-shadow: 0 -1px 0 #0008; }
+  .mech-bezel { display: grid; place-items: center; width: 22px; height: 58px; border-radius: 6px;
+                background: linear-gradient(90deg, #8a867f, #f6f4ef 40%, #b5b1a9 70%, #6a6762);
+                box-shadow: 0 2px 2px #0009, inset 0 1px 0 #fffb, inset 0 -1px 0 #0006; }
+  .mech-slot { width: 6px; height: 48px; border-radius: 3px; background: linear-gradient(90deg, #000, #1a1714 50%, #000);
+               box-shadow: inset 0 2px 3px #000, 0 0 0 1px #5d5a55; transition: box-shadow .2s; }
+  .mech.clunk .mech-slot { box-shadow: inset 0 2px 3px #000, 0 0 0 1px #5d5a55, 0 0 10px #ffb35a; }
+  .mech.clunk { animation: clunk .22s; }
+  @keyframes clunk { 30% { transform: translateY(1.5px); } 60% { transform: translateY(-.5px); } }
+  .mech-insert { width: 60px; text-align: center; font: 600 .42rem/1.15 Michroma, sans-serif; letter-spacing: 0; text-transform: uppercase; color: #3a3833;
+                 text-shadow: 0 1px 0 #fff8; }   /* stamped into the plate */
+  .coin-return { display: grid; justify-items: center; gap: 3px; margin-top: 4px; padding: 0; background: none; box-shadow: none; }
+  .cr-btn { width: 30px; height: 30px; border-radius: 50%;
+            background: radial-gradient(circle at 50% 50%, #9b2a1b 0 38%, transparent 40%),
+                        radial-gradient(circle at 38% 30%, #fbfaf6, #bdb9b1 45%, #6f6c66 80%, #3c3a36);
+            box-shadow: 0 2px 0 #2c2a27, 0 3px 4px #000a, inset 0 -1px 2px #0006; transition: transform .06s, box-shadow .06s; }
+  .coin-return:active .cr-btn { transform: translateY(2px); box-shadow: 0 0 0 #2c2a27, 0 1px 2px #000a, inset 0 1px 3px #0008; }
+  .cr-lbl { width: 66px; text-align: center; font: 700 .44rem/1.15 Michroma, sans-serif; letter-spacing: 0; text-transform: uppercase; color: #8e1f12; text-shadow: 0 1px 0 #fff8; }
+  .coin-send { flex: 1; display: flex; align-items: center; gap: 12px; padding: 6px 4px; background: none; box-shadow: none; text-align: left;
+               color: var(--cream); min-width: 0; }
+  .cq { position: relative; flex: none; width: 46px; height: 46px; transform-style: preserve-3d; }
+  .cq::before, .cq::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: var(--heads) center / 100% 100% no-repeat;
+                            -webkit-backface-visibility: hidden; backface-visibility: hidden; filter: drop-shadow(0 2px 2px #000a); }
+  .cq::after { background-image: var(--tails); transform: rotateY(180deg); }
+  .cq.moving::before { transform: translateZ(1.8px); filter: none; } .cq.moving::after { transform: rotateY(180deg) translateZ(1.8px); filter: none; }
+  .cq s { display: none; position: absolute; inset: .5px; border-radius: 50%; transform: translateZ(var(--z));
+          background: repeating-conic-gradient(#d9d6cf 0 2deg, #8e8b84 2deg 4deg); }
+  .cq.moving s { display: block; }   /* the reeded rim shows only in motion: at rest the face is drawn flat and sharp */
   .cs-lbl { display: grid; gap: 1px; min-width: 0; }
-  .cs-do { font: 700 1.05rem/1.15 Jost, sans-serif; color: var(--gold); }
-  .cs-sub { color: var(--cream-dim); font-size: .85rem; line-height: 1.2; font-weight: 400; }
-  .coin-send.dropping .cs-sub { visibility: hidden; }
-  .coin-send.dropping .cq { animation: coinIn .45s ease-in forwards; }
-  @keyframes coinIn { 45% { transform: translateX(30px) rotateY(60deg) rotate(0); }
-                      100% { transform: translateX(58px) rotateY(90deg) rotate(0); opacity: 0; } }   /* edge-on, into the slot */
-  .coin-send.dropping .cs-slot { box-shadow: inset 0 0 0 1px #2a2826, 0 0 12px #ffb35a; }
-  .coin-send.returned .cq { animation: coinOut .4s ease-out; }
-  @keyframes coinOut { from { transform: translateX(58px) rotateY(90deg); opacity: 0; } 50% { opacity: 1; } }
+  .cs-do { font: 700 1.1rem/1.15 Jost, sans-serif; color: var(--gold); }
+  .cs-sub { color: var(--cream-dim); font-size: .88rem; line-height: 1.2; font-weight: 400; }
   .coin-send.busy .cs-do::after { content: "…"; }
   /* Orrdle: a dark walnut plank nailed up, the name in raised polished gold sitting on it, an old heart-and-arrow
      carved into the wood (cuts show the paler wood inside, shaded on their upper side), and a gold Play plate */
@@ -877,9 +891,13 @@
     <label for="msg">Message for the DJ (optional)</label>
     <textarea id="msg" maxlength="280"></textarea>
     <div class="coinop">
-      <button class="coin-return" id="cancel" type="button"><span class="cr-knob" aria-hidden="true"></span><span class="cr-lbl">Back</span></button>
+      <div class="mech" aria-hidden="false">
+        <span class="mech-price" aria-hidden="true">25¢</span>
+        <span class="mech-bezel" aria-hidden="true"><span class="mech-slot"></span></span>
+        <span class="mech-insert" aria-hidden="true">Insert coin</span>
+        <button class="coin-return" id="cancel" type="button"><span class="cr-btn" aria-hidden="true"></span><span class="cr-lbl" aria-hidden="true">Coin return</span></button>
+      </div>
       <button class="coin-send" id="send" type="button"><span class="cq" aria-hidden="true"></span>
-        <span class="cs-plate" aria-hidden="true"><span class="cs-price">25¢</span><span class="cs-slot"></span></span>
         <span class="cs-lbl"><b class="cs-do">Drop it in</b><span class="cs-sub">to send it to the DJ</span></span></button>
     </div>
     <p id="formErr" class="hint" style="color:var(--bad)"></p>
@@ -2093,7 +2111,7 @@ function showLimits() {
   if (!limits) return;
   const free = limits.freePlay, sg = limits.songs, st = songState();
   $("slots").hidden = free;
-  document.querySelector(".cs-price").textContent = free ? "FREE" : "25¢";   // the coin door's price plate
+  document.querySelector(".mech-price").textContent = free ? "FREE" : "25¢";   // the coin mechanism's price plate
   $("slots").classList.toggle("locked", !st.can);
   const usedN = st.locked ? sg.max : Math.min(sg.active, sg.max);   // coins are spent from the right
   // a long line takes one coin away: its slot shows empty (a coin past max is gone, not spent)
@@ -2377,22 +2395,46 @@ function typeIn(q) {
   if (title && !artist) setTimeout(() => $("fa").focus({ preventScroll: true }), 350);   // after the scroll settles
 }
 $("cancel").onclick = closeForm;
-// The coin goes in first (a moment, like the real thing), then the request is sent; if it doesn't go through,
-// the coin comes back out and the guest can try again.
+// The quarter rolls left to the slot (turning as it goes, as a coin on its edge does), turns edge-on in the slot's
+// mouth, and drops in; the plate clunks and the slot glows. Then the request is sent. If it doesn't go through,
+// the same moves play backwards: the coin comes out of the slot and rolls home.
+const cq = document.querySelector(".cq");
+for (const z of [-1.4, -.7, 0, .7, 1.4]) { const d = document.createElement("s"); d.style.setProperty("--z", `${z}px`); cq.append(d); }
+function coinPath() {
+  const c = cq.getBoundingClientRect(), sl = document.querySelector(".mech-slot").getBoundingClientRect();
+  const dx = sl.left + sl.width / 2 - (c.left + c.width / 2), dy = sl.top + sl.height / 2 - (c.top + c.height / 2);
+  const roll = (dx / (c.width / 2)) * 180 / Math.PI;   // how far it turns rolling that far
+  // transform only: animating a filter or opacity flattens the coin's 3D, and its rim paints over its face
+  // one list of transforms in every frame (so it interpolates cleanly); the push into the slot comes before the turn
+  // seen from straight in front of the coin wherever it is (its own perspective, not the button's off to the right)
+  const at = (x, y, z, ry, rz, sc) => `translate(${x}px,${y}px) perspective(300px) translateZ(${z}px) rotateY(${ry}deg) rotateZ(${rz}deg) scale(${sc})`;
+  return [{ transform: at(0, 0, 0, 0, 0, 1), easing: "cubic-bezier(.3,.1,.4,1)" },
+          { transform: at(dx, dy, 0, 0, roll, 1), offset: .55, easing: "ease-in-out" },
+          { transform: at(dx, dy, 0, 90, roll, 1), offset: .75, easing: "ease-in" },
+          { transform: at(dx, dy, 0, 90, roll, .15) }];   // edge-on, sinking into the slot
+}
 async function coinSend(work) {
   const b = $("send");
   if (b.disabled) return;
-  b.disabled = true; b.classList.remove("returned"); b.classList.add("dropping");
-  $("send").querySelector(".cs-do").textContent = "Sending";
-  await new Promise((res) => setTimeout(res, 420));
+  b.disabled = true;
+  cq.classList.add("moving");
+  const path = coinPath(), drop = cq.animate(path, { duration: 1000, fill: "forwards" });
+  b.querySelector(".cs-do").textContent = "Sending";
+  await drop.finished;
+  cq.style.visibility = "hidden";   // inside the machine now
+  const mech = document.querySelector(".mech");
+  mech.classList.remove("clunk"); void mech.offsetWidth; mech.classList.add("clunk");
   b.classList.add("busy");
   let ok = false;
   try { ok = Boolean(await work()); }
   finally {
     b.classList.remove("busy"); b.disabled = false;
     b.querySelector(".cs-do").textContent = "Drop it in";
-    if (ok) setTimeout(() => b.classList.remove("dropping"), 400);   // the panel has closed by then
-    else { b.classList.remove("dropping"); b.classList.add("returned"); }
+    if (ok) setTimeout(() => { drop.cancel(); cq.classList.remove("moving"); cq.style.visibility = ""; mech.classList.remove("clunk"); }, 400);   // the panel has closed by then
+    else {
+      drop.cancel(); cq.style.visibility = "";
+      cq.animate(path, { duration: 800, direction: "reverse", fill: "backwards" }).finished.then(() => cq.classList.remove("moving"));
+    }
   }
 }
 $("send").setAttribute("aria-label", "Send to the DJ");

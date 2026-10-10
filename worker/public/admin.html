@@ -208,6 +208,13 @@
   .party .stats b { display: block; font-size: 1.2rem; color: var(--ink); } .party .stats span { font-size: .8rem; color: var(--muted); }
   .od-admin { grid-column: 1 / -1; background: var(--bg); border-radius: 10px; padding: 10px 12px; }
   .od-admin .what { font-weight: 700; } .od-admin .why { color: var(--muted); font-size: .88rem; }
+  .guest { padding: 10px 0; border-top: 1px solid var(--line); }
+  .guest .gname { font-weight: 700; } .guest .gseen { color: var(--faint); font-size: .82rem; margin-left: 6px; font-weight: 400; }
+  .guest .gstats { color: var(--muted); font-size: .86rem; margin: 2px 0 6px; }
+  .guest .gtags { display: inline-flex; gap: 6px; margin-left: 6px; }
+  .guest .gtag { font-size: .72rem; padding: 1px 7px; border-radius: 999px; background: var(--raise); color: var(--ink); font-weight: 600; }
+  .guest .gtag.bad { background: #5a2018; } .guest .gtag.gold { background: #6b4e12; }
+  .guest .gacts { display: flex; flex-wrap: wrap; gap: 6px; }
   .backlog { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -4px 0 10px; font-size: .9rem; color: var(--muted); }
 </style>
 </head>
@@ -287,6 +294,13 @@
       <div class="arch-foot"><button class="sm danger" id="archDelete" type="button">Delete this party</button></div>
     </div>
   </dialog>
+
+  <section aria-label="Guests">
+    <div class="h2row"><h2>Guests<span class="count" id="guestCount"></span></h2>
+      <button class="sm ghost" id="guestToggle" type="button">Show</button></div>
+    <div class="why" id="guestWhy">Every phone that opened the page this party, with what it's done.</div>
+    <div id="guests" hidden></div>
+  </section>
 
   <section aria-label="Station settings">
     <h2>Station</h2>
@@ -370,7 +384,7 @@ async function call(path, body) {
   if (fromLink) { try { localStorage.setItem("mfm_t", token); } catch {} }   // a typo in the link never replaces a good token
   return r.json();
 }
-const DONE = { partyStart: "Party clock started", partyEnd: "Party clock stopped",  announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
+const DONE = { giveCoin: "Quarter given", takeCoin: "Quarter taken back", resetHunt: "Hunt reset", partyStart: "Party clock started", partyEnd: "Party clock stopped",  announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
   mute: "Phone muted", unmute: "Phone unmuted", release: "Released: they can pick two more", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
@@ -804,6 +818,42 @@ $("archDelete").onclick = async () => {
 $("partyWipe").onclick = async (e) => {
   if (!confirm("Wipe everything and start the party? Every song, name and message goes. This can't be undone.")) return;
   if (await act({ action: "reset" }, e)) act({ action: "partyStart" });
+};
+// The guest list: fetched when opened (and every 30 s while open), not with the 3-second poll.
+let guestsOpen = false, guestsTimer = null;
+const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? "just now" : m < 60 ? `${m} min ago` : `${Math.floor(m / 60)} h ${m % 60} min ago`; };
+async function loadGuests() {
+  let r;
+  try { r = await call("/api/admin/action", { action: "guests" }); } catch { return; }
+  const list = r.guests || [];
+  $("guestCount").textContent = list.length ? String(list.length) : "";
+  $("guests").replaceChildren(...(list.length ? list.map((g) => {
+    const row = el("div", "guest"), top = el("div");
+    top.append(el("span", "gname", g.names.join(", ") || "No name yet"), el("span", "gseen", ago(g.lastAt)));
+    const tags = el("span", "gtags");
+    if (g.muted) tags.append(el("span", "gtag bad", "Muted"));
+    if (g.locked) tags.append(el("span", "gtag", "Waiting on songs"));
+    if (g.coins) tags.append(el("span", "gtag gold", `+${g.coins} quarter${g.coins > 1 ? "s" : ""}`));
+    if (g.golden === "ready") tags.append(el("span", "gtag gold", "Golden quarter"));
+    if (g.medals >= r.medals) tags.append(el("span", "gtag gold", "Hunt done"));
+    top.append(tags);
+    const stats = el("div", "gstats", [`${g.requests} request${g.requests === 1 ? "" : "s"}`, `${g.played} played`, g.waiting ? `${g.waiting} waiting` : "",
+      g.messages ? `${g.messages} message${g.messages === 1 ? "" : "s"}` : "", g.orrdle ? `${g.orrdle} Orrdle` : "", `${g.medals}/${r.medals} medals`].filter(Boolean).join(" · "));
+    const acts = el("div", "gacts"), act2 = (label, body, cls = "sm") => btn(cls, label, async (e) => { await act(body, e); loadGuests(); });
+    acts.append(act2("Give a quarter", { action: "giveCoin", device: g.device }));
+    if (g.coins) acts.append(act2("Take one back", { action: "takeCoin", device: g.device }, "sm ghost"));
+    if (g.locked) acts.append(act2("Fresh picks", { action: "release", device: g.device }, "sm ghost"));
+    if (g.medals) acts.append(act2("Reset hunt", { action: "resetHunt", device: g.device }, "sm ghost"));
+    acts.append(g.muted ? act2("Unmute", { action: "unmute", device: g.device }, "sm ghost") : act2("Mute", { action: "mute", device: g.device }, "sm danger"));
+    row.append(top, stats, acts);
+    return row;
+  }) : [el("div", "empty", "No phones yet.")]));
+}
+$("guestToggle").onclick = () => {
+  guestsOpen = !guestsOpen;
+  $("guests").hidden = !guestsOpen; $("guestToggle").textContent = guestsOpen ? "Hide" : "Show";
+  clearInterval(guestsTimer);
+  if (guestsOpen) { loadGuests(); guestsTimer = setInterval(() => document.visibilityState === "visible" && loadGuests(), 30000); }
 };
 $("dropJokes").onclick = (e) => confirm("Drop every joke still waiting? Announcements stay.") && act({ action: "dropJokes" }, e);
 for (const b of document.querySelectorAll("#padGap .segb"))
