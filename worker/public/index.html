@@ -2150,11 +2150,7 @@ const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a
 const ICON_SPENT = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/></svg>';
 function againButton(m) {
   const b = el("button", "again"); b.type = "button";
-  if (!m.again && !(limits && limits.freePlay)) {
-    b.classList.add("spent"); b.innerHTML = ICON_SPENT; b.setAttribute("aria-label", "Requested twice: that's the limit for this song");
-    b.onclick = (e) => { e.stopPropagation(); toast("You've requested this one twice tonight."); };
-    return b;
-  }
+  if (!m.again && !(limits && limits.freePlay)) return null;   // asked twice: no button (a search says so if they try)
   b.innerHTML = ICON_AGAIN; b.setAttribute("aria-label", `Request ${cleanTitle(m.title)} again`);
   if (!songState().can) b.setAttribute("aria-disabled", "true");
   b.onclick = async (e) => {
@@ -2235,7 +2231,7 @@ async function refresh() {
       else if (m.status === "held") row.classList.add("held"), row.querySelector(".a").textContent = "The DJ wasn't sure about this one; bring Matt a beer and he will take a look";
       else if (m.artist) sleeveOnTap(row, m);   // a hidden (offensive) title has no artist: nothing to look up
       if (m.status === "played" && m.artist) {   // the status and its "Request again" stacked on the right
-        const side = el("div", "side"); side.append(row.querySelector(".chip"), againButton(m)); row.append(side);
+        const side = el("div", "side"); side.append(row.querySelector(".chip"), ...[againButton(m)].filter(Boolean)); row.append(side);
       }
       return row;
     })); }
@@ -2272,11 +2268,11 @@ $("q").addEventListener("input", () => {
     $("results").replaceChildren(...results.map((t) => {
       const b = el("button", "pick"); b.type = "button";
       const used = isSpent(t), adult = familyMode && t.explicit;   // family mode: the clean version only
-      const chip = used ? ["Asked twice", ""] : adult ? ["Explicit: off tonight", "bad"] : t.cached ? ["Ready now", "up"] : t.original ? ["Original", "up"] : t.cover ? ["Cover", ""] : t.explicit ? ["Explicit", "bad"] : ["", ""];
+      const chip = adult ? ["Explicit: off tonight", "bad"] : t.cached ? ["Ready now", "up"] : t.original ? ["Original", "up"] : t.cover ? ["Cover", ""] : t.explicit ? ["Explicit", "bad"] : ["", ""];
       const row = songRow(t, chip[0], chip[1]);
-      if (used) { const c = row.querySelector(".chip"); c.innerHTML = ICON_SPENT.replace("<svg", '<svg class="no"') + " Asked twice"; }
-      b.append(row); b.disabled = used || adult;
-      b.onclick = () => choose(t, false); const li = el("li"); li.append(b); return li;
+      b.append(row); b.disabled = adult;
+      // asked twice already: looks like any other result; only a tap says so
+      b.onclick = () => used ? toast("You've requested this one twice tonight. Pick another?", true) : choose(t, false); const li = el("li"); li.append(b); return li;
     }));
   }, 400);
 });
