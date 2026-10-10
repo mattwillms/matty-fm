@@ -554,12 +554,12 @@
   .empty { color: var(--cream-dim); padding: 6px 0; overflow-wrap: anywhere; }
 
   #toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(16px); opacity: 0;
-           background: var(--cream); color: var(--cocoa); padding: 9px 16px; border-radius: 16px; font-weight: 700;
-           font-size: .92rem; line-height: 1.3; box-shadow: 0 8px 24px #0009; transition: opacity .2s, transform .2s;
-           pointer-events: none; width: max-content; max-width: min(320px, calc(100vw - 32px)); text-align: center; z-index: 10;
-           /* compact: two even lines at most, never a long line and one word under it */
+           background: var(--cream); color: var(--cocoa); padding: 12px 18px; border-radius: 18px; font-weight: 700;
+           font-size: 1.1rem; line-height: 1.3; box-shadow: 0 8px 24px #0009; transition: opacity .2s, transform .2s;
+           pointer-events: none; width: max-content; max-width: min(400px, calc(100vw - 24px)); text-align: center; z-index: 10;
+           /* big enough to read at arm's length; up to three even lines, never a long line and one word under it */
            text-wrap: balance; }
-  #toast span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }   /* the cut is clean: no third line in the padding */
+  #toast span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* the cut is clean: no third line in the padding */
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: var(--bad); color: var(--cocoa, #241208); }   /* dark on the light red: readable */
 
   /* No prefers-reduced-motion switches here, on purpose: iPhones with Reduce Motion on lost the
