@@ -378,11 +378,14 @@ describe("party test fixes", () => {
     expect((await p.adminState()).held).toEqual([]);   // a muted phone's held songs go too
   });
 
-  it("a joke not told in 30 minutes expires; announcements don't; free play keeps them", async () => {
+  it("a joke not told in 45 minutes expires; announcements don't; free play keeps them", async () => {
     const p = stub("stale-1");
     const j = await p.submitJoke("d1", { name: "Ray", text: "Why did the chicken cross the road? Worms." });
     const a = await p.submitJoke("d2", { name: "Ann", text: "Cake is on the back table at 3 o'clock.", kind: "announcement" });
-    await sql(p, "UPDATE jokes SET created_at=created_at-31*60000");
+    await sql(p, "UPDATE jokes SET created_at=created_at-40*60000");   // 40 minutes: still waiting its turn
+    await p.beat(beat);
+    expect((await p.guestState("d1")).myJokes[0].status).toBe("pending");
+    await sql(p, "UPDATE jokes SET created_at=created_at-6*60000");
     await p.beat(beat);
     expect((await p.guestState("d1")).myJokes[0].status).toBe("expired");
     expect((await p.guestState("d2")).myJokes[0].status).toBe("pending");

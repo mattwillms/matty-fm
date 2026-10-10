@@ -28,7 +28,7 @@ const TALK_S = 15;            // the DJ's intro and the crossfade, per song: for
 const JOKE_S = 25;            // a joke or announcement read between songs
 const PREP_S = 90;            // a song nobody's waiting behind still has to be found and downloaded
 const LONG_LINE = 20;          // more songs than this waiting: one song per phone at a time, so more guests get a turn
-const JOKE_STALE_MS = 30 * 60_000;   // a joke not told by then is dropped ("the DJ ran out of time")
+const JOKE_STALE_MS = 45 * 60_000;   // a joke not told by then is dropped ("the DJ ran out of time"); one airs every 5 min, so a burst drains first
 const MYSTERY = "a mystery guest";   // who an anonymous message is from, on air and on the guest page
 const QUEUED_GRACE_MS = 15_000;
 
@@ -728,7 +728,7 @@ export class Party extends DurableObject<Env> {
       this.sql.exec("UPDATE jokes SET lease_until=? WHERE id=? AND status='preparing'", now + LEASE_MS, id);
     }
     this.sql.exec("UPDATE jokes SET status='pending', lease_until=0 WHERE status='preparing' AND lease_until<?", now);
-    // a joke that waited half an hour is stale: dropped, and the guest may send another (free play: none expire)
+    // a joke that waited 45 minutes is stale: dropped, and the guest may send another (free play: none expire)
     if (!this.flags().freePlay)
       this.sql.exec(`UPDATE jokes SET status='expired', ended_at=? WHERE status IN ('pending','ready') AND urgent=0
         AND kind='joke' AND created_at<?`, now, now - JOKE_STALE_MS);
@@ -923,7 +923,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "medals-3s-1",
+      code: "jokes-45-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
