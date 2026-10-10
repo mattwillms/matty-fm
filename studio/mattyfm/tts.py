@@ -71,6 +71,8 @@ def speak(text: str, tone: str, dest: Path, *, http: httpx.Client,
     spoken = respell(text, names)
     for engine, make in (("eleven", lambda: _eleven(spoken, tone, http)),
                          ("aura", lambda: aura(re.sub(r"\s*\[[^\]]*\]\s*", "... ", spoken).strip()))):   # Aura would read "[pause]" aloud
+        if engine == "eleven" and os.environ.get("MATTYFM_VOICE") == "aura":   # a test party: keep ElevenLabs credit
+            continue
         try:
             audio = make()
             if looks_like_audio(audio):
