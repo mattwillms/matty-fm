@@ -43,7 +43,7 @@ CLIPS = [
     ("goof", "funny", "kitchen timer ding", "Matt's on the fryer. [long pause] [deadpan] If the fish is perfect, tell him. If it isn't, tell him louder."),
     ("goof", "funny", "paper bag rustling, peanuts shaking", "[deadpan] Public service announcement. Boiled peanuts go in your mouth. [long pause] The shells go wherever you want. We're in the country. There is no HOA."),
     ("goof", "funny", "dinner bell triangle ringing", "RETIRED [excited] Hush puppies are up. [long pause] Fair warning: there is no line. Just fast people and hungry people."),
-    ("goof", "funny", "beer can cracking open with a fizz", "That sound means the cooler's open. [long pause] [playful] OrrFM reminds you: one beer, one water. We're not your mom. Mostly."),
+    ("goof", "funny", "beer can cracking open with a fizz", f"That sound means the cooler's open. [long pause] [playful] {S} reminds you: one beer, one water. We're not your mom. Mostly."),
     ("skip", "funny", "vinyl record scratch, fast", "Whoa! Let's try something else."),
     ("skip", "funny", "vinyl record scratch and rewind", "Okay, okay. Moving on!"),
     ("skip", "funny", "quick comedic record scratch", "The DJ has spoken. Next!"),
