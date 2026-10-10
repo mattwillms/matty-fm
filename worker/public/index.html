@@ -424,7 +424,7 @@
   .lyrics { width: min(90vw, 460px); display: grid; gap: 22px; margin-top: 4px; }
   .sleeve-bar { position: fixed; z-index: 1; left: 0; right: 0; top: 0; height: calc(84px + env(safe-area-inset-top)); pointer-events: none;
                 background: linear-gradient(#120a06 0, #120a06ee 62%, #120a0600); }   /* the words fade out under the top bar */
-  .lyrics .chunk { margin: 0; font: 600 1.15rem/1.42 Jost, sans-serif; color: var(--cream); text-wrap: pretty; }   /* a few lines at a time, big enough to read */
+  .lyrics .chunk { margin: 0; text-align: center; font: 600 1.15rem/1.42 Jost, sans-serif; color: var(--cream); text-wrap: pretty; }   /* a few lines at a time, big enough to read */
   .lyrics .chunk:nth-child(odd) { color: #f3e3c3; } .lyrics .chunk:nth-child(even) { color: #e6cf9f; }
   .lyrics .note { margin: 0; text-align: center; color: var(--cream-dim); font: 400 1rem/1.4 Jost, sans-serif; }
   .lyrics .credit { margin: 6px 0 0; text-align: center; color: #8f7a5f; font-size: .8rem; }
