@@ -457,6 +457,16 @@ class Engine:
 
 # ---------- runtime: players, mixer, SomaFM reader, control API ----------
 
+TAP = False   # TAP=1 in /etc/mattyfm.conf: every channel also feeds the loopback card, for listening elsewhere
+
+
+def device(channel: str) -> str:
+    """The channel's ALSA device: "<channel>_t" (the speakers and the loopback tap, asound.conf) when the
+    tap is on and the loopback card is there; otherwise the plain channel, as before the tap existed.
+    Checked at each start, so a missing loopback module can never silence the party."""
+    return f"{channel}_t" if TAP and os.path.exists("/proc/asound/Loopback") else channel
+
+
 class Players:
     """One mpg123 per channel, playing a URL to that channel's ALSA device."""
 
@@ -465,7 +475,7 @@ class Players:
 
     def play(self, channel: str, url: str) -> None:
         self.stop(channel)
-        self.procs[channel] = subprocess.Popen(["mpg123", "-q", "-o", "alsa", "-a", channel, url])
+        self.procs[channel] = subprocess.Popen(["mpg123", "-q", "-o", "alsa", "-a", device(channel), url])
 
     def stop(self, channel: str) -> None:
         p = self.procs.pop(channel, None)
@@ -510,7 +520,7 @@ class SomaReader:
 
     def _decoder(self):
         if self.proc is None or self.proc.poll() is not None:
-            self.proc = subprocess.Popen(["mpg123", "-q", "-b", "1024", "-o", "alsa", "-a", "soma", "-"],
+            self.proc = subprocess.Popen(["mpg123", "-q", "-b", "1024", "-o", "alsa", "-a", device("soma"), "-"],
                                          stdin=subprocess.PIPE)
             try:
                 fcntl.fcntl(self.proc.stdin.fileno(), F_SETPIPE_SZ, PIPE_BYTES)
@@ -632,6 +642,8 @@ def serve(engine: Engine, token: str, port: int) -> None:
 
 def main(conf_path: str) -> None:
     conf = load_conf(conf_path)
+    global TAP
+    TAP = conf.get("TAP", "0") == "1"
     mixer = Mixer(conf["CARD"])
     players = Players()
     engine = Engine(conf["FILES_URL"], clock=time.monotonic, players=players, mixer=mixer)

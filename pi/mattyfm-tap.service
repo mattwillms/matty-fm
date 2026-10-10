@@ -1,0 +1,13 @@
+[Unit]
+Description=OrrFM listening tap (the console's mix for one listener on the LAN)
+After=network-online.target sound.target
+
+[Service]
+ExecStartPre=/sbin/modprobe snd-aloop pcm_substreams=1
+ExecStart=/usr/bin/python3 -u /usr/local/bin/mattyfm-tap
+Restart=always
+RestartSec=3
+Nice=5
+
+[Install]
+WantedBy=multi-user.target

@@ -34,9 +34,15 @@ amixer -q -c "$card" sset PCM 100% unmute || true
 alsactl store || true
 
 install -m 755 "$here/console.py" /usr/local/bin/mattyfm-pi
+# the listening tap: the loopback card at boot, the console feeding it (TAP=1), pi/tap.py serving it to this PC
+echo snd-aloop > /etc/modules-load.d/snd-aloop.conf
+echo "options snd-aloop pcm_substreams=1" > /etc/modprobe.d/snd-aloop.conf
+grep -q '^TAP=' /etc/mattyfm.conf || printf 'TAP=1\nTAP_PORT=8043\nTAP_ALLOW=192.168.86.44\n' >> /etc/mattyfm.conf
+install -m 755 "$here/tap.py" /usr/local/bin/mattyfm-tap
+install -m 644 "$here/mattyfm-tap.service" /etc/systemd/system/
 install -m 755 "$here/mattyfm-watchdog.sh" /usr/local/bin/mattyfm-watchdog
 install -m 644 "$here"/mattyfm-pi.service "$here"/mattyfm-watchdog.service "$here"/mattyfm-watchdog.timer /etc/systemd/system/
 systemctl daemon-reload
-systemctl enable --now mattyfm-pi mattyfm-watchdog.timer
+systemctl enable --now mattyfm-pi mattyfm-watchdog.timer mattyfm-tap
 systemctl restart mattyfm-pi
 echo "card=$card files=$files — console restarted"
