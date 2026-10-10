@@ -562,7 +562,7 @@
          background-blend-mode: soft-light, normal; box-shadow: inset 0 1px 0 #ffffff12, 0 2px 6px #0007; }
   .eta .stitch { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); pointer-events: none; overflow: visible; }
   .eta .stitch rect { fill: none; stroke: #d9a679b0; stroke-width: 1.1; stroke-dasharray: 5 3.5; stroke-linecap: round; }
-  .eta-say { margin: 0; color: var(--cream-dim); font-size: .95rem; line-height: 1.25; }
+  .eta-say { margin: 0; color: var(--cream-dim); font-size: .95rem; line-height: 1.25; text-wrap: balance; }
   .flip { display: flex; align-items: center; gap: 3px; flex: none; perspective: 160px; }
   .flip .fc { position: relative; display: grid; place-items: center; width: 27px; height: 38px; border-radius: 4px;
               background: linear-gradient(#2e2e2e, #252525 49.5%, #0b0b0b 49.5%, #0b0b0b 51%, #1f1f1f 51%, #191919);
@@ -690,8 +690,8 @@
   /* ---- scavenger hunt: medals in a case of round slots, like coins in a collector's board ---- */
   #hunt { position: relative; }
   #hunt.done h2, #hunt.done #huntSay { margin-right: 40px; }   /* clear of the ribbon */
-  .medals { display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; gap: 14px 22px; margin: 14px 0 4px; }
-  .mslot { position: relative; width: 64px; height: 64px; border-radius: 50%; padding: 0;
+  .medals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px 9%; padding: 0 3%; margin: 16px 0 6px; }   /* across the panel */
+  .mslot { position: relative; width: 100%; aspect-ratio: 1; border-radius: 50%; padding: 0;
            background: radial-gradient(circle at 50% 42%, #120a06 0 58%, #2a1a12 70%);
            box-shadow: inset 0 3px 6px #000d, inset 0 -1px 1px #ffffff14, 0 0 0 3px #3a2618, 0 0 0 4px #6b4a32aa, 0 1px 0 4px #ffffff10; }
   .mslot.got { cursor: pointer; -webkit-tap-highlight-color: transparent; }
@@ -728,7 +728,8 @@
   .mview-cap { position: absolute; left: 16px; right: 16px; bottom: calc(40px + env(safe-area-inset-bottom)); text-align: center; color: var(--cream); }
   .mview-cap h3 { margin: 0 0 6px; font: 900 1.6rem/1.1 Fraunces, Georgia, serif; color: var(--gold); }
   .mview-cap p { margin: 0 auto 4px; max-width: 30em; color: var(--cream-dim); text-wrap: balance; }   /* no word left alone on a line */
-  .mview-cap h3, #huntSay { text-wrap: balance; }
+  .mview-cap h3 { text-wrap: balance; }
+  #huntSay { text-wrap: pretty; }   /* full width, just no word alone on the last line (balance narrowed it) */
   .mview-cap .why { color: var(--cream); }
   /* the golden quarter, in the dotted place, when the hunt is done; a silver one when the host gave a song */
   .slots .ghost.golden, .slots .ghost.coin { border: 0; background: var(--heads) center / 100% 100% no-repeat; filter: drop-shadow(0 1.5px 1px #000a); }
@@ -980,7 +981,7 @@
 
   <section class="eta" id="etaBox" hidden aria-live="off">
     <svg class="stitch" aria-hidden="true"><rect width="100%" height="100%" rx="8.5"/></svg>
-    <p class="eta-say" id="etaSay">Ask now, it plays around</p>
+    <p class="eta-say" id="etaSay">Request now and it'll play around</p>
     <div class="flip" id="etaClock" role="img"><span class="fc"><i class="ap"></i><b></b></span><span class="fc"><b></b></span><span class="colon"></span><span class="fc"><b></b></span><span class="fc"><b></b></span></div>
   </section>
 
@@ -2284,7 +2285,7 @@ function showEta(s) {
   const show = sec != null && s.accepting && !offAir && (st.can || mineNext);
   $("etaBox").hidden = !show;
   if (!show) return;
-  $("etaSay").textContent = st.can ? "Ask now, it plays around" : "Your next song plays around";
+  $("etaSay").textContent = st.can ? "Request now and it'll play around" : "Your next song will play around";
   const raw = Date.now() + sec * 1000;
   if (etaShown && Math.abs(raw - etaShown.raw) <= 4 * 60000) return;
   const t = new Date(Math.round(raw / 300000) * 300000), h = t.getHours() % 12 || 12, m = t.getMinutes();
