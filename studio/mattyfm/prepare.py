@@ -81,10 +81,11 @@ _answers: dict = {}
 
 def _memo(key: tuple, ask, keep_empty: bool = False):
     """A Claude or Apple answer for a song asked about before tonight (repeats are common at a party).
-    An empty answer is kept only with keep_empty: Apple's {} may be an outage, worth asking again."""
+    An empty answer is kept only with keep_empty: Apple's {} may be an outage, worth asking again.
+    None (the question failed) is never kept."""
     if key not in _answers:
         got = ask()
-        if not got and not keep_empty:
+        if got is None or (not got and not keep_empty):
             return got
         _answers[key] = got
     return _answers[key]

@@ -3087,7 +3087,7 @@ function showHunt(h) {
   $("slots").classList.toggle("spare", hunt.golden === "ready" || hunt.coins > 0);
   g.title = hunt.golden === "ready" ? "Your golden quarter" : hunt.coins > 0 ? "A quarter on the house" : "Earn another quarter";
 }
-// earned on this phone, waiting for the Worker (kept if a poll or the network fails, or the Worker says "slow");
+// earned on this phone, waiting for the Worker (kept if a poll or the network fails, or the Worker says "slow": then retried when it says);
 // each with when it was earned: one still refused after 15 min is dropped, so a hunt the host reset stays reset
 const DUE_MS = 15 * 60_000;
 function dueList() {
@@ -3107,6 +3107,8 @@ async function earn(id) {
   try {
     const r = await api("/api/medal", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ medal: id }), signal: AbortSignal.timeout(10000) });
+    // medals earned in a row: the Worker takes one every 3 s and says when the next is welcome
+    if (r.error === "slow" && r.retryIn > 0) { setTimeout(() => earn(id), Math.min(r.retryIn, 130_000) + 250); return; }
     if (!r.ok || !r.hunt) return;
     setPending(pendingMedals().filter((x) => x !== id));
     const wasDone = hunt.medals.length >= hunt.total;

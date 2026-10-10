@@ -135,3 +135,16 @@ def test_a_bad_voice_does_not_delete_a_good_cached_song(tmp_path, monkeypatch):
     monkeypatch.setattr(prepare, "is_audio", lambda p: p == cached)   # the song itself decodes fine
     assert prepare.prepare(ITEM, deps(tmp_path))["status"] == "failed"
     assert cached.exists() and meta.exists()
+
+
+def test_memo_keeps_a_real_empty_answer_but_not_a_failure():
+    prepare._answers.clear()
+    asked = []
+    def failing():
+        asked.append(1)
+        return None
+    assert prepare._memo(("doubt", "x"), failing, keep_empty=True) is None
+    assert prepare._memo(("doubt", "x"), failing, keep_empty=True) is None
+    assert len(asked) == 2   # a failed check is asked again next time
+    assert prepare._memo(("doubt", "y"), lambda: "", keep_empty=True) == ""
+    assert prepare._memo(("doubt", "y"), lambda: "held", keep_empty=True) == ""   # a real "fine" is remembered

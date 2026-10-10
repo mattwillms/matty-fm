@@ -8,7 +8,7 @@ import type { Party } from "../src/party";
 const stub = (name: string) => env.PARTY.get(env.PARTY.idFromName(name));
 type P = ReturnType<typeof stub>;
 const T = (title: string) => ({ track: { title, artist: "ABBA", album: "", durationMs: 200000, explicit: false, artwork: "", source: "itunes" as const }, name: "Ann" });
-// medals come one a phone every 10 s, the last after 2 minutes: tests age the earlier ones to earn the next
+// medals come one a phone every 3 s, the last after 2 minutes: tests age the earlier ones to earn the next
 const earnAll = async (p: P, d: string, list: string[]) => { for (const m of list) { await sql(p, "UPDATE medals SET at=at-130000 WHERE device=?", d); await p.earnMedal(d, m); } };
 const sql = (p: P, q: string, ...b: SqlStorageValue[]) =>
   runInDurableObject(p, async (_i: Party, s) => { s.storage.sql.exec(q, ...b); });
@@ -623,14 +623,19 @@ describe("first to finish the hunt", () => {
 });
 
 describe("medal pace", () => {
-  it("refuses medals faster than one per 10 s, and a finish inside 2 minutes", async () => {
+  it("refuses medals faster than one per 3 s, and a finish inside 2 minutes, saying when to try again", async () => {
     const p = stub("pace-1");
     expect((await p.earnMedal("d1", "eggs")).ok).toBe(true);
-    expect((await p.earnMedal("d1", "kaboom")).ok).toBe(false);   // 10 s haven't passed
-    await sql(p, "UPDATE medals SET at=at-11000");
+    const r = await p.earnMedal("d1", "kaboom");   // 3 s haven't passed
+    expect(r.ok).toBe(false);
+    expect(r.retryIn).toBeGreaterThan(2000);
+    expect(r.retryIn).toBeLessThanOrEqual(3000);
+    await sql(p, "UPDATE medals SET at=at-3100");
     expect((await p.earnMedal("d1", "kaboom")).ok).toBe(true);
-    for (const m of ["snap", "needle", "static", "colors", "screws", "gnat"]) { await sql(p, "UPDATE medals SET at=at-11000"); await p.earnMedal("d1", m); }
-    await sql(p, "UPDATE medals SET at=at-11000");
-    expect((await p.earnMedal("d1", "polish")).ok).toBe(false);   // all nine in under 2 minutes: not yet
+    for (const m of ["snap", "needle", "static", "colors", "screws", "gnat"]) { await sql(p, "UPDATE medals SET at=at-3100"); await p.earnMedal("d1", m); }
+    await sql(p, "UPDATE medals SET at=at-3100");
+    const last = await p.earnMedal("d1", "polish");   // all nine in under 2 minutes: not yet
+    expect(last.ok).toBe(false);
+    expect(last.retryIn).toBeGreaterThan(90_000);
   });
 });

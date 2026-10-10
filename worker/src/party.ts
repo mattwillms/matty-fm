@@ -585,11 +585,12 @@ export class Party extends DurableObject<Env> {
   async earnMedal(device: string, medal: unknown) {
     if (!MEDALS.includes(medal as (typeof MEDALS)[number])) return { ok: false, error: "No such medal." };
     // the page says a medal was earned (a tap can't be checked from here), so a script could claim them all at once:
-    // one a phone every 10 s, and the last only once the hunt has taken 2 minutes (the page retries what's refused)
+    // one a phone every 3 s, and the last only once the hunt has taken 2 minutes; a refusal says when to try again
     const now = Date.now(), times = this.all("SELECT medal, at FROM medals WHERE device=? ORDER BY at", device);
-    if (!times.some((m) => m.medal === medal)) {
-      if (times.length && now - Number(times[times.length - 1].at) < 10_000) return { ok: false, error: "slow", hunt: this.hunt(device) };
-      if (times.length === MEDALS.length - 1 && now - Number(times[0].at) < 120_000) return { ok: false, error: "slow", hunt: this.hunt(device) };
+    if (!times.some((m) => m.medal === medal) && times.length) {
+      const wait = Math.max(Number(times[times.length - 1].at) + 3_000 - now,
+        times.length === MEDALS.length - 1 ? Number(times[0].at) + 120_000 - now : 0);
+      if (wait > 0) return { ok: false, error: "slow", retryIn: wait, hunt: this.hunt(device) };
     }
     this.sql.exec("INSERT OR IGNORE INTO medals(device, medal, at) VALUES(?,?,?)", device, String(medal), now);
     // the first guest to find them all is announced on air (once a party): the station's own news, read at the next break

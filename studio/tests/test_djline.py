@@ -350,3 +350,12 @@ def test_a_blend_must_keep_the_message():
     client = FakeClient(json.dumps({"script": f"You're on WORR. {joke} Here's America with Ventura Highway."}))
     blended = djline.backannounce(None, {"title": "Ventura Highway", "artist": "America"}, client, message=joke)
     assert not blended.fallback and "<message>" in client.calls[0]["messages"][0]["content"]
+
+
+def test_doubt_tells_a_failed_check_from_a_fine_song():
+    song = {"id": "r1", "title": "Dancing Queen", "artist": "ABBA"}
+    assert djline.doubt(song, "ABBA - Dancing Queen", "ABBA", FakeClient(json.dumps({"doubt": False, "why": ""}))) == ""
+    assert djline.doubt(song, "ABBA - Dancing Queen", "ABBA", FakeClient(exc=RuntimeError("down"))) is None
+    assert djline.doubt(song, "ABBA - Dancing Queen", "ABBA", FakeClient("sure thing")) is None
+    held = djline.doubt(song, "lol", "x", FakeClient(json.dumps({"doubt": True, "why": "not a song"})))
+    assert held and "song" in held
