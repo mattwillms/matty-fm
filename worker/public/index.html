@@ -2030,10 +2030,10 @@ function showLimits() {
   $("slots").setAttribute("aria-label", free ? "" : `${sg.max - usedN} of ${sg.max} song picks left`);
   const say = (id, html) => { $(id).hidden = !html; $(id).innerHTML = html || ""; };
   say("songAllow", free ? "<b>Free play:</b> request as many songs as you like."
-    : sg.max === 1 ? (st.locked ? "<b>Yours is in.</b> The line is long, so it's one song at a time for now."
+    : sg.max === 1 ? (st.locked ? "<b>Yours is in.</b> The line is long, so it's one song at a time for now. Cancel it before it plays to get your quarter back."
                                 : "The line is long: <b>one song at a time</b> for now.")
-    : st.locked ? (sg.active === 1 ? "<b>One to go.</b> Pick two more once your other song plays."
-                                   : "<b>Both picks are in.</b> Pick two more once they've played.")
+    : st.locked ? (sg.active === 1 ? "<b>One to go.</b> You get two more quarters once your other song plays, or cancel it before it plays to get your quarter back."
+                                   : "<b>Both quarters are in.</b> You get two more once they've played, or cancel one that hasn't played to get its quarter back.")
     : sg.active === 1 ? "One picked. <b>Room for one more.</b>"
     : 'Spend a quarter on a song. You\'ll get more quarters later, and you can earn an extra one in the <a href="#hunt">scavenger hunt</a>.');
   if (!$("closed").hidden) say("songAllow", "");
