@@ -104,5 +104,4 @@ def tails() -> Image.Image:
 
 if __name__ == "__main__":
     heads().save(PUB / "golden-heads.webp", quality=88, method=6)
-    tails().save(PUB / "golden-tails.webp", quality=88, method=6)
-    print("wrote golden-heads.webp, golden-tails.webp")
+    print("wrote golden-heads.webp (the back, RIP JAZZY BELLE: tools/make_engraving.py)")

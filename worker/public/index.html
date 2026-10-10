@@ -720,7 +720,9 @@
   .m3d { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; cursor: grab; }
   .m3d::before, .m3d::after { content: ""; position: absolute; inset: 0; border-radius: 50%; -webkit-backface-visibility: hidden; backface-visibility: hidden;
                                background: var(--f) center / 100% 100% no-repeat; transform: translateZ(5px); }
-  .m3d::after { background-image: var(--b); transform: rotateY(180deg) translateZ(5px); }
+  /* the back: the award's name, and under it the matty signature cut into the metal (the golden quarter's own back has it already) */
+  .m3d::after { background: var(--engrave, url(/matty-engraved.webp)) 50% 74% / 50% auto no-repeat, var(--b) center / 100% 100% no-repeat;
+                transform: rotateY(180deg) translateZ(5px); }
   .m3d s { position: absolute; inset: 1px; border-radius: 50%; transform: translateZ(var(--z));
            background: repeating-conic-gradient(var(--r1) 0 2deg, var(--r2) 2deg 4deg); }
   .mview-cap { position: absolute; left: 16px; right: 16px; bottom: calc(40px + env(safe-area-inset-bottom)); text-align: center; color: var(--cream); }
@@ -2718,7 +2720,7 @@ function medalFront(id) {
 function medalBack(id) {   // the back: the award's name and nothing else, wrapped to the face
   const m = MEDAL[id], [a, b, c] = METALS[m.metal], words = m.name.split(" "), lines = [];
   for (const w of words) { const l = lines[lines.length - 1]; if (l && (l + " " + w).length <= 9) lines[lines.length - 1] = l + " " + w; else lines.push(w); }
-  const fs = Math.min(21, 132 / Math.max(...lines.map((l) => l.length + 1.5))), lh = fs * 1.12, y0 = 60 - (lines.length - 1) * lh / 2 + fs * .34;
+  const fs = Math.min(19, 124 / Math.max(...lines.map((l) => l.length + 1.5))), lh = fs * 1.12, y0 = 47 - (lines.length - 1) * lh / 2 + fs * .34;
   return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs>
     <radialGradient id="m" cx=".66" cy=".3" r=".85"><stop offset="0" stop-color="${a}"/><stop offset=".6" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></radialGradient></defs>
     <circle cx="60" cy="60" r="59" fill="url(#m)"/>
@@ -2780,7 +2782,7 @@ async function earn(id) {
 function flushMedals() { for (const id of pendingMedals()) earn(id); }
 // a medal up close: up out of its slot spinning, then hanging in the air cocked, turning slowly; drag to turn it
 const GOLDEN_COIN = { name: "Golden Quarter", desc: "Struck for finding every medal in the scavenger hunt.",
-  why: "Spend it on one more song: the DJ will make a fuss.", front: "url(/golden-heads.webp)", back: "url(/golden-tails.webp)", metal: "gold" };
+  why: "Spend it on one more song: the DJ will make a fuss.", front: "url(/golden-heads.webp)", back: "url(/golden-tails.webp)", metal: "gold", engraved: true };
 function viewMedal(id, slot, at) {
   const m = MEDAL[id];
   viewCoin({ name: m.name, desc: m.desc, why: m.why, at, front: medalFront(id), back: medalBack(id), metal: m.metal }, slot);
@@ -2788,6 +2790,7 @@ function viewMedal(id, slot, at) {
 function viewCoin(m, slot) {
   const at = m.at, view = el("div", "mview"), stage = el("div", "mview-stage"), coin = el("div", "m3d");
   coin.style.setProperty("--f", m.front); coin.style.setProperty("--b", m.back);
+  if (m.engraved) coin.style.setProperty("--engrave", "none");
   const [, mid, dark] = METALS[m.metal];
   coin.style.setProperty("--r1", mid); coin.style.setProperty("--r2", dark);
   for (let z = -4.5; z <= 4.5; z += 1.5) { const d = el("s"); d.style.setProperty("--z", `${z}px`); coin.append(d); }
