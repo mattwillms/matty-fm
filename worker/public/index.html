@@ -8,8 +8,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="WORR">
-<link rel="apple-touch-icon" href="/icon-180.png">
-<link rel="icon" type="image/png" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/icon-180.png?v=o">
+<link rel="icon" type="image/png" href="/icon-192.png?v=o">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,100,1&family=Jost:wght@400;500;700&family=Kalam:wght@400;700&family=Doto:ROND,wght@0..100,400..900&family=Michroma&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Asset&text=matty&display=swap" rel="stylesheet">
@@ -824,7 +824,13 @@
   .about .ab-parts li { position: relative; padding-left: 20px; }
   .about .ab-parts li::before { content: ""; position: absolute; left: 3px; top: .62em; width: 7px; height: 7px; border-radius: 50%;
                                 background: var(--gold); box-shadow: 0 0 6px #f0a92b88; }   /* gold bullets */
-  .about .ab-love { margin: 40px 0 0; text-align: center; font: 800 1.6rem/1.2 Fraunces, Georgia, serif; color: var(--cream); }
+  .about .ab-gh { margin: 40px 0 0; text-align: center; }
+  .about .ab-gh p { margin: 0 0 12px; font: 600 1.15rem/1.4 Jost, sans-serif; color: var(--cream); }
+  .about .ab-gh-btn { display: inline-flex; align-items: center; gap: 10px; min-height: 48px; padding: 0 22px; border-radius: 999px;
+    background: var(--gold); color: #2A1A12; font: 700 1.1rem/1 Jost, sans-serif; text-decoration: none; }
+  .about .ab-gh-btn svg { width: 22px; height: 22px; }
+  .about .ab-gh-btn:focus-visible { outline: 3px solid var(--cream); outline-offset: 3px; }
+  .about .ab-love { margin: 28px 0 0; text-align: center; font: 800 1.6rem/1.2 Fraunces, Georgia, serif; color: var(--cream); }
 </style>
 </head>
 <body>
@@ -1150,7 +1156,13 @@
       <h3>The parts</h3>
       <ul class="ab-parts"><li>Cloudflare Workers and Durable Objects</li><li>Python on a home PC</li><li>A Raspberry Pi and a USB sound card</li>
         <li>Claude (the DJ's words) and ElevenLabs (the DJ's voice)</li><li>SomaFM's Seventies station, between requests</li><li>YouTube and Apify for the songs, LRCLIB for the lyrics</li></ul>
-      <p class="ab-love">I love you <span aria-hidden="true">💖</span></p>
+      <div class="ab-gh">
+        <p>Want to make your own? Clone the repo!</p>
+        <a class="ab-gh-btn" href="https://github.com/mattwillms/matty-fm" target="_blank" rel="noopener">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"/></svg>
+          See it on GitHub</a>
+      </div>
+      <p class="ab-love" id="abLove" hidden>I love you <span aria-hidden="true">💖</span></p>
     </article>
   </dialog>
 
@@ -3243,7 +3255,9 @@ document.querySelectorAll(".screw").forEach((sc) => sc.addEventListener("click",
   if (screwSpins.size === 4 && [...screwSpins.values()].every((t) => Date.now() - t < 10000)) earn("screws");
 }));
 // Made by: the story of the app, for anyone who asks
-$("aboutBtn").onclick = () => { const d = $("about"); if (overlayUp(d)) return; fadeShow(d); document.documentElement.classList.add("od-open"); };
+$("aboutBtn").onclick = () => { const d = $("about"); if (overlayUp(d)) return;
+  $("abLove").hidden = !/^(marie|hadley|ava)\b/i.test(myName());   // just for them
+  fadeShow(d); document.documentElement.classList.add("od-open"); };
 $("aboutClose").onclick = () => fadeClose($("about"));
 $("about").addEventListener("close", () => document.documentElement.classList.remove("od-open"));
 // Hotfixes: each poll carries a fingerprint of this page as deployed. When it changes, the page swaps itself

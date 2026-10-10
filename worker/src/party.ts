@@ -923,7 +923,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "worr-1",
+      code: "medals-3s-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
