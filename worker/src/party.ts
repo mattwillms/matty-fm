@@ -679,6 +679,7 @@ export class Party extends DurableObject<Env> {
       waitS: est.newS,   // a request sent now: roughly when it starts, in seconds from now
       hunt: this.hunt(device),
       kicked: Number(this.one("SELECT at FROM kicked WHERE device=?", device)?.at ?? 0) || null,   // the host sent this phone back to the start
+      named: Boolean(this.one("SELECT 1 AS x FROM names WHERE device=?", device)),   // false after a reset: the page claims its name again
       upNext: this.lineup(waiting.slice(0, 6).map((i) => this.pub(i))),
       waitingCount: waiting.length,
       mine: mine.map((i) => ({ ...this.pub(i), status: String(i.status), skipped: Boolean(i.skipped),
@@ -921,7 +922,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "audit-2",
+      code: "named-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),

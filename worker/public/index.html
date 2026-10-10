@@ -2619,6 +2619,9 @@ async function poll() {
         toast("The host reset this phone. Who's listening?");
       }
     }
+    // the queue has no name for this phone though the page claimed one (the party was reset): claim it again.
+    // After the kick check above, so a kicked phone (its name already forgotten here) never re-registers.
+    if (s.named === false && nameClaimed && myName()) { nameClaimed = false; reclaimAt = 0; reclaimName(); }
     flushMedals();   // after "closed" is set: picks, the search box, the Send button (never mid-send)
     showNow(offAir ? null : s.nowPlaying);
     $("nextBox").hidden = !s.upNext.length || offAir;

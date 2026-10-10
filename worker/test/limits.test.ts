@@ -549,6 +549,15 @@ describe("kick and the golden quarter on air", () => {
 });
 
 describe("names", () => {
+  it("the poll says whether the queue holds this phone's name: false after a reset, so the page claims it again", async () => {
+    const p = stub("names-reset");
+    expect((await p.guestState("d1")).named).toBe(false);
+    await p.claimName("d1", "Mo");
+    expect((await p.guestState("d1")).named).toBe(true);
+    await p.adminAction({ action: "reset" });
+    expect((await p.guestState("d1")).named).toBe(false);
+    expect(await p.claimName("d1", "Mo")).toEqual({ ok: true, name: "Mo" });
+  });
   it("one phone per name (any case), letters only; a kicked phone coming back with its name gets it numbered", async () => {
     const p = stub("names-1");
     expect(await p.claimName("d1", "Ava")).toEqual({ ok: true, name: "Ava" });
