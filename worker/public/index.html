@@ -592,17 +592,19 @@
   .cp-top { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 4px 3px; background: #f1e8d2;
             color: #c7311c; font: 700 .7rem/1.1 Jost, sans-serif; letter-spacing: .02em; }
   .cp-top svg { width: 16px; height: 7px; fill: #c7311c; flex: none; }
-  .cp-bot { display: block; padding: 4px 4px 5px; background: #d2391f; color: #f6ead0; text-align: center; font: 700 .66rem/1 Jost, sans-serif; letter-spacing: .06em; }
+  .cp-bot { display: block; padding: 4px 3px 5px; background: #d2391f; color: #f6ead0; text-align: center; font: 700 .66rem/1 Jost, sans-serif; letter-spacing: .03em; white-space: nowrap; }
   .cp-card > span { transform: skewX(8deg); }
   .cp-track { flex: 1; display: flex; justify-content: flex-start; align-items: center; min-width: 46px; }
   .cq { position: relative; z-index: 3; flex: none; width: 40px; height: 40px; }
   .cq i { position: absolute; inset: 0; border-radius: 50%; background: var(--heads) center / 100% 100% no-repeat; filter: drop-shadow(0 2px 2px #000a); }
   .cq.golden i { background-image: url(/golden-heads.webp); }   /* the golden quarter is the one going in */
   .cp-slot { position: relative; z-index: 2; flex: none; display: grid; place-items: center; width: 48px; height: 56px; border-radius: 6px;
-             background: linear-gradient(135deg, #fbfaf7, #b7b3ab 45%, #e9e6df 60%, #85817a);
-             box-shadow: 0 2px 3px #0009, inset 0 1px 0 #fff, inset 0 -1px 1px #0006; }   /* a raised chrome bezel: the coin goes behind it */
+             background: radial-gradient(ellipse at 20% 85%, #5a4a2e55, transparent 45%), radial-gradient(ellipse at 85% 15%, #4a3e2a40, transparent 40%),
+                         radial-gradient(circle at 70% 70%, #7a4a1a33 0 3px, transparent 6px),
+                         linear-gradient(135deg, #e9ebe8, #a9aca8 45%, #d3d6d2 60%, #7c7f7b);
+             box-shadow: 0 2px 3px #0009, inset 0 1px 0 #fffc, inset 0 -1px 1px #0006, inset 0 0 5px #3a2e1a66; }   /* worn: grime in its corners, a thumb smudge, a spot of rust */   /* a raised chrome bezel: the coin goes behind it */
   .cp-mouth { width: 8px; height: 44px; border-radius: 3px; background: linear-gradient(90deg, #000, #1e1b18 50%, #000);
-              box-shadow: inset 0 2px 3px #000, 0 0 0 1px #6f6b64, 0 1px 0 1px #fff8; transition: box-shadow .2s; }
+              box-shadow: inset 0 2px 3px #000, 0 0 0 1px #5a5248, 0 0 0 2.5px #3a2e1a55, 0 1px 0 2px #fff5; transition: box-shadow .2s; }
   .coinop.clunk .cp-mouth { box-shadow: inset 0 2px 3px #000, 0 0 0 1px #6f6b64, 0 0 10px #ffb35a; }
   .coinop.clunk .cp-slot { animation: clunk .22s; }
   @keyframes clunk { 30% { transform: translateY(1.5px); } 60% { transform: translateY(-.5px); } }
@@ -634,7 +636,7 @@
   .plank-heart use { fill: none; stroke-linecap: round; stroke-linejoin: round; }
   .plank-heart .cut-shade { stroke: #0d0603; stroke-width: 3.6; transform: translate(-.5px, -.7px); }   /* the cut's upper wall, in shadow */
   .plank-heart .cut-wood { stroke: #8d633b; stroke-width: 1.7; }   /* the paler wood the knife opened */
-  .plank-heart text { font: 900 13.5px "Arial Black", "Helvetica Neue", Arial, sans-serif; letter-spacing: .3px; stroke-width: .7; paint-order: stroke; }
+  .plank-heart text { font: 700 14px Jost, sans-serif; letter-spacing: .4px; stroke-width: .7; paint-order: stroke; }   /* the page's own font: the same on every phone */
   .plank-heart .cut-shade text { fill: #0d0603; } .plank-heart .cut-wood text { fill: #8d633b; stroke: none; }
   .plank-play { flex: none; height: 40px; padding: 0 16px; border-radius: 6px; font: 800 1rem/1 Fraunces, Georgia, serif; letter-spacing: .04em;
                  color: #3a2306; text-shadow: 0 1px 0 #ffeaa8;
@@ -2222,7 +2224,10 @@ function showLimits() {
   if (!limits) return;
   const free = limits.freePlay, sg = limits.songs, st = songState();
   $("slots").hidden = free;
-  $("cpPrice").textContent = free ? "FREE PLAY" : "25¢ · one song";   // the placard's red band
+  // the coin on the plate is the one that will be spent: the golden quarter when it's that one
+  const goldNext = !free && st.spare === "golden";
+  document.querySelector(".cq")?.classList.toggle("golden", goldNext);
+  $("cpPrice").textContent = free ? "FREE PLAY" : goldNext ? "Golden quarter" : "25¢ · one song";   // the placard's red band
   $("slots").classList.toggle("locked", !st.can);
   const usedN = st.locked ? sg.max : Math.min(sg.active, sg.max);   // coins are spent from the right
   // a long line takes one coin away: its slot shows empty (a coin past max is gone, not spent)
