@@ -1064,31 +1064,31 @@
         set of config files, and he builds alongside an AI pair programmer: Claude, in Claude Code. OrrFM came together over a few
         days and nights before the reunion.</p>
       <h3>How a request travels</h3>
-      <svg class="ab-flow" viewBox="0 0 320 476" role="img" aria-label="How a request travels: your phone, the queue in the cloud, the studio at home, the console by the speakers, the party">
+      <svg class="ab-flow" viewBox="0 0 320 508" role="img" aria-label="How a request travels: your phone, the queue in the cloud, the studio at home, the console by the speakers, the party">
   <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#f0a92b"/></marker></defs>
   <g font-family="Jost, sans-serif" text-anchor="middle">
-    <rect x="40" y="4" width="240" height="53" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <rect x="40" y="4" width="240" height="61" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
     <text x="160" y="29" fill="#f3e3c3" font-size="17" font-weight="700">Your phone</text>
     <text x="160" y="51" fill="#cdb591" font-size="15">pick a song, a joke, a sound</text>
-    <path d="M160 59v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
-    <rect x="16" y="91" width="288" height="72" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
-    <text x="160" y="116" fill="#f3e3c3" font-size="17" font-weight="700">The queue (Cloudflare)</text>
-    <text x="160" y="138" fill="#cdb591" font-size="15">fair turns, limits, medals, Orrdle:</text>
-    <text x="160" y="157" fill="#cdb591" font-size="15">one source of truth for the night</text>
-    <path d="M160 165v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
-    <rect x="8" y="197" width="304" height="91" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
-    <text x="160" y="222" fill="#f3e3c3" font-size="17" font-weight="700">The studio (a PC at home)</text>
-    <text x="160" y="244" fill="#cdb591" font-size="15">finds and downloads the song</text>
-    <text x="160" y="263" fill="#cdb591" font-size="15">Claude writes the DJ's line</text>
-    <text x="160" y="282" fill="#cdb591" font-size="15">ElevenLabs gives it a voice</text>
-    <path d="M160 290v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
-    <rect x="8" y="322" width="304" height="72" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
-    <text x="160" y="347" fill="#f3e3c3" font-size="17" font-weight="700">The console (a Raspberry Pi)</text>
-    <text x="160" y="369" fill="#cdb591" font-size="15">mixes SomaFM, two song decks,</text>
-    <text x="160" y="388" fill="#cdb591" font-size="15">the DJ and the sound buttons, live</text>
-    <path d="M160 396v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
-    <rect x="70" y="428" width="180" height="44" rx="10" fill="#e2621b"/>
-    <text x="160" y="456" fill="#241208" font-size="17" font-weight="800">The party speakers</text>
+    <path d="M160 67v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="16" y="99" width="288" height="80" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="124" fill="#f3e3c3" font-size="17" font-weight="700">The queue (Cloudflare)</text>
+    <text x="160" y="146" fill="#cdb591" font-size="15">fair turns, limits, medals, Orrdle:</text>
+    <text x="160" y="165" fill="#cdb591" font-size="15">one source of truth for the night</text>
+    <path d="M160 181v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="8" y="213" width="304" height="99" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="238" fill="#f3e3c3" font-size="17" font-weight="700">The studio (a PC at home)</text>
+    <text x="160" y="260" fill="#cdb591" font-size="15">finds and downloads the song</text>
+    <text x="160" y="279" fill="#cdb591" font-size="15">Claude writes the DJ's line</text>
+    <text x="160" y="298" fill="#cdb591" font-size="15">ElevenLabs gives it a voice</text>
+    <path d="M160 314v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="8" y="346" width="304" height="80" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="371" fill="#f3e3c3" font-size="17" font-weight="700">The console (a Raspberry Pi)</text>
+    <text x="160" y="393" fill="#cdb591" font-size="15">mixes SomaFM, two song decks,</text>
+    <text x="160" y="412" fill="#cdb591" font-size="15">the DJ and the sound buttons, live</text>
+    <path d="M160 428v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="70" y="460" width="180" height="44" rx="10" fill="#e2621b"/>
+    <text x="160" y="488" fill="#241208" font-size="17" font-weight="800">The party speakers</text>
   </g></svg>
       <p>Your phone talks to a small program in Cloudflare's cloud that keeps the line fair. A PC at home finds and downloads each song, has Claude write what the DJ says about it, and records that in an ElevenLabs voice. A Raspberry Pi wired to the speakers mixes it all live: SomaFM's 70s station between requests, the next song fading in under the DJ, and the sound buttons on top.</p>
       <h3>How it was built</h3>
