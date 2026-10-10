@@ -491,3 +491,35 @@ describe("orrdle", () => {
     expect(JSON.stringify(parties)).not.toContain("Ann");
   });
 });
+
+describe("scavenger hunt", () => {
+  const ALL = ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"];
+  it("medals once each; all of them bring a golden quarter for one more song; cancelling it gives it back", async () => {
+    const p = stub("hunt-1");
+    expect((await p.earnMedal("d1", "nope")).ok).toBe(false);
+    for (const m of ALL.slice(0, 8)) await p.earnMedal("d1", m);
+    await p.earnMedal("d1", "eggs");   // twice: still one
+    expect((await p.guestState("d1")).hunt).toMatchObject({ total: 9, golden: "none" });
+    expect((await p.guestState("d1")).hunt.medals).toHaveLength(8);
+    await p.submit("d1", T("Waterloo")); await p.submit("d1", T("SOS"));
+    expect((await p.submit("d1", T("Fernando"))).ok).toBe(false);   // locked, no golden yet
+    expect((await p.earnMedal("d1", "polish")).hunt.golden).toBe("ready");
+    const g = await p.submit("d1", T("Fernando"));                  // the golden quarter
+    expect(g.ok).toBe(true);
+    expect((await p.guestState("d1")).hunt.golden).toBe("used");
+    expect((await p.submit("d1", T("Chiquitita"))).ok).toBe(false);  // spent
+    await p.cancel("d1", g.id!);
+    expect((await p.guestState("d1")).hunt.golden).toBe("ready");   // cancelled: the quarter comes back
+  });
+
+  it("the host's guest list, and a quarter on the house", async () => {
+    const p = stub("hunt-2");
+    await p.guestState("d1");
+    await p.submit("d1", T("Waterloo")); await p.submit("d1", T("SOS"));
+    const { guests } = (await p.adminAction({ action: "guests" })) as { guests: { device: string; names: string[]; requests: number; locked: boolean; coins: number }[] };
+    expect(guests[0]).toMatchObject({ device: "d1", names: ["Ann"], requests: 2, locked: true, coins: 0 });
+    await p.adminAction({ action: "giveCoin", device: "d1" });
+    expect((await p.submit("d1", T("Fernando"))).ok).toBe(true);
+    expect((await p.submit("d1", T("Chiquitita"))).ok).toBe(false);
+  });
+});

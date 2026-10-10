@@ -151,6 +151,7 @@
   .needle { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--orange);
             box-shadow: 0 0 8px var(--orange); left: 0; will-change: transform; }   /* placed and moved by transform only (see the dial script) */
   .dial { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+  .dial .crack { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 2; }   /* the glass, cracked by the snap */
   /* a faint amber glow from behind the dial glass, like the board behind the buttons: the tubes' pulse, dark when off */
   .dial::before { content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
                   background: radial-gradient(ellipse 75% 130% at 50% 100%, #ffa040, #ff8a2a55 45%, #ff8a2a00 80%);
@@ -667,6 +668,54 @@
   .od-col i.now { background: #6f8f2e; }
   dialog.orrdle-box.stats-on .od-board { width: min(300px, 76vw, calc((100dvh - 390px) * .8)); }
   .od-again { justify-self: center; }
+
+  /* ---- scavenger hunt: medals in a case of round slots, like coins in a collector's board ---- */
+  #hunt { position: relative; overflow: hidden; }
+  .medals { display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; gap: 14px 22px; margin: 14px 0 4px; }
+  .mslot { position: relative; width: 64px; height: 64px; border-radius: 50%; padding: 0;
+           background: radial-gradient(circle at 50% 42%, #120a06 0 58%, #2a1a12 70%);
+           box-shadow: inset 0 3px 6px #000d, inset 0 -1px 1px #ffffff14, 0 0 0 3px #3a2618, 0 0 0 4px #6b4a32aa, 0 1px 0 4px #ffffff10; }
+  .mslot.got { cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .mslot .mface { position: absolute; inset: 3px; border-radius: 50%; background: var(--f) center / 100% 100% no-repeat;
+                  filter: drop-shadow(0 2px 2px #000c); }
+  .mslot.new .mface { animation: medalIn .9s cubic-bezier(.2,1.4,.4,1) both; }
+  @keyframes medalIn { 0% { transform: translateY(-40px) scale(1.6) rotate(-30deg); opacity: 0; } 60% { opacity: 1; } }
+  .hunt-ribbon { position: absolute; top: 18px; right: -42px; width: 160px; transform: rotate(35deg); text-align: center; pointer-events: none;
+                 background: linear-gradient(#e9b949, #b7811c); color: #2a1608; font: 800 .82rem/1 Fraunces, Georgia, serif; letter-spacing: .08em;
+                 padding: 7px 0; box-shadow: 0 2px 6px #000a, inset 0 1px 0 #fff5; text-transform: uppercase; }
+  /* the medal up close: out of its slot, spinning, then hanging in the air slightly cocked and turning slowly; drag to turn it */
+  .mview { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; touch-action: none;
+           background: radial-gradient(circle at 50% 40%, #3d2518ee, #120a06f5 72%); animation: fade .3s ease-out both; }
+  .mview.closing { animation: fade .3s ease-in reverse both; }
+  .mview-stage { position: relative; width: 210px; height: 210px; perspective: 800px; margin-top: -60px; }
+  .m3d { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; cursor: grab; }
+  .m3d::before, .m3d::after { content: ""; position: absolute; inset: 0; border-radius: 50%; -webkit-backface-visibility: hidden; backface-visibility: hidden;
+                               background: var(--f) center / 100% 100% no-repeat; transform: translateZ(5px); }
+  .m3d::after { background-image: var(--b); transform: rotateY(180deg) translateZ(5px); }
+  .m3d s { position: absolute; inset: 1px; border-radius: 50%; transform: translateZ(var(--z));
+           background: repeating-conic-gradient(var(--r1) 0 2deg, var(--r2) 2deg 4deg); }
+  .mview-cap { position: absolute; left: 16px; right: 16px; bottom: calc(40px + env(safe-area-inset-bottom)); text-align: center; color: var(--cream); }
+  .mview-cap h3 { margin: 0 0 6px; font: 900 1.6rem/1.1 Fraunces, Georgia, serif; color: var(--gold); }
+  .mview-cap p { margin: 0 auto 4px; max-width: 30em; color: var(--cream-dim); }
+  .mview-cap .why { color: var(--cream); }
+  /* the golden quarter, in the dotted place, when the hunt is done; a silver one when the host gave a song */
+  .slots .ghost.golden, .slots .ghost.coin { border: 0; background: var(--heads) center / 100% 100% no-repeat; filter: drop-shadow(0 1.5px 1px #000a); }
+  .slots .ghost.golden { filter: sepia(.9) saturate(1.7) hue-rotate(8deg) brightness(1.2) drop-shadow(0 0 4px #f0c04a99); }
+  .slots .ghost.gone { visibility: hidden; }
+  /* Orrdle's sign starts tarnished; rubbing it brings the gold up */
+  .plank-word { touch-action: pan-y; cursor: grab; }
+  .plank-word::after { content: attr(data-text); position: absolute; left: 0; top: 0; opacity: var(--tarn, 1); pointer-events: none;
+                       background: linear-gradient(100deg, #5b4a2a, #3e3a26 30%, #6a5530 55%, #2f2c1d 80%, #4d4128);
+                       -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .fx.glint { width: 14px; height: 14px; border-radius: 0; background: none; color: #fff7d6; font-size: 14px; line-height: 14px; text-align: center;
+              text-shadow: 0 0 6px #ffd76a, 0 0 12px #ffb02e; }
+  /* Orrdle: a starburst, like a sticker on a box of cereal */
+  .od-burst { position: absolute; top: calc(70px + env(safe-area-inset-top)); left: 8px; width: 74px; height: 74px; display: grid; place-items: center;
+              transform: rotate(-14deg); z-index: 2; pointer-events: none; text-align: center;
+              background: #ffd23f; color: #b2361f; font: 900 .78rem/1.02 Fraunces, Georgia, serif; text-transform: uppercase;
+              clip-path: polygon(50% 0%, 59% 13%, 75% 6%, 76% 22%, 93% 25%, 86% 40%, 100% 50%, 86% 60%, 93% 75%, 76% 78%, 75% 94%, 59% 87%, 50% 100%, 41% 87%, 25% 94%, 24% 78%, 7% 75%, 14% 60%, 0% 50%, 14% 40%, 7% 25%, 24% 22%, 25% 6%, 41% 13%);
+              filter: drop-shadow(0 2px 0 #0006); }
+  .od-burst b { display: block; font-size: 1.05rem; }
 </style>
 </head>
 <body>
@@ -781,6 +830,7 @@
 
   <dialog class="sleeve-box orrdle-box" id="orrdleBox" aria-label="Orrdle">
     <button class="sleeve-close" id="orrdleClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="od-burst" aria-hidden="true"><span>For<b>Marie!</b></span></div>
     <h2 class="od-title">ORRDLE</h2>
     <button class="sleeve-close od-statsbtn" id="odMine" type="button" aria-label="Your stats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-9"/></svg></button>
     <div class="od-board" id="odBoard"></div>
@@ -864,7 +914,7 @@
 
   <section class="orrdle-plank" id="orrdle" aria-label="Orrdle, the family Wordle">
     <div class="plank">
-      <span class="plank-word" aria-hidden="true">Orrdle</span>
+      <span class="plank-word" aria-hidden="true" data-text="Orrdle">Orrdle</span>
       <svg class="plank-heart" viewBox="0 0 70 60" aria-hidden="true">
         <defs><g id="hcut">
           <path d="M35 53C19 41 9 32 9 20.5 9 12 15.5 6 23 6c5.5 0 9.6 3.3 12 7.6C37.4 9.3 41.5 6 47 6c7.5 0 14 6 14 14.5C61 32 51 41 35 53Z"/>
@@ -879,8 +929,10 @@
   </section>
 
   <section class="panel" id="hunt" aria-labelledby="huntH">
+    <div class="hunt-ribbon" id="huntRibbon" hidden><span>Completed</span></div>
     <h2 id="huntH">Scavenger hunt</h2>
-    <p class="hint" style="margin-top:0">Coming soon: find what's hidden around the party and earn an extra quarter for a song.</p>
+    <p class="hint" id="huntSay" style="margin-top:0">The radio hides a few surprises. Make them happen to earn medals, and find them all for a golden quarter: one more song.</p>
+    <div class="medals" id="medals" role="list" aria-label="Medals"></div>
   </section>
 
 </main>
@@ -1060,7 +1112,7 @@ function henSpin(on) {
 // Tap it and it moves; keep tapping (each within TAP_RESET_MS) and it wobbles, then tilts, then
 // snaps and falls behind the faceplate, and a new needle drops in. One break per BREAK_COOLDOWN_MS;
 // inside that, taps top out at the tilt. Nothing on screen says when it can break again.
-const TAP_RESET_MS = 2500, BREAK_COOLDOWN_MS = 5 * 60 * 1000;
+const TAP_RESET_MS = 2500, BREAK_COOLDOWN_MS = 10 * 1000;   // the same short rest as the hen's eggs
 const needle = { f: 0.5, rot: 0, broken: false, pendingF: null };   // f: 0..1 along the scale
 let taps = 0, lastTap = 0, breakReadyAt = 0;
 function dialPx(f) { const w = $("needle").parentElement.clientWidth; return 12 + f * (w - 24) - 1.5; }
@@ -1097,7 +1149,7 @@ function swing(f, wobble = 0, tilt = 0) {
   n.animate(frames, { duration: wobble > 1 ? 2300 : 1600, easing: "linear" });
   placeNeedle();
 }
-function sparks(x, y) {
+function dialSparks(x, y) {
   const dial = $("needle").parentElement;
   const flash = el("span", "snapflash"); flash.style.left = `${x}px`; flash.style.top = `${y}px`; dial.append(flash);
   flash.animate([{ opacity: 1, transform: "scale(.4)" }, { opacity: 0, transform: "scale(1.8)" }], { duration: 260, easing: "ease-out" })
@@ -1115,15 +1167,35 @@ function sparks(x, y) {
   }
 }
 async function breakNeedle(f) {
+  earn("needle");
   freezeNeedle();
   needle.broken = true;
   const n = $("needle"), dial = n.parentElement, h = dial.clientHeight;
   const x0 = dialPx(needle.f), xSnap = x0 + (dialPx(f) - x0) * (.35 + Math.random() * .3);
   await n.animate([{ transform: needleAt(x0, 0, needle.rot) }, { transform: needleAt(xSnap, 0, needle.rot) }],
                   { duration: 380, easing: "ease-in", fill: "forwards" }).finished;
-  sparks(xSnap + 1.5, h * .45);
-  dial.animate([{ transform: "translate(0,0)" }, { transform: "translate(-2px,1px)" }, { transform: "translate(2px,-1px)" },
-                { transform: "translate(-1px,1px)" }, { transform: "translate(0,0)" }], { duration: 240 });
+  dialSparks(xSnap + 1.5, h * .45);
+  // the bang: the dial lamp surges and sputters, sparks and smoke out of the glass, a crack across it, the whole set jolts
+  const dr = dial.getBoundingClientRect(), sx = dr.left + xSnap + 1.5, sy = dr.top + h * .45;
+  sparks(sx, sy, 18, { speed: 170, kick: 90 });
+  smoke(sx, sy - 6, 5, 70, 1.2);
+  dial.animate([{ filter: "brightness(1)" }, { filter: "brightness(2.2)", offset: .08 }, { filter: "brightness(.35)", offset: .2 },
+                { filter: "brightness(1.5)", offset: .32 }, { filter: "brightness(.25)", offset: .48 }, { filter: "brightness(1.2)", offset: .62 },
+                { filter: "brightness(.6)", offset: .78 }, { filter: "brightness(1)" }], { duration: 1400 });
+  const crack = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  crack.setAttribute("class", "crack"); crack.setAttribute("viewBox", `0 0 ${dial.clientWidth} ${h}`);
+  const rays = Array.from({ length: 6 }, (_, k) => {
+    let x = xSnap + 1.5, y = h * .45, d = `M${x} ${y}`, a = (k / 6) * Math.PI * 2 + Math.random() * .6;
+    for (let seg = 0; seg < 4; seg++) { a += (Math.random() - .5) * .9; x += Math.cos(a) * (8 + Math.random() * 14); y += Math.sin(a) * (5 + Math.random() * 9); d += ` L${x.toFixed(1)} ${y.toFixed(1)}`; }
+    return `<path d="${d}"/>`;
+  }).join("");
+  crack.innerHTML = `<g fill="none" stroke="#fff" stroke-opacity=".75" stroke-width=".9" stroke-linejoin="round">${rays}</g>
+    <g fill="none" stroke="#000" stroke-opacity=".5" stroke-width=".9" transform="translate(.6 .8)">${rays}</g>`;
+  dial.append(crack);
+  crack.animate([{ opacity: 0 }, { opacity: 1, offset: .05 }, { opacity: 1, offset: .6 }, { opacity: 0 }], { duration: 3200 }).onfinish = () => crack.remove();
+  document.querySelector(".cabinet").animate([{ transform: "translate(0,0)" }, { transform: "translate(-4px,2px) rotate(-.4deg)" },
+    { transform: "translate(3px,-2px) rotate(.3deg)" }, { transform: "translate(-2px,1px)" }, { transform: "translate(1px,0)" },
+    { transform: "translate(0,0)" }], { duration: 420, easing: "ease-out" });
   const spin = (Math.random() < .5 ? -1 : 1) * (50 + Math.random() * 80), drift = (Math.random() - .5) * 30;
   await n.animate([{ transform: needleAt(xSnap, 0, needle.rot), filter: "brightness(1.6)" },
                    { transform: needleAt(xSnap + drift * .3, h * .3, spin * .3), filter: "brightness(.8)", offset: .35 },
@@ -1174,6 +1246,7 @@ function henRock(amp) {
                { transform: "rotate(0deg)" }], { duration: 1150, easing: "ease-in-out" });   // a damped spring home
 }
 async function henWild() {
+  earn("eggs");
   hen.wild = true;
   const img = document.querySelector(".hen img"), a0 = henTilt(img), dir = Math.random() < .5 ? -1 : 1;
   img.getAnimations().forEach((a) => a.cancel());
@@ -1217,7 +1290,7 @@ function dropEgg(layer, h) {
     if (taps.length && now - taps[taps.length - 1] < 120) return;   // a doubled click from one tap (iPhone does this): not a second tap
     taps = taps.filter((t) => now - t < 1000).concat(now);   // three within a second
     if (taps.length < 3 || rolling) return;
-    taps = []; rolling = true;
+    taps = []; rolling = true; earn("colors");
     let k = 0;
     const step = () => {
       k++;
@@ -1629,6 +1702,7 @@ function layCables() {
 addEventListener("load", layCables); addEventListener("resize", layCables);
 // Tap the plug: it jiggles in its jack, and the screen flickers like an old TV with a loose connection.
 function jiggle(e) {
+  earn("static");
   const g = e.currentTarget, glass = $("glass");
   if (glass._flicker) return;
   glass._flicker = true;
@@ -1852,6 +1926,7 @@ function puffSocket(tube, then) {   // nothing comes, just a cough of smoke out 
 // on arrival the tubes fade up rather than popping in
 tubeEls.forEach((t, i) => t.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 900, delay: 150 + i * 250, easing: "ease-out", fill: "backwards" }));
 function breakOff(tube) {   // it snaps at the socket and falls down the screen, over everything, smoking
+  earn("snap");
   tube._busy = true;
   rattle(tube);
   setTimeout(() => {
@@ -1879,6 +1954,7 @@ function breakOff(tube) {   // it snaps at the socket and falls down the screen,
   }, 180);
 }
 function explode(tube) {   // the rarest: it blows: a flash, sparks, glass, fire, arcs and smoke
+  earn("kaboom");
   const r = tube.getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height * .45;
   tube._busy = true; tube.classList.add("gone");
   flash(x, y); sparks(x, y, 26, { speed: 170 }); sparks(x, y, 7, { speed: 110, cls: "shard" }); fire(x, y, 9); zap(r);
@@ -1910,6 +1986,7 @@ function dustPuff(slot) {
   if (Math.random() < 0.15) gnat(x, y);
 }
 function gnat(x, y) {   // a jittery little flight away from the slot, then gone
+  earn("gnat");
   const g = el("i", "gnat"); Object.assign(g.style, { left: x + "px", top: y + "px" }); document.body.append(g);
   const dir = Math.random() * Math.PI * 2, frames = [{ transform: "translate(-50%,-50%)", opacity: 1 }];
   let gx = 0, gy = 0;
@@ -2008,8 +2085,9 @@ let limits = null, limitsAt = 0, spent = [];
 const fmtWait = (sec) => sec >= 90 ? `${Math.ceil(sec / 60)} min` : `${Math.max(1, Math.round(sec))} s`;
 function songState() {
   if (!limits || limits.freePlay) return { can: true };
-  const { active, locked } = limits.songs;
-  return { can: !locked, active, locked };
+  const { active, locked, extra } = limits.songs;
+  const spare = locked && extra && (extra.golden || extra.coins > 0) ? (extra.golden ? "golden" : "coin") : "";
+  return { can: !locked || Boolean(spare), active, locked, spare };
 }
 function showLimits() {
   if (!limits) return;
@@ -2023,6 +2101,8 @@ function showLimits() {
   $("slots").setAttribute("aria-label", free ? "" : `${sg.max - usedN} of ${sg.max} song picks left`);
   const say = (id, html) => { $(id).hidden = !html; $(id).innerHTML = html || ""; };
   say("songAllow", free ? "<b>Free play:</b> request as many songs as you like."
+    : st.spare === "golden" ? "<b>Golden quarter!</b> Your scavenger hunt prize: spend it on one more song."
+    : st.spare === "coin" ? "<b>A quarter on the house.</b> Spend it on one more song."
     : sg.max === 1 ? (st.locked ? "<b>Yours is in.</b> The line is long, so it's one song at a time for now. Cancel it before it plays to get your quarter back."
                                 : "The line is long: <b>one song at a time</b> for now.")
     : st.locked ? (sg.active === 1 ? "<b>One to go.</b> You get two more quarters once your other song plays, or cancel it before it plays to get your quarter back."
@@ -2184,7 +2264,9 @@ async function refresh() {
     $("jokeBox").hidden = !s.accepting && !(s.myJokes || []).length;
     showJokes(s.myJokes);
     showLimits();
-    showEta(s);   // after "closed" is set: picks, the search box, the Send button (never mid-send)
+    showEta(s);
+    if (s.hunt) showHunt(s.hunt);
+    flushMedals();   // after "closed" is set: picks, the search box, the Send button (never mid-send)
     showNow(offAir ? null : s.nowPlaying);
     $("nextBox").hidden = !s.upNext.length || offAir;
     const waiting = s.waitingCount ?? s.upNext.length;
@@ -2487,7 +2569,10 @@ document.querySelector(".brand .req").addEventListener("click", () => {
   if (to) to.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 // the dotted third place: points at the scavenger hunt (the link does a tada; with no link showing, the panel does)
-document.querySelector("#slots .ghost").onclick = () => {
+document.querySelector("#slots .ghost").onclick = (e) => {
+  const g = e.currentTarget;
+  if (g.classList.contains("golden")) { toast("Your golden quarter from the scavenger hunt: one more song."); return; }
+  if (g.classList.contains("coin")) { toast("A quarter on the house: one more song."); return; }
   const a = document.querySelector('#songAllow a[href="#hunt"]'), t = a && a.offsetParent ? a : $("huntH");
   if (t === $("huntH")) $("hunt").scrollIntoView({ behavior: "smooth", block: "center" });
   t.classList.remove("tada"); void t.offsetWidth; t.classList.add("tada");
@@ -2498,6 +2583,191 @@ document.addEventListener("click", (e) => {
   const a = e.target.closest && e.target.closest('a[href="#hunt"]');
   if (a) { e.preventDefault(); $("hunt").scrollIntoView({ behavior: "smooth", block: "start" }); }
 });
+// ---- the scavenger hunt: a medal for each hidden animation. The Worker keeps them (all of them: a golden quarter
+// for one more song); the page draws them, pops each into its slot with a toast, and shows one up close on a tap.
+const METALS = { gold: ["#fff1c4", "#d9a530", "#8f6114"], silver: ["#ffffff", "#bfc3c8", "#5d6166"], bronze: ["#f6cfa6", "#b8743f", "#5c3417"],
+                 copper: ["#ffd8bb", "#c8693a", "#6a2c12"], steel: ["#eef3f6", "#8f9aa3", "#3d4449"] };
+const ICONS = {
+  eggs: '<path d="M14 6C8 6 4 16 4 23c0 6 4.5 10 10 10s10-4 10-10C24 16 20 6 14 6z" fill="#fbf3dc" stroke="INK" stroke-width="2"/><path d="M28 12c-4.5 0-7.5 7.5-7.5 13 0 4.5 3.4 7.5 7.5 7.5s7.5-3 7.5-7.5c0-5.5-3-13-7.5-13z" fill="#f3e3c3" stroke="INK" stroke-width="2"/>',
+  kaboom: '<path d="M20 2l4 10 9-5-3 10 9 3-9 4 5 9-10-3-3 10-4-9-8 6 1-10-9-2 8-5-5-8 10 2z" fill="#ffd23f" stroke="INK" stroke-width="1.6" stroke-linejoin="round"/><circle cx="20" cy="20" r="5" fill="#e2621b"/>',
+  snap: '<path d="M23 2L8 22h10l-3 16 17-22H21z" fill="#fff6cf" stroke="INK" stroke-width="2" stroke-linejoin="round"/>',
+  needle: '<path d="M4 31a16 16 0 0 1 32 0" fill="none" stroke="INK" stroke-width="2.4"/><path d="M8 31v-3M12 22l2 2M20 15v3M28 22l-2 2M32 31v-3" stroke="INK" stroke-width="2"/><path d="M20 31L31 9" stroke="#e2621b" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="31" r="3" fill="INK"/>',
+  static: '<path d="M13 4l7 8 7-8" fill="none" stroke="INK" stroke-width="2" stroke-linecap="round"/><rect x="4" y="12" width="32" height="23" rx="5" fill="#2a2a2a" stroke="INK" stroke-width="2"/><path d="M8 17h18M8 21h22M8 25h14M8 29h20" stroke="#cfd6db" stroke-width="1.6" stroke-dasharray="3 2"/>',
+  colors: '<path d="M4 32a16 16 0 0 1 32 0" fill="none" stroke="#b2361f" stroke-width="4"/><path d="M9 32a11 11 0 0 1 22 0" fill="none" stroke="#e2621b" stroke-width="4"/><path d="M14 32a6 6 0 0 1 12 0" fill="none" stroke="#f0a92b" stroke-width="4"/>',
+  screws: '<circle cx="20" cy="20" r="15" fill="#d8dde1" stroke="INK" stroke-width="2"/><path d="M10 14l20 12" stroke="INK" stroke-width="3.4" stroke-linecap="round"/>',
+  gnat: '<ellipse cx="13" cy="15" rx="8" ry="5" fill="#ffffffaa" stroke="INK" stroke-width="1.4" transform="rotate(-25 13 15)"/><ellipse cx="27" cy="15" rx="8" ry="5" fill="#ffffffaa" stroke="INK" stroke-width="1.4" transform="rotate(25 27 15)"/><ellipse cx="20" cy="24" rx="4" ry="8" fill="INK"/><path d="M16 24l-6 4M16 28l-5 6M24 24l6 4M24 28l5 6" stroke="INK" stroke-width="1.4"/>',
+  polish: '<path d="M18 3l4 13 13 4-13 4-4 13-4-13-13-4 13-4z" fill="#fff6cf" stroke="INK" stroke-width="1.6" stroke-linejoin="round"/><path d="M32 4l1.6 5 5 1.6-5 1.6-1.6 5-1.6-5-5-1.6 5-1.6z" fill="#fff6cf"/>',
+};
+const MEDAL = {
+  eggs: { name: "Egg Rain", metal: "gold", enamel: "#b2361f", field: "#7a2312", desc: "Awarded for pushing a hen past her limit.", why: "You tapped the hen until she spun out and it rained eggs." },
+  kaboom: { name: "Kaboom", metal: "copper", enamel: "#2c2c2c", field: "#151515", desc: "For conspicuous bravery around vacuum tubes.", why: "A tube you tapped blew up." },
+  snap: { name: "Snap!", metal: "silver", enamel: "#1f6e6a", field: "#134845", desc: "For breaking a priceless antique.", why: "A tube you tapped snapped off at the socket." },
+  needle: { name: "Needle Breaker", metal: "bronze", enamel: "#e7d4ae", field: "#cdb591", desc: "For tuning a little too hard.", why: "You tapped the dial until the needle snapped." },
+  static: { name: "Bad Connection", metal: "steel", enamel: "#4b3a78", field: "#2f2450", desc: "For services to television repair.", why: "You jiggled the loose plug and the screen fritzed." },
+  colors: { name: "Color Roll", metal: "gold", enamel: "#2a1a12", field: "#f3e3c3", desc: "For excellence in title cards.", why: "Three quick taps on the OrrFM logo rolled its colors." },
+  screws: { name: "Loose Screws", metal: "steel", enamel: "#8a8f3c", field: "#5f6328", desc: "For having a few.", why: "You set all four screws spinning at once." },
+  gnat: { name: "Gnat Whisperer", metal: "bronze", enamel: "#6f8f2e", field: "#4b6320", desc: "For finding life in an empty slot.", why: "A gnat flew out of an empty coin slot." },
+  polish: { name: "Elbow Grease", metal: "gold", enamel: "#1d3b6e", field: "#132848", desc: "For a shine you could shave in.", why: "You rubbed the Orrdle sign until it gleamed." },
+};
+const MEDAL_IDS = Object.keys(MEDAL);
+const svgUrl = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
+function medalFront(id) {
+  const m = MEDAL[id], [a, b, c] = METALS[m.metal], ink = m.field === "#f3e3c3" || m.field === "#cdb591" ? "#3a2210" : "#f3e3c3";
+  return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs>
+    <radialGradient id="m" cx=".34" cy=".28" r=".85"><stop offset="0" stop-color="${a}"/><stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></radialGradient>
+    <path id="t" d="M20 60a40 40 0 0 1 80 0"/></defs>
+    <circle cx="60" cy="60" r="59" fill="url(#m)"/>
+    <circle cx="60" cy="60" r="56" fill="none" stroke="${c}" stroke-width="2.4" stroke-dasharray="1.2 1.9" opacity=".7"/>
+    <circle cx="60" cy="60" r="49" fill="${m.enamel}" stroke="${c}" stroke-width="2.5"/>
+    <circle cx="60" cy="60" r="36" fill="${m.field}" stroke="${b}" stroke-width="2"/>
+    <text font-family="Georgia,serif" font-weight="700" font-size="8.6" letter-spacing="2.2" fill="${a}"><textPath href="#t" startOffset="50%" text-anchor="middle">ORRFM · HUNT</textPath></text>
+    <path d="M24 70l1.6 4 4.4.3-3.4 2.8 1.1 4.3-3.7-2.4-3.7 2.4 1.1-4.3-3.4-2.8 4.4-.3zM96 70l1.6 4 4.4.3-3.4 2.8 1.1 4.3-3.7-2.4-3.7 2.4 1.1-4.3-3.4-2.8 4.4-.3z" fill="${a}"/>
+    <g transform="translate(40 40)">${ICONS[id].replaceAll("INK", ink)}</g>
+    <ellipse cx="44" cy="30" rx="26" ry="11" fill="#fff" opacity=".13" transform="rotate(-28 44 30)"/></svg>`);
+}
+function medalBack(id) {
+  const m = MEDAL[id], [a, b, c] = METALS[m.metal], words = m.name.toUpperCase().split(" ");
+  const lines = words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")] : words;
+  const y0 = lines.length > 1 ? 56 : 64;
+  return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs>
+    <radialGradient id="m" cx=".66" cy=".3" r=".85"><stop offset="0" stop-color="${a}"/><stop offset=".6" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></radialGradient></defs>
+    <circle cx="60" cy="60" r="59" fill="url(#m)"/>
+    <circle cx="60" cy="60" r="56" fill="none" stroke="${c}" stroke-width="2.4" stroke-dasharray="1.2 1.9" opacity=".7"/>
+    <circle cx="60" cy="60" r="49" fill="none" stroke="${c}" stroke-width="1.6"/>
+    <g font-family="Georgia,serif" text-anchor="middle" fill="${c}">
+      <text x="60" y="34" font-size="9" letter-spacing="2.4">ORRFM</text>
+      ${lines.map((l, i) => `<text x="60.6" y="${y0 + i * 15 + .7}" font-size="12.5" font-weight="700" fill="${a}" opacity=".8">${l}</text><text x="60" y="${y0 + i * 15}" font-size="12.5" font-weight="700">${l}</text>`).join("")}
+      <text x="60" y="88" font-size="6.8" letter-spacing="1.4">SCAVENGER HUNT</text></g>
+    <path d="M60 99l1.4 3 3.2.3-2.4 2 .8 3.1-3-1.7-3 1.7.8-3.1-2.4-2 3.2-.3z" fill="${c}"/></svg>`);
+}
+let hunt = { medals: [], total: MEDAL_IDS.length, golden: "none", coins: 0 }, huntShown = "", huntPrev = null;
+function showHunt(h) {
+  if (h) hunt = h;
+  const got = new Map(hunt.medals.map((m) => [m.id, m.at])), key = JSON.stringify([...got.keys(), hunt.golden, hunt.coins]);
+  if (key === huntShown) return;
+  const fresh = huntPrev ? [...got.keys()].filter((id) => !huntPrev.has(id)) : [];   // just earned: it drops into its slot
+  huntShown = key; huntPrev = new Set(got.keys());
+  // earned ones in the order they came, the rest empty: nothing says what's still out there
+  const order = [...got.keys()].filter((id) => MEDAL[id]);
+  $("medals").replaceChildren(...MEDAL_IDS.map((_, i) => {
+    const id = order[i], slot = el(id ? "button" : "span", "mslot" + (id ? " got" : ""));
+    slot.setAttribute("role", "listitem");
+    if (id) {
+      slot.type = "button"; slot.setAttribute("aria-label", `${MEDAL[id].name} medal`);
+      const f = el("span", "mface"); f.style.setProperty("--f", medalFront(id)); slot.append(f);
+      if (fresh.includes(id)) slot.classList.add("new");
+      slot.onclick = () => viewMedal(id, slot, got.get(id));
+    } else slot.setAttribute("aria-label", "A medal still to find");
+    return slot;
+  }));
+  const done = got.size >= hunt.total;
+  $("huntRibbon").hidden = !done;
+  $("huntSay").textContent = done ? (hunt.golden === "used" ? "Every medal found, and the golden quarter spent. Well hunted."
+                                                            : "Every medal found! Your golden quarter is up by the coins: spend it on one more song.")
+    : "The radio hides a few surprises. Make them happen to earn medals, and find them all for a golden quarter: one more song.";
+  const g = document.querySelector("#slots .ghost");
+  g.className = "ghost" + (hunt.golden === "ready" ? " golden" : hunt.coins > 0 ? " coin" : hunt.golden === "used" ? " gone" : "");
+  g.title = hunt.golden === "ready" ? "Your golden quarter" : hunt.coins > 0 ? "A quarter on the house" : "Earn another quarter";
+}
+// earned on this phone, waiting for the Worker (kept if a poll or the network fails)
+function pendingMedals() { try { return JSON.parse(localStorage.getItem("mfm_medals_due") || "[]"); } catch { return []; } }
+function setPending(list) { try { localStorage.setItem("mfm_medals_due", JSON.stringify(list)); } catch {} }
+async function earn(id) {
+  if (!MEDAL[id] || hunt.medals.some((m) => m.id === id)) return;
+  if (!pendingMedals().includes(id)) setPending([...pendingMedals(), id]);
+  try {
+    const r = await api("/api/medal", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ medal: id }), signal: AbortSignal.timeout(10000) });
+    if (!r.ok || !r.hunt) return;
+    setPending(pendingMedals().filter((x) => x !== id));
+    const wasDone = hunt.medals.length >= hunt.total;
+    showHunt(r.hunt);
+    toast(`🏅 Scavenger hunt: ${MEDAL[id].name}!`);
+    if (!wasDone && r.hunt.medals.length >= r.hunt.total)
+      setTimeout(() => toast("🏅 Every medal! A golden quarter is yours: one more song."), 3200);
+    showLimits();
+  } catch {}
+}
+function flushMedals() { for (const id of pendingMedals()) earn(id); }
+// a medal up close: up out of its slot spinning, then hanging in the air cocked, turning slowly; drag to turn it
+function viewMedal(id, slot, at) {
+  const m = MEDAL[id], view = el("div", "mview"), stage = el("div", "mview-stage"), coin = el("div", "m3d");
+  coin.style.setProperty("--f", medalFront(id)); coin.style.setProperty("--b", medalBack(id));
+  const [, mid, dark] = METALS[m.metal];
+  coin.style.setProperty("--r1", mid); coin.style.setProperty("--r2", dark);
+  for (let z = -4.5; z <= 4.5; z += 1.5) { const d = el("s"); d.style.setProperty("--z", `${z}px`); coin.append(d); }
+  stage.append(coin);
+  const cap = el("div", "mview-cap"), when = at ? new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
+  cap.append(el("h3", null, m.name), el("p", null, m.desc), el("p", "why", m.why + (when ? ` (${when})` : "")));
+  const close = el("button", "sleeve-close"); close.type = "button"; close.setAttribute("aria-label", "Put it back");
+  close.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>';
+  view.append(stage, cap, close); document.body.append(view);
+  const from = slot.getBoundingClientRect(), to = stage.getBoundingClientRect();
+  const dx0 = from.left + from.width / 2 - (to.left + to.width / 2), dy0 = from.top + from.height / 2 - (to.top + to.height / 2), s0 = from.width / to.width;
+  let angle = 0, vel = 1500, drag = null, closing = null, t0 = performance.now(), last = t0, raf = 0;
+  const frame = (now) => {
+    const dt = Math.min(.05, (now - last) / 1000); last = now;
+    const k = Math.min(1, (now - t0) / 900), e = 1 - (1 - k) ** 3;   // out of the slot, easing into place
+    let x = dx0 * (1 - e), y = dy0 * (1 - e) - Math.sin(k * Math.PI) * 60, sc = s0 + (1 - s0) * e, tilt = e;
+    if (closing) {   // back into its slot: face up, shrinking down to it
+      const c = Math.min(1, (now - closing.t) / 600), ce = c * c;
+      x = dx0 * ce; y = dy0 * ce; sc = 1 + (s0 - 1) * ce; tilt = 1 - ce;
+      angle += (closing.to - angle) * Math.min(1, dt * 10);
+      if (c >= 1) { cancelAnimationFrame(raf); view.remove(); return; }
+    } else if (!drag) {
+      vel += ((vel >= 0 ? 32 : -32) - vel) * Math.min(1, dt * 1.6);   // the spin dies down to a slow turn
+      angle += vel * dt;
+    }
+    const bob = closing ? 0 : Math.sin(now / 900) * 5 * e;
+    coin.style.transform = `translate(${x.toFixed(1)}px, ${(y + bob).toFixed(1)}px) scale(${sc.toFixed(3)}) rotateZ(${(-9 * tilt).toFixed(2)}deg) rotateX(${(12 * tilt).toFixed(2)}deg) rotateY(${angle.toFixed(1)}deg)`;
+    raf = requestAnimationFrame(frame);
+  };
+  raf = requestAnimationFrame(frame);
+  stage.addEventListener("pointerdown", (e) => { if (closing) return; drag = { x: e.clientX, t: e.timeStamp }; stage.setPointerCapture(e.pointerId); coin.style.cursor = "grabbing"; });
+  stage.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const d = e.clientX - drag.x, dt = Math.max(1, e.timeStamp - drag.t);
+    angle += d * .7; vel = (d * .7) / (dt / 1000); drag = { x: e.clientX, t: e.timeStamp };
+  });
+  const letGo = () => { drag = null; coin.style.cursor = ""; vel = Math.max(-900, Math.min(900, vel)); };
+  stage.addEventListener("pointerup", letGo); stage.addEventListener("pointercancel", letGo);
+  const putBack = () => { if (closing) return; closing = { t: performance.now(), to: Math.round(angle / 360) * 360 }; view.classList.add("closing"); };
+  close.onclick = putBack;
+  view.addEventListener("click", (e) => { if (e.target === view) putBack(); });
+}
+// the Orrdle sign: tarnished until it's rubbed; enough rubbing and it gleams (and that's a medal)
+(() => {
+  const word = document.querySelector(".plank-word");
+  let tarn = 1, prev = null;
+  try { if (localStorage.getItem("mfm_polished")) tarn = 0; } catch {}
+  word.style.setProperty("--tarn", tarn);
+  const glint = () => {
+    const r = word.getBoundingClientRect();
+    for (let n = 0; n < 9; n++) {
+      const g = fxBit("glint", r.left + Math.random() * r.width - 7, r.top + Math.random() * r.height - 7);
+      g.textContent = "✦";
+      g.animate([{ transform: "scale(0) rotate(0)", opacity: 0 }, { transform: "scale(1.3) rotate(90deg)", opacity: 1, offset: .4 },
+                 { transform: "scale(0) rotate(180deg)", opacity: 0 }], { duration: 700 + Math.random() * 500, delay: Math.random() * 500, fill: "backwards" })
+        .onfinish = () => g.remove();
+    }
+  };
+  word.addEventListener("pointerdown", (e) => { prev = e.clientX; });
+  word.addEventListener("pointermove", (e) => {
+    if (prev == null || tarn <= 0) return;
+    if (e.pointerType === "mouse" && !e.buttons) { prev = null; return; }
+    tarn = Math.max(0, tarn - Math.abs(e.clientX - prev) / 1400); prev = e.clientX;
+    word.style.setProperty("--tarn", tarn.toFixed(3));
+    if (tarn <= 0) { glint(); earn("polish"); try { localStorage.setItem("mfm_polished", "1"); } catch {} }
+  });
+  for (const ev of ["pointerup", "pointercancel", "pointerleave"]) word.addEventListener(ev, () => { prev = null; });
+  word.addEventListener("click", () => { if (tarn <= 0) glint(); });   // a polished sign still catches the light
+})();
+// the four screws all spinning inside ten seconds
+const screwSpins = new Map();
+document.querySelectorAll(".screw").forEach((sc) => sc.addEventListener("click", () => {
+  screwSpins.set(sc, Date.now());
+  if (screwSpins.size === 4 && [...screwSpins.values()].every((t) => Date.now() - t < 10000)) earn("screws");
+}));
 // Hotfixes: each poll carries a fingerprint of this page as deployed. When it changes, the page swaps itself
 // for the new one at a quiet moment: while the phone is locked or in another app, or after a minute and a half
 // untouched with nothing typed and nothing open. The scroll position comes back; nobody is asked to refresh.

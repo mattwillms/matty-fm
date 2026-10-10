@@ -20,6 +20,8 @@ const PAD_GAPS_S = [0, 5, 20, 60];   // the whole house shares the buttons: one 
 // Orrdle (the family Wordle): the answers. Testing list; the real one comes from the host.
 const ORRDLE_WORDS = ["LUCAS", "SETHY", "MARIE", "MATTY", "JULIE", "JULIA", "JAMES", "NANCY", "SHAWN", "BYRON", "AARON",
   "GRIFF", "SARAH", "RYLEE", "TYLER", "JEFFY", "LYDIA", "FLORA", "REBEL", "DAWGS", "CAJUN"];
+// The scavenger hunt: a medal for each hidden animation a guest makes happen. All of them: a golden quarter.
+export const MEDALS = ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"] as const;
 const TALK_S = 15;            // the DJ's intro and the crossfade, per song: for the wait estimate
 const JOKE_S = 25;            // a joke or announcement read between songs
 const PREP_S = 90;            // a song nobody's waiting behind still has to be found and downloaded
@@ -61,7 +63,8 @@ const year = (y: unknown) => (/^(19|20)\d\d$/.test(String(y ?? "")) ? String(y) 
 
 export class Party extends DurableObject<Env> {
   sql: SqlStorage;
-  private turns: { at: number; ordered: Waiting[] } | null = null;   // the line's order for wait estimates (cached)
+  private turns: { at: number; ordered: Waiting[] } | null = null;
+  private seenAt = new Map<string, number>();   // device -> last time its visit was written (at most once a minute)   // the line's order for wait estimates (cached)
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -87,6 +90,9 @@ export class Party extends DurableObject<Env> {
         id TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT NOT NULL, text TEXT NOT NULL,
         status TEXT NOT NULL, created_at INTEGER NOT NULL, lease_until INTEGER DEFAULT 0,
         file TEXT, seconds REAL, script TEXT, played_at INTEGER, ip TEXT);
+      CREATE TABLE IF NOT EXISTS medals(device TEXT NOT NULL, medal TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(device, medal));
+      CREATE TABLE IF NOT EXISTS bonus(device TEXT PRIMARY KEY, coins INTEGER NOT NULL DEFAULT 0, golden_used INTEGER NOT NULL DEFAULT 0);
+      CREATE TABLE IF NOT EXISTS devices(device TEXT PRIMARY KEY, first_at INTEGER NOT NULL, last_at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS orrdle(id TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT NOT NULL, word TEXT NOT NULL,
         started INTEGER NOT NULL, ended INTEGER, won INTEGER, guesses INTEGER);
       CREATE TABLE IF NOT EXISTS parties(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, start INTEGER NOT NULL,
@@ -100,7 +106,7 @@ export class Party extends DurableObject<Env> {
                                 ["jokes", "kind TEXT DEFAULT 'joke'"], ["jokes", "urgent INTEGER DEFAULT 0"],
                                 ["jokes", "source TEXT DEFAULT 'guest'"],
                                 ["items", "ended_at INTEGER"], ["items", "skipped INTEGER DEFAULT 0"], ["jokes", "ended_at INTEGER"],
-                                ["jokes", "anon INTEGER DEFAULT 0"], ["orrdle", "tries TEXT DEFAULT '[]'"]]) {
+                                ["jokes", "anon INTEGER DEFAULT 0"], ["orrdle", "tries TEXT DEFAULT '[]'"], ["requesters", "paid TEXT"]]) {
       try {
         this.sql.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`);
       } catch {
@@ -226,9 +232,12 @@ export class Party extends DurableObject<Env> {
       return { ok: false, error: "Type the song's name in words." };
     if (!asAdmin && s.track?.explicit === true && this.flags().familyMode)
       return { ok: false, error: "Family mode is on: pick the clean version." };
+    let spend: "golden" | "coin" | null = null;   // a locked phone with an extra quarter spends it on this one
     if (!asAdmin && !this.flags().freePlay) {
       const lim = this.songLimit(device);
-      if (lim.locked)
+      if (lim.locked && lim.extra.golden) spend = "golden";
+      else if (lim.locked && lim.extra.coins) spend = "coin";
+      else if (lim.locked)
         return { ok: false, error: lim.max === 1 ? "The line is long: one song at a time. Yours plays first!"
                                  : lim.active === 1 ? "Your other song plays first. Then you can pick two more!"
                                                     : "You have 2 songs coming up. Once both play, pick two more!" };
@@ -267,8 +276,10 @@ export class Party extends DurableObject<Env> {
         Number.isFinite(ms) && ms > 0 && ms < 3_600_000 ? Math.round(ms) : null, safeArtwork(t?.artwork),
         t?.explicit === true ? 1 : 0, s.freeText === true ? 1 : 0, rank, now);
     }
-    this.sql.exec("INSERT INTO requesters(item_id,device,name,message,created_at,ip) VALUES(?,?,?,?,?,?)",
-      id, device, name, message, now, ip);
+    this.sql.exec("INSERT INTO requesters(item_id,device,name,message,created_at,ip,paid) VALUES(?,?,?,?,?,?,?)",
+      id, device, name, message, now, ip, spend);
+    if (spend === "golden") this.sql.exec("INSERT INTO bonus(device, golden_used) VALUES(?,1) ON CONFLICT(device) DO UPDATE SET golden_used=1", device);
+    if (spend === "coin") this.sql.exec("UPDATE bonus SET coins=coins-1 WHERE device=? AND coins>0", device);
     const after = this.songLimit(device);
     if (!asAdmin && !this.flags().freePlay && after.active >= after.max)   // every slot used: none again until all play
       this.sql.exec("INSERT OR IGNORE INTO song_locks(device) VALUES(?)", device);
@@ -287,16 +298,16 @@ export class Party extends DurableObject<Env> {
    *  requesters and messages, play history, muted phones, settings. Commands are left behind (stale). */
   async exportState() {
     const table = (t: string) => this.all(`SELECT * FROM ${t}`);
-    return { items: table("items"), requesters: table("requesters"), settings: table("settings"), muted: table("muted"), parties: table("parties"), jokes: table("jokes"), airlog: table("airlog"), song_locks: table("song_locks"), song_release: table("song_release") };
+    return { items: table("items"), requesters: table("requesters"), settings: table("settings"), muted: table("muted"), parties: table("parties"), medals: table("medals"), bonus: table("bonus"), devices: table("devices"), jokes: table("jokes"), airlog: table("airlog"), song_locks: table("song_locks"), song_release: table("song_release") };
   }
 
   /** Takes over an old queue's state, once, and only into an empty queue (ids are kept, so the
    *  console's song on air and every phone's "Your requests" still match). */
-  async importState(data: { items?: Row[]; requesters?: Row[]; settings?: Row[]; muted?: Row[]; jokes?: Row[]; airlog?: Row[]; song_locks?: Row[]; song_release?: Row[]; parties?: Row[] }) {
+  async importState(data: { items?: Row[]; requesters?: Row[]; settings?: Row[]; muted?: Row[]; jokes?: Row[]; airlog?: Row[]; song_locks?: Row[]; song_release?: Row[]; parties?: Row[]; medals?: Row[]; bonus?: Row[]; devices?: Row[] }) {
     if (this.one("SELECT 1 AS x FROM items LIMIT 1") || this.one("SELECT 1 AS x FROM requesters LIMIT 1"))
       return { ok: false, error: "this queue isn't empty" };
     let n = 0;
-    for (const t of ["items", "requesters", "settings", "muted", "jokes", "airlog", "song_locks", "song_release", "parties"] as const) {
+    for (const t of ["items", "requesters", "settings", "muted", "jokes", "airlog", "song_locks", "song_release", "parties", "medals", "bonus", "devices"] as const) {
       const cols = new Set(this.all(`PRAGMA table_info(${t})`).map((c) => String(c.name)));
       for (const row of Array.isArray(data?.[t]) ? data[t]! : []) {
         const keys = Object.keys(row).filter((k) => cols.has(k));   // only columns this schema has
@@ -458,8 +469,11 @@ export class Party extends DurableObject<Env> {
       return { ok: false, error: "That request isn't yours to cancel." };
     if (!["pending", "preparing", "ready", "queued", "held"].includes(String(it.status)))
       return { ok: false, error: it.status === "playing" ? "It's already on air!" : "That one is done already." };
+    const paid = this.one("SELECT paid FROM requesters WHERE item_id=? AND device=?", id, device)?.paid;
     this.sql.exec("DELETE FROM requesters WHERE item_id=? AND device=?", id, device);
     this.sql.exec("DELETE FROM song_locks WHERE device=?", device);   // a cancel gives the slot back
+    if (paid === "golden") this.sql.exec("UPDATE bonus SET golden_used=0 WHERE device=?", device);   // and the quarter it cost
+    if (paid === "coin") this.sql.exec("UPDATE bonus SET coins=coins+1 WHERE device=?", device);
     if (!this.one("SELECT 1 AS r FROM requesters WHERE item_id=?", id)) {
       this.sql.exec("UPDATE items SET status='deleted', ended_at=? WHERE id=?", Date.now(), id);
       if (it.status === "queued") this.command("clear");
@@ -510,7 +524,27 @@ export class Party extends DurableObject<Env> {
       if (active === 0) this.sql.exec("DELETE FROM song_locks WHERE device=?", device);   // both played: free again
       else locked = true;
     }
-    return { active, locked, max };
+    return { active, locked, max, extra: this.extra(device) };
+  }
+
+  /** Quarters beyond the usual two: the scavenger hunt's golden one (once, when every medal is in) and any the host gave. */
+  private extra(device: string) {
+    const b = this.one("SELECT coins, golden_used FROM bonus WHERE device=?", device);
+    const complete = Number(this.one("SELECT COUNT(*) AS n FROM medals WHERE device=?", device)?.n ?? 0) >= MEDALS.length;
+    return { golden: complete && !Number(b?.golden_used ?? 0), goldenUsed: Boolean(Number(b?.golden_used ?? 0)), coins: Number(b?.coins ?? 0) };
+  }
+
+  /** A medal earned: the page saw the animation happen. Once each; the last one brings the golden quarter. */
+  async earnMedal(device: string, medal: unknown) {
+    if (!MEDALS.includes(medal as (typeof MEDALS)[number])) return { ok: false, error: "No such medal." };
+    this.sql.exec("INSERT OR IGNORE INTO medals(device, medal, at) VALUES(?,?,?)", device, String(medal), Date.now());
+    return { ok: true, hunt: this.hunt(device) };
+  }
+
+  private hunt(device: string) {
+    const got = this.all("SELECT medal, at FROM medals WHERE device=? ORDER BY at", device).map((m) => ({ id: String(m.medal), at: Number(m.at) }));
+    const x = this.extra(device);
+    return { medals: got, total: MEDALS.length, golden: x.golden ? "ready" : x.goldenUsed ? "used" : "none", coins: x.coins };
   }
 
   /** How many times this phone has asked for this song tonight (a cancelled ask doesn't count). */
@@ -559,6 +593,12 @@ export class Party extends DurableObject<Env> {
   }
 
   async guestState(device: string) {
+    const nowMs = Date.now();
+    if (nowMs - (this.seenAt.get(device) ?? 0) > 60_000) {   // the host's guest list: first and last seen
+      this.seenAt.set(device, nowMs);
+      this.sql.exec("INSERT INTO devices(device, first_at, last_at) VALUES(?,?,?) ON CONFLICT(device) DO UPDATE SET last_at=excluded.last_at",
+        device, nowMs, nowMs);
+    }
     const waiting = this.display();
     const np = this.nowPlaying();
     const est = this.waits(waiting, device, np && !np.soma ? (np as { endsInS: number | null }).endsInS : null);
@@ -572,6 +612,7 @@ export class Party extends DurableObject<Env> {
     return {
       nowPlaying: np,
       waitS: est.newS,   // a request sent now: roughly when it starts, in seconds from now
+      hunt: this.hunt(device),
       upNext: this.lineup(waiting.slice(0, 6).map((i) => this.pub(i))),
       waitingCount: waiting.length,
       mine: mine.map((i) => ({ ...this.pub(i), status: String(i.status), skipped: Boolean(i.skipped),
@@ -810,7 +851,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "orrdle-2",
+      code: "hunt-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -886,6 +927,38 @@ export class Party extends DurableObject<Env> {
           return { ok: false, error: "no such joke waiting" };
         this.sql.exec("UPDATE jokes SET status='deleted', ended_at=? WHERE id=?", Date.now(), String(a.id));
         return { ok: true };
+      case "guests": {   // every phone that opened the page this party, newest visit first
+        const list = this.all("SELECT * FROM devices ORDER BY last_at DESC LIMIT 300").map((d) => {
+          const dev = String(d.device), n = (q: string) => Number(this.one(q, dev)?.n ?? 0);
+          const names = [...new Set([
+            ...this.all("SELECT name FROM requesters WHERE device=? ORDER BY id DESC LIMIT 5", dev),
+            ...this.all("SELECT name FROM jokes WHERE device=? ORDER BY created_at DESC LIMIT 5", dev),
+            ...this.all("SELECT name FROM orrdle WHERE device=? ORDER BY started DESC LIMIT 5", dev)].map((r) => String(r.name)).filter(Boolean))];
+          const x = this.extra(dev);
+          return { device: dev, names, firstAt: Number(d.first_at), lastAt: Number(d.last_at),
+                   requests: n("SELECT COUNT(*) AS n FROM requesters WHERE device=?"),
+                   played: n("SELECT COUNT(*) AS n FROM requesters r JOIN items i ON i.id=r.item_id WHERE r.device=? AND i.status='played'"),
+                   waiting: n(`SELECT COUNT(*) AS n FROM requesters r JOIN items i ON i.id=r.item_id WHERE r.device=? AND i.status IN ${WAITING}`),
+                   messages: n("SELECT COUNT(*) AS n FROM jokes WHERE device=?"),
+                   orrdle: n("SELECT COUNT(*) AS n FROM orrdle WHERE device=?"),
+                   medals: n("SELECT COUNT(*) AS n FROM medals WHERE device=?"),
+                   coins: x.coins, golden: x.golden ? "ready" : x.goldenUsed ? "used" : "none",
+                   muted: Boolean(this.one("SELECT 1 AS m FROM muted WHERE device=?", dev)),
+                   locked: this.songLimit(dev).locked };
+        });
+        return { ok: true, guests: list, medals: MEDALS.length };
+      }
+      case "giveCoin":   // one more song for this phone, on the house
+        if (!a.device) return { ok: false, error: "no such phone" };
+        this.sql.exec("INSERT INTO bonus(device, coins) VALUES(?,1) ON CONFLICT(device) DO UPDATE SET coins=coins+1", a.device);
+        return { ok: true };
+      case "takeCoin":
+        this.sql.exec("UPDATE bonus SET coins=coins-1 WHERE device=? AND coins>0", a.device ?? "");
+        return { ok: true };
+      case "resetHunt":   // this phone's medals and golden quarter, from scratch
+        this.sql.exec("DELETE FROM medals WHERE device=?", a.device ?? "");
+        this.sql.exec("UPDATE bonus SET golden_used=0 WHERE device=?", a.device ?? "");
+        return { ok: true };
       case "partyStart":   // the host's party clock: from now (a restart starts it over)
         this.set("partyStart", String(Date.now()));
         this.sql.exec("DELETE FROM settings WHERE key='partyEnd'");
@@ -923,9 +996,10 @@ export class Party extends DurableObject<Env> {
         this.command("replay", a.id!);
         return { ok: true };
       case "reset": {   // a fresh party: every song, guest, message and limit goes; settings and the id counter stay
+        this.seenAt.clear();
         const onAir = this.one("SELECT id FROM items WHERE status='playing' LIMIT 1");
         const held = this.one("SELECT 1 AS q FROM items WHERE status='queued' LIMIT 1");
-        for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands", "orrdle"])
+        for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands", "orrdle", "medals", "bonus", "devices"])
           this.sql.exec(`DELETE FROM ${t}`);
         if (onAir) this.command("skip", String(onAir.id));   // the console drops the old party's song and pushed item
         if (held) this.command("clear");

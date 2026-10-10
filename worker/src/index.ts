@@ -214,6 +214,13 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
       const { pad } = await body(req);
       return json(await party.guestPad(dev.id, pad), 200, extra);
     }
+    if (path === "/api/medal" && req.method === "POST") {   // the scavenger hunt: a medal the page saw earned
+      if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
+      const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+      if (!(await env.SUBMIT_LIMIT.limit({ key: `dev:${dev.id}` })).success || !(await env.IP_LIMIT.limit({ key: ip })).success)
+        return json({ ok: false, error: "Whoa, slow down! Try again in a minute." }, 429, extra);
+      return json(await party.earnMedal(dev.id, (await body(req)).medal), 200, extra);
+    }
     if ((path === "/api/orrdle/start" || path === "/api/orrdle/guess") && req.method === "POST") {   // the family Wordle
       if (!(await signedDevice(req, env))) return json({ ok: false, error: "Reload the page, then try again." }, 403, extra);
       const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
