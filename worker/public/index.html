@@ -2878,6 +2878,7 @@ function showHunt(h) {
     return slot;
   }));
   const done = got.size >= hunt.total;
+  if (window.signPolished) signPolished(got.has("polish") || pendingMedals().includes("polish"));
   $("huntRibbon").hidden = !done;
   $("hunt").classList.toggle("done", done);
   $("huntSay").textContent = done ? (hunt.golden === "used" ? "Every medal found, and the golden quarter spent. Well hunted."
@@ -2992,9 +2993,13 @@ function sparkleAround(target, n, inset = .1, host = document.body) {   // n spa
 (() => {
   const word = document.querySelector(".plank-word");
   let tarn = 1, prev = null, lastSpark = 0;
-  try { if (localStorage.getItem("mfm_polished")) tarn = 0; } catch {}
+  try { localStorage.removeItem("mfm_polished"); } catch {}   // the medal (on the server) says whether it's been polished, not this phone
   word.style.setProperty("--tarn", tarn);
-  word.classList.toggle("shiny", tarn <= 0);
+  // polished exactly when the Elbow Grease medal is earned: a hunt reset tarnishes it again
+  window.signPolished = (on) => {
+    if (on === (tarn <= 0) || prev != null) return;   // no change, or someone's rubbing it right now
+    tarn = on ? 0 : 1; word.style.setProperty("--tarn", tarn); word.classList.toggle("shiny", on);
+  };
   const gleam = () => { word.classList.remove("gleaming"); void word.offsetWidth; word.classList.add("gleaming"); };
   const plank = word.closest(".plank");
   const shine = (n) => { gleam(); sparkleAround(word, n, .05, plank); };
@@ -3007,7 +3012,7 @@ function sparkleAround(target, n, inset = .1, host = document.body) {   // n spa
     if (tarn > 0) {
       tarn = Math.max(0, tarn - moved / 1400);
       word.style.setProperty("--tarn", tarn.toFixed(3));
-      if (tarn <= 0) { word.classList.add("shiny"); shine(10); earn("polish"); try { localStorage.setItem("mfm_polished", "1"); } catch {} }
+      if (tarn <= 0) { word.classList.add("shiny"); shine(10); earn("polish"); }
     } else if (performance.now() - lastSpark > 140) {   // polished: rubbing throws sparkles, never dulls it
       lastSpark = performance.now();
       const r = word.getBoundingClientRect();
