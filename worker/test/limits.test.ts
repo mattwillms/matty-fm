@@ -442,3 +442,24 @@ describe("party clock", () => {
     expect(((await p.adminAction({ action: "archive" })) as { parties: unknown[] }).parties).toEqual([]);
   });
 });
+
+describe("orrdle", () => {
+  it("deals a name the phone hasn't had, times the game on the server, and keeps each guest's record", async () => {
+    const p = stub("orrdle-1");
+    const seen = new Set<string>();
+    for (let i = 0; i < 3; i++) {
+      const g = await p.orrdleStart("d1", "Ann");
+      expect(g.word).toMatch(/^[A-Z]{5}$/);
+      expect(seen.has(g.word!)).toBe(false);   // a fresh name each time
+      seen.add(g.word!);
+      await p.orrdleEnd("d1", { id: g.id, won: i < 2, guesses: i + 2 });
+    }
+    const g = await p.orrdleStart("d1", "Ann");
+    expect(g.stats).toMatchObject({ played: 3, wins: 2, streak: 0, dist: [0, 1, 1, 0, 0, 0] });
+    expect((await p.orrdleEnd("d2", { id: g.id, won: true, guesses: 1 })).stats!.played).toBe(0);   // not your game
+    expect((await p.orrdleEnd("d1", { id: g.id, won: true, guesses: 9 })).ok).toBe(false);
+    await p.orrdleEnd("d1", { id: g.id, won: true, guesses: 1 });
+    const { stats } = (await p.adminAction({ action: "stats" })) as { stats: { orrdle: { plays: number; wins: number; players: number; fewest: { name: string; guesses: number } } } };
+    expect(stats.orrdle).toMatchObject({ plays: 4, wins: 3, players: 1, fewest: { name: "Ann", guesses: 1 } });
+  });
+});

@@ -17,6 +17,9 @@ const MAX_WAITING_PER_DEVICE = 2;
 const MAX_ASKS_PER_SONG = 2;
 const PAD_EVERY_MS = 60_000;   // a guest's preset buttons: one sound a minute per phone
 const PAD_GAPS_S = [0, 5, 20, 60];   // the whole house shares the buttons: one sound per gap (admin; 0 = buttons off)
+// Orrdle (the family Wordle): the answers. Testing list; the real one comes from the host.
+const ORRDLE_WORDS = ["LUCAS", "SETHY", "MARIE", "MATTY", "JULIE", "JULIA", "JAMES", "NANCY", "SHAWN", "BYRON", "AARON",
+  "GRIFF", "SARAH", "RYLEE", "TYLER", "JEFFY", "LYDIA", "FLORA", "REBEL", "DAWGS", "CAJUN"];
 const TALK_S = 15;            // the DJ's intro and the crossfade, per song: for the wait estimate
 const JOKE_S = 25;            // a joke or announcement read between songs
 const PREP_S = 90;            // a song nobody's waiting behind still has to be found and downloaded
@@ -84,6 +87,8 @@ export class Party extends DurableObject<Env> {
         id TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT NOT NULL, text TEXT NOT NULL,
         status TEXT NOT NULL, created_at INTEGER NOT NULL, lease_until INTEGER DEFAULT 0,
         file TEXT, seconds REAL, script TEXT, played_at INTEGER, ip TEXT);
+      CREATE TABLE IF NOT EXISTS orrdle(id TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT NOT NULL, word TEXT NOT NULL,
+        started INTEGER NOT NULL, ended INTEGER, won INTEGER, guesses INTEGER);
       CREATE TABLE IF NOT EXISTS parties(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, start INTEGER NOT NULL,
         end INTEGER NOT NULL, stats TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS commands(
@@ -117,7 +122,9 @@ export class Party extends DurableObject<Env> {
       CREATE INDEX IF NOT EXISTS airlog_at ON airlog(at);
       CREATE INDEX IF NOT EXISTS commands_open ON commands(done, type);
       CREATE INDEX IF NOT EXISTS pad_device ON pad_presses(device, at);
-      CREATE INDEX IF NOT EXISTS pad_at ON pad_presses(at);`);
+      CREATE INDEX IF NOT EXISTS pad_at ON pad_presses(at);
+      CREATE INDEX IF NOT EXISTS orrdle_device ON orrdle(device, started);
+      CREATE INDEX IF NOT EXISTS orrdle_started ON orrdle(started);`);
   }
 
   // ---------- helpers ----------
@@ -354,6 +361,58 @@ export class Party extends DurableObject<Env> {
     if (r.isJoke === true && !this.flags().freePlay)
       this.sql.exec("UPDATE jokes SET kind='joke', urgent=0 WHERE id=? AND source='guest' AND urgent=1", String(r.id));
     return { ok: true };
+  }
+
+  /** A new Orrdle game: a name from the list this phone hasn't had yet (any, once it's had them all). The server
+   *  keeps the clock, so the fastest win is fair. */
+  async orrdleStart(device: string, name: unknown) {
+    if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Games are paused for this phone." };
+    const had = new Set(this.all("SELECT word FROM orrdle WHERE device=?", device).map((r) => String(r.word)));
+    const fresh = ORRDLE_WORDS.filter((w) => !had.has(w));
+    const pool = fresh.length ? fresh : ORRDLE_WORDS;
+    const word = pool[Math.floor(Math.random() * pool.length)];
+    const id = "o" + this.newId().slice(1);
+    this.sql.exec("INSERT INTO orrdle(id, device, name, word, started) VALUES(?,?,?,?,?)", id, device, clean(name, 40) || "a guest", word, Date.now());
+    return { ok: true, id, word, stats: this.orrdleMine(device) };
+  }
+
+  /** A game over: won in so many guesses, or not. Only this phone's own unfinished game counts. */
+  async orrdleEnd(device: string, g: { id?: unknown; won?: unknown; guesses?: unknown }) {
+    const n = Number(g?.guesses);
+    if (!Number.isInteger(n) || n < 1 || n > 6) return { ok: false, error: "That game didn't add up." };
+    this.sql.exec("UPDATE orrdle SET ended=?, won=?, guesses=? WHERE id=? AND device=? AND ended IS NULL",
+      Date.now(), g?.won === true ? 1 : 0, n, String(g?.id ?? ""), device);
+    return { ok: true, stats: this.orrdleMine(device) };
+  }
+
+  /** A guest's own Orrdle record, as Wordle shows it: played, won, streak, best time, guesses per win. */
+  private orrdleMine(device: string) {
+    const games = this.all("SELECT won, guesses, started, ended FROM orrdle WHERE device=? AND ended IS NOT NULL ORDER BY started", device);
+    const wins = games.filter((x) => Number(x.won));
+    let streak = 0;
+    for (let i = games.length - 1; i >= 0 && Number(games[i].won); i--) streak++;
+    const dist = [1, 2, 3, 4, 5, 6].map((k) => wins.filter((x) => Number(x.guesses) === k).length);
+    const best = wins.length ? Math.min(...wins.map((x) => Number(x.ended) - Number(x.started))) : null;
+    return { played: games.length, wins: wins.length, streak, bestMs: best, dist };
+  }
+
+  /** The house's Orrdle night, for the host: since a time (the party's start). */
+  private orrdleHouse(since: number) {
+    const n = (q: string, ...b: SqlStorageValue[]) => Number(this.one(q, ...b)?.n ?? 0);
+    const fastest = this.one(`SELECT name, word, guesses, ended - started AS ms FROM orrdle WHERE won=1 AND started>=?
+      ORDER BY ms LIMIT 1`, since);
+    const fewest = this.one(`SELECT name, word, guesses, ended - started AS ms FROM orrdle WHERE won=1 AND started>=?
+      ORDER BY guesses, ms LIMIT 1`, since);
+    const top = this.all(`SELECT name, COUNT(*) AS wins, MIN(ended - started) AS ms FROM orrdle WHERE won=1 AND started>=?
+      GROUP BY device ORDER BY wins DESC, ms LIMIT 5`, since)
+      .map((x) => ({ name: String(x.name), wins: Number(x.wins), bestMs: Number(x.ms) }));
+    const pick = (x: Row | undefined) => x ? { name: String(x.name), word: String(x.word), guesses: Number(x.guesses), ms: Number(x.ms) } : null;
+    return {
+      plays: n("SELECT COUNT(*) AS n FROM orrdle WHERE started>=?", since),
+      wins: n("SELECT COUNT(*) AS n FROM orrdle WHERE won=1 AND started>=?", since),
+      players: n("SELECT COUNT(DISTINCT device) AS n FROM orrdle WHERE started>=?", since),
+      fastest: pick(fastest), fewest: pick(fewest), top,
+    };
   }
 
   /** A guest presses one of the radio's preset buttons: the matching sound pad plays on the PA. */
@@ -742,7 +801,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "party-fixes-3",
+      code: "orrdle-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -755,7 +814,7 @@ export class Party extends DurableObject<Env> {
   }
   /** The night so far, since the host pressed Start party (or since the first request). */
   private partyStats() {
-    const start = Number(this.setting("partyStart", "0")) || Number(this.one("SELECT MIN(created_at) AS t FROM items")?.t ?? Date.now());
+    const start = Number(this.setting("partyStart", "0")) || Number(this.one("SELECT MIN(created_at) AS t FROM items")?.t ?? 0);   // no party clock yet: the whole night
     const end = Number(this.setting("partyEnd", "0")) || Date.now();
     const n = (q: string, ...b: SqlStorageValue[]) => Number(this.one(q, ...b)?.n ?? 0);
     const waits = this.all(`SELECT started_at - created_at AS w FROM items WHERE status='played' AND started_at>0 AND created_at>=?
@@ -769,6 +828,7 @@ export class Party extends DurableObject<Env> {
                  UNION SELECT device FROM jokes WHERE created_at BETWEEN ?1 AND ?2 AND source='guest')`, start, end),
       messages: n("SELECT COUNT(*) AS n FROM jokes WHERE status='played' AND played_at BETWEEN ? AND ?", start, end),
       medianWaitMin: waits.length ? Math.round(waits[Math.floor(waits.length / 2)] / 60000) : null,
+      orrdle: this.orrdleHouse(start),
     };
   }
 
@@ -856,7 +916,7 @@ export class Party extends DurableObject<Env> {
       case "reset": {   // a fresh party: every song, guest, message and limit goes; settings and the id counter stay
         const onAir = this.one("SELECT id FROM items WHERE status='playing' LIMIT 1");
         const held = this.one("SELECT 1 AS q FROM items WHERE status='queued' LIMIT 1");
-        for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands"])
+        for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands", "orrdle"])
           this.sql.exec(`DELETE FROM ${t}`);
         if (onAir) this.command("skip", String(onAir.id));   // the console drops the old party's song and pushed item
         if (held) this.command("clear");
@@ -964,6 +1024,7 @@ export class Party extends DurableObject<Env> {
     this.sql.exec("UPDATE items SET dj_line=NULL");
     this.sql.exec("UPDATE jokes SET name='', text='', script=NULL, ip=NULL, device=''");
     this.sql.exec("UPDATE airlog SET text=''");
+    this.sql.exec("UPDATE orrdle SET name='', device=''");
     this.sql.exec("DELETE FROM settings WHERE key='health'");
   }
 }

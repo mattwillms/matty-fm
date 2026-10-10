@@ -545,9 +545,10 @@
      70s bedside radio. A ballpark: rounded to 5 minutes, and it only flips when the estimate moves by more */
   /* dark oxblood leather: pebbled grain lit from the upper left, a stitched border */
   .eta { position: relative; display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -6px 0 18px; padding: 12px 16px;
-         border-radius: 12px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='l' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeDiffuseLighting surfaceScale='1.6' lighting-color='%23ffffff'%3E%3CfeDistantLight azimuth='235' elevation='55'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23l)'/%3E%3C/svg%3E") 0 0 / 120px 120px, linear-gradient(#34160f, #26100b);
+         border-radius: 12px; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='l' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' seed='7' stitchTiles='stitch'/%3E%3CfeDiffuseLighting surfaceScale='1.6' lighting-color='%23ffffff'%3E%3CfeDistantLight azimuth='235' elevation='55'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23l)'/%3E%3C/svg%3E") 0 0 / 120px 120px, linear-gradient(#24100b, #180906);
          background-blend-mode: soft-light, normal; box-shadow: inset 0 1px 0 #ffffff12, 0 2px 6px #0007; }
-  .eta::before { content: ""; position: absolute; inset: 4px; border-radius: 9px; border: 1px dashed #a0603f66; pointer-events: none; }
+  .eta .stitch { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); pointer-events: none; overflow: visible; }
+  .eta .stitch rect { fill: none; stroke: #d9a679b0; stroke-width: 1.1; stroke-dasharray: 5 3.5; stroke-linecap: round; }
   .eta-say { margin: 0; color: var(--cream-dim); font-size: .95rem; line-height: 1.25; }
   .flip { display: flex; align-items: center; gap: 3px; flex: none; perspective: 160px; }
   .flip .fc { position: relative; display: grid; place-items: center; width: 27px; height: 38px; border-radius: 4px;
@@ -593,6 +594,66 @@
   .coin-send.returned .cq { animation: coinOut .4s ease-out; }
   @keyframes coinOut { from { transform: translateX(58px) rotateY(90deg); opacity: 0; } 50% { opacity: 1; } }
   .coin-send.busy .cs-do::after { content: "…"; }
+  /* Orrdle: a sideways log with the name carved in and gilded, an old heart-and-arrow carving, a brass Play button */
+  .orrdle-log { margin: 0 0 18px; }
+  .log { position: relative; height: 112px; border-radius: 56px; overflow: hidden;
+          background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='120'%3E%3Cfilter id='b' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006 .22' numOctaves='3' seed='9' stitchTiles='stitch'/%3E%3CfeDiffuseLighting surfaceScale='2.4' lighting-color='%23ffffff'%3E%3CfeDistantLight azimuth='270' elevation='50'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='300' height='120' filter='url(%23b)'/%3E%3C/svg%3E") 0 0 / 300px 100%, linear-gradient(#2a170c, #5a3820 16%, #8a5a32 38%, #946136 50%, #7a4e2c 64%, #4a2c17 84%, #22120a);
+          background-blend-mode: soft-light, normal; box-shadow: 0 10px 14px -6px #000d, 0 2px 0 #0006; }
+  /* the sawn end: growth rings round the heart of the tree, the bark its rim */
+  .log-end { position: absolute; left: 0; top: 0; bottom: 0; width: 56px; border-radius: 50%;
+              background: radial-gradient(ellipse at 46% 50%, #6a4322 0 4%, transparent 5%),
+                          repeating-radial-gradient(ellipse at 46% 50%, #d6aa6e 0 2.5px, #c2925a 2.5px 4px, #b17f4a 4px 6px),
+                          #c2925a;
+              box-shadow: inset 0 0 0 4px #3a2414, inset 0 0 0 6px #5a3a20, inset -6px 0 10px #0005; }
+  .log-word { position: absolute; left: 68px; top: 50%; transform: translateY(-54%);
+               font: 900 2.7rem/1 Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
+               letter-spacing: -.01em; color: #e3a93c; filter: url(#carve); }   /* gilded, cut into the wood */
+  .log-heart { position: absolute; right: 64px; top: 50%; width: 58px; height: 52px; transform: translateY(-50%) rotate(-6deg); overflow: visible; }
+  .log-heart .groove path { fill: none; stroke: #2a170c; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
+  .log-heart text { font: 700 13px Fraunces, Georgia, serif; fill: #2a170c; }
+  .log-heart { filter: drop-shadow(.6px .9px 0 #c79157aa); }   /* the lit lower lip of each cut */
+  .log-play { position: absolute; right: 14px; top: 50%; width: 46px; height: 46px; margin-top: -23px; padding: 0; border-radius: 50%;
+               display: grid; place-items: center; color: #2a1608;
+               background: radial-gradient(circle at 36% 30%, #fff1c4, #e0b155 38%, #a87320 72%, #6d4810);
+               box-shadow: 0 3px 0 #4a300c, 0 5px 8px #000b, inset 0 -2px 3px #0005; }
+  .log-play svg { width: 22px; height: 22px; fill: currentColor; margin-left: 3px; }
+  .log-play:active { transform: translateY(2px); box-shadow: 0 1px 0 #4a300c, 0 2px 4px #000b, inset 0 -1px 2px #0005; }
+  .log-say { margin: 8px 4px 0; color: var(--cream-dim); font-size: .92rem; }
+  /* the game: full screen like the record sleeve */
+  dialog.orrdle-box { display: none; }
+  dialog.orrdle-box[open] { display: grid; align-content: start; justify-items: center; gap: 12px; padding: calc(18px + env(safe-area-inset-top)) 12px 16px; }
+  .od-title { margin: 4px 0 0; font: 900 2.2rem/1 Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
+               letter-spacing: .06em; color: var(--cream);
+               text-shadow: .04em .04em 0 var(--cocoa), .07em .07em 0 var(--gold), .1em .1em 0 var(--cocoa), .13em .13em 0 var(--orange); }
+  .od-sub { margin: -4px 0 0; color: var(--cream-dim); font-size: .9rem; text-align: center; }
+  .od-board { display: grid; grid-template-rows: repeat(6, 1fr); gap: 6px; width: min(300px, 76vw); }
+  .od-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  .od-row.shake { animation: odShake .4s; }
+  @keyframes odShake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+  .od-t { aspect-ratio: 1; display: grid; place-items: center; border-radius: 6px; font: 700 1.7rem/1 Jost, sans-serif; color: var(--cream);
+           box-shadow: inset 0 0 0 2px #5b3a26; text-transform: uppercase; }
+  .od-t.full { box-shadow: inset 0 0 0 2px #a07a58; }
+  .od-t.ok { background: #6f8f2e; box-shadow: none; }      /* avocado: right letter, right place */
+  .od-t.near { background: #d79a2b; box-shadow: none; color: #2a1608; }   /* harvest gold: in the name, elsewhere */
+  .od-t.no { background: #3a2a20; box-shadow: none; color: #b9a58a; }
+  .od-msg { min-height: 1.4em; color: var(--gold); font-weight: 700; text-align: center; }
+  .od-keys { display: grid; gap: 6px; width: min(480px, 100%); }
+  .od-krow { display: flex; gap: 5px; justify-content: center; }
+  .od-k { flex: 1; max-width: 42px; height: 52px; padding: 0; border-radius: 6px; font: 700 1rem Jost, sans-serif; color: var(--cream);
+           background: #5b3a26; box-shadow: 0 2px 0 #2a1a12; text-transform: uppercase; touch-action: manipulation; }
+  .od-k.wide { max-width: 64px; flex: 1.5; font-size: .78rem; }
+  .od-k.ok { background: #6f8f2e; } .od-k.near { background: #d79a2b; color: #2a1608; } .od-k.no { background: #2f221a; color: #8f7b62; }
+  .od-stats { display: grid; gap: 12px; width: min(340px, 100%); padding: 14px 16px; border-radius: 14px; background: var(--walnut);
+               box-shadow: inset 0 1px 0 #ffffff12, 0 2px 6px #0007; }
+  .od-nums { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
+  .od-nums b { display: block; font: 700 1.5rem/1.1 Jost, sans-serif; color: var(--cream); }
+  .od-nums span { font-size: .75rem; color: var(--cream-dim); }
+  .od-dist { display: grid; gap: 4px; }
+  .od-bar { display: grid; grid-template-columns: 14px 1fr; gap: 6px; align-items: center; font-size: .85rem; color: var(--cream-dim); }
+  .od-bar i { display: block; min-width: 22px; padding: 1px 6px; border-radius: 3px; background: #3a2a20; color: var(--cream);
+               font-style: normal; font-weight: 700; text-align: right; box-sizing: border-box; }
+  .od-bar i.now { background: #6f8f2e; }
+  .od-again { justify-self: center; }
 </style>
 </head>
 <body>
@@ -654,6 +715,12 @@
       <i class="screw bl"><b class="slit" style="--r: 81deg"></b></i><i class="screw br"><b class="slit" style="--r: 167deg"></b></i>
       <div class="brand">
         <span class="maker" data-t="matty" aria-hidden="true">matty</span>
+        <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="carve" x="-5%" y="-10%" width="110%" height="120%">
+          <feFlood flood-color="#1c0e05" flood-opacity=".9"/><feComposite in2="SourceAlpha" operator="out"/>
+          <feOffset dx="1.4" dy="2"/><feGaussianBlur stdDeviation=".6"/><feComposite in2="SourceAlpha" operator="in" result="shade"/>
+          <feFlood flood-color="#fff3c8" flood-opacity=".8"/><feComposite in2="SourceAlpha" operator="out"/>
+          <feOffset dx="-.8" dy="-1.1"/><feGaussianBlur stdDeviation=".4"/><feComposite in2="SourceAlpha" operator="in" result="light"/>
+          <feMerge><feMergeNode in="SourceGraphic"/><feMergeNode in="shade"/><feMergeNode in="light"/></feMerge></filter></svg>
         <svg width="0" height="0" style="position:absolute" aria-hidden="true"><filter id="engrave" x="-5%" y="-10%" width="110%" height="120%">
           <feFlood flood-color="#120d06" flood-opacity=".85"/><feComposite in2="SourceAlpha" operator="out"/>
           <feOffset dx=".9" dy="1.3"/><feGaussianBlur stdDeviation=".35"/><feComposite in2="SourceAlpha" operator="in" result="shade"/>
@@ -697,6 +764,16 @@
         </nav>
       </figcaption>
     </figure>
+  </dialog>
+
+  <dialog class="sleeve-box orrdle-box" id="orrdleBox" aria-label="Orrdle">
+    <button class="sleeve-close" id="orrdleClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <h2 class="od-title">ORRDLE</h2>
+    <p class="od-sub">Guess the family name in six tries. <button class="link" id="odMine" type="button">Your stats</button></p>
+    <div class="od-board" id="odBoard"></div>
+    <div class="od-msg" id="odMsg" role="status"></div>
+    <div class="od-keys" id="odKeys"></div>
+    <div class="od-stats" id="odStats" hidden></div>
   </dialog>
 
   <section class="jcard" id="nextBox" hidden aria-label="Coming up">
@@ -743,6 +820,7 @@
   </section>
 
   <section class="eta" id="etaBox" hidden aria-live="off">
+    <svg class="stitch" aria-hidden="true"><rect width="100%" height="100%" rx="8.5"/></svg>
     <p class="eta-say" id="etaSay">Ask now, it plays around</p>
     <div class="flip" id="etaClock" role="img"><span class="fc"><i class="ap"></i><b></b></span><span class="fc"><b></b></span><span class="colon"></span><span class="fc"><b></b></span><span class="fc"><b></b></span></div>
   </section>
@@ -769,6 +847,20 @@
     <p id="jokeErr" class="hint" style="color:var(--bad)"></p>
     <p class="jokes-head" id="myJokesHead" hidden>Yours</p>
     <ul id="myJokes" class="jokes"></ul>
+  </section>
+
+  <section class="orrdle-log" id="orrdle" aria-label="Orrdle, the family Wordle">
+    <div class="log">
+      <span class="log-end" aria-hidden="true"></span>
+      <span class="log-word" aria-hidden="true">Orrdle</span>
+      <svg class="log-heart" viewBox="0 0 64 58" aria-hidden="true">
+        <g class="groove"><path d="M32 52C16 40 6 31 6 19.5 6 11 12.5 5 20 5c5.5 0 9.6 3.3 12 7.6C34.4 8.3 38.5 5 44 5c7.5 0 14 6 14 14.5C58 31 48 40 32 52Z"/>
+          <path d="M2 44L60 10M60 10l-7.5 .4M60 10l-3.2 6.6M2 44l2.6-6M2 44l6.4-.8"/></g>
+        <text x="32" y="31" text-anchor="middle">M+M</text>
+      </svg>
+      <button class="log-play" id="orrdlePlay" type="button" aria-label="Play Orrdle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5v11l9-5.5z"/></svg></button>
+    </div>
+    <p class="log-say">A family Wordle. Guess the name in six tries.</p>
   </section>
 
   <section class="panel" id="hunt" aria-labelledby="huntH">
@@ -2252,6 +2344,122 @@ function schedule(ms) {
   pollTimer = setInterval(() => { if (document.visibilityState === "visible") refresh(); }, ms);
 }
 schedule(15000);
+// ---- Orrdle: the family Wordle. The Worker deals a name (one this phone hasn't had), keeps the clock and the record;
+// the guessing happens here, like Wordle: green right place, gold elsewhere in the name, dark not in it.
+const OD_KEYS = ["QWERTYUIOP", "ASDFGHJKL", "+ZXCVBNM-"];
+let od = null;   // { id, word, rows: [], cur: "", done, stats }
+function odBuild() {
+  $("odBoard").replaceChildren(...Array.from({ length: 6 }, () => { const r = el("div", "od-row"); for (let i = 0; i < 5; i++) r.append(el("div", "od-t")); return r; }));
+  $("odKeys").replaceChildren(...OD_KEYS.map((row) => {
+    const r = el("div", "od-krow");
+    for (const ch of row) {
+      const k = el("button", "od-k" + (ch === "+" || ch === "-" ? " wide" : ""), ch === "+" ? "Enter" : ch === "-" ? "⌫" : ch);
+      k.type = "button"; k.dataset.k = ch === "+" ? "Enter" : ch === "-" ? "Backspace" : ch;
+      if (ch === "-") k.setAttribute("aria-label", "Delete");
+      k.onclick = () => odKey(k.dataset.k);
+      r.append(k);
+    }
+    return r;
+  }));
+}
+function odScore(guess, word) {   // Wordle's rule for repeats: greens first, then golds while that letter is left over
+  const res = Array(5).fill("no"), left = {};
+  for (let i = 0; i < 5; i++) if (guess[i] === word[i]) res[i] = "ok"; else left[word[i]] = (left[word[i]] || 0) + 1;
+  for (let i = 0; i < 5; i++) if (res[i] !== "ok" && left[guess[i]]) { res[i] = "near"; left[guess[i]]--; }
+  return res;
+}
+function odPaint() {
+  const rows = [...$("odBoard").children];
+  rows.forEach((row, r) => [...row.children].forEach((t, i) => {
+    const done = od.rows[r], ch = done ? done.g[i] : r === od.rows.length ? od.cur[i] || "" : "";
+    t.textContent = ch; t.className = "od-t" + (done ? " " + done.s[i] : ch ? " full" : "");
+  }));
+  const best = {};
+  for (const { g, s } of od.rows) for (let i = 0; i < 5; i++) {
+    const rank = { ok: 3, near: 2, no: 1 }, was = best[g[i]];
+    if (!was || rank[s[i]] > rank[was]) best[g[i]] = s[i];
+  }
+  for (const k of $("odKeys").querySelectorAll(".od-k")) k.className = "od-k" + (k.classList.contains("wide") ? " wide" : "") + (best[k.dataset.k] ? " " + best[k.dataset.k] : "");
+}
+function odSay(text, ms) { $("odMsg").textContent = text; clearTimeout(odSay.t); if (ms) odSay.t = setTimeout(() => { $("odMsg").textContent = ""; }, ms); }
+const fmtMs = (ms) => { const sec = Math.round(ms / 1000); return sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; };
+function odShowStats(stats, wonIn) {
+  const st = stats || { played: 0, wins: 0, streak: 0, bestMs: null, dist: [0, 0, 0, 0, 0, 0] };
+  const nums = el("div", "od-nums");
+  for (const [n, label] of [[st.played, "played"], [st.played ? Math.round(100 * st.wins / st.played) + "%" : "–", "won"],
+                            [st.streak, "streak"], [st.bestMs == null ? "–" : fmtMs(st.bestMs), "fastest"]]) {
+    const d = el("div"); d.append(el("b", null, String(n)), el("span", null, label)); nums.append(d);
+  }
+  const top = Math.max(1, ...st.dist), dist = el("div", "od-dist");
+  st.dist.forEach((n, i) => {
+    const row = el("div", "od-bar"), bar = el("i", i + 1 === wonIn ? "now" : "", String(n));
+    bar.style.width = `${Math.max(8, 100 * n / top)}%`; row.append(el("span", null, String(i + 1)), el("div")); row.lastChild.append(bar); dist.append(row);
+  });
+  const again = el("button", "od-again", od && od.done ? "Play another" : "Keep playing"); again.type = "button";
+  again.onclick = () => od && od.done ? odStart() : ($("odStats").hidden = true, $("odKeys").hidden = false);
+  $("odStats").replaceChildren(el("b", null, "Your Orrdle"), nums, dist, again);
+  $("odStats").hidden = false; $("odKeys").hidden = true;
+}
+async function odStart() {
+  odBuild(); $("odStats").hidden = true; $("odKeys").hidden = false; odSay("Dealing a name…");
+  od = { id: null, word: "", rows: [], cur: "", done: false, stats: null };
+  odPaint();
+  try {
+    const r = await api("/api/orrdle/start", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: myName() }), signal: AbortSignal.timeout(10000) });
+    if (!r.ok) { odSay(r.error || "Couldn't start a game."); return; }
+    Object.assign(od, { id: r.id, word: r.word, stats: r.stats }); odSay("");
+  } catch { odSay("Couldn't reach the DJ booth. Try again in a moment."); }
+}
+async function odFinish(won) {
+  od.done = true;
+  const n = od.rows.length;
+  odSay(won ? ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Great!", "Phew!"][n - 1] : `It was ${od.word}.`);
+  let stats = od.stats;
+  try {
+    const r = await api("/api/orrdle/end", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: od.id, won, guesses: n }), signal: AbortSignal.timeout(10000) });
+    if (r.ok) stats = r.stats;
+  } catch {}
+  setTimeout(() => odShowStats(stats, won ? n : 0), 1200);
+}
+function odKey(k) {
+  if (!od || od.done || !od.word) return;
+  if (k === "Backspace") od.cur = od.cur.slice(0, -1);
+  else if (k === "Enter") {
+    if (od.cur.length < 5) {
+      const row = $("odBoard").children[od.rows.length]; row.classList.remove("shake"); void row.offsetWidth; row.classList.add("shake");
+      odSay("Five letters", 1200); return;
+    }
+    const g = od.cur, s = odScore(g, od.word), r = od.rows.length;
+    od.rows.push({ g, s }); od.cur = "";
+    [...$("odBoard").children[r].children].forEach((t, i) => t.animate([{ transform: "rotateX(0)" }, { transform: "rotateX(-90deg)", offset: .5 }, { transform: "rotateX(0)" }],
+      { duration: 360, delay: i * 120 }));
+    setTimeout(odPaint, 180);   // the colours land as the tiles turn
+    if (g === od.word) odFinish(true); else if (od.rows.length === 6) odFinish(false);
+    return;
+  } else if (/^[A-Z]$/.test(k) && od.cur.length < 5) od.cur += k;
+  odPaint();
+}
+addEventListener("keydown", (e) => {
+  if (!$("orrdleBox").open || e.metaKey || e.ctrlKey || e.altKey) return;
+  const k = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  if (k === "Enter" || k === "Backspace" || /^[A-Z]$/.test(k)) { e.preventDefault(); odKey(k); }
+});
+$("odMine").onclick = () => odShowStats(od && od.stats, 0);
+$("orrdlePlay").onclick = () => {
+  const d = $("orrdleBox"); d.classList.remove("closing"); d.showModal();
+  if (!od || od.done) odStart(); else { odBuild(); odPaint(); }   // an unfinished game picks up where it was
+};
+$("orrdleClose").onclick = () => {
+  const d = $("orrdleBox"); d.classList.add("closing");
+  setTimeout(() => { d.classList.remove("closing"); d.close(); }, 240);
+};
+// the scavenger hunt link in the request panel glides down to it
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest('a[href="#hunt"]');
+  if (a) { e.preventDefault(); $("hunt").scrollIntoView({ behavior: "smooth", block: "start" }); }
+});
 // Hotfixes: each poll carries a fingerprint of this page as deployed. When it changes, the page swaps itself
 // for the new one at a quiet moment: while the phone is locked or in another app, or after a minute and a half
 // untouched with nothing typed and nothing open. The scroll position comes back; nobody is asked to refresh.

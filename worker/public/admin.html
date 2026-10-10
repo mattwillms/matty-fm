@@ -204,8 +204,10 @@
   .arch-count { text-align: center; color: var(--faint); font-size: .8rem; margin-top: 12px; }
   .arch-foot { display: flex; justify-content: center; margin-top: 12px; }
   .party .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
-  .party .stats div { background: var(--bg); border-radius: 10px; padding: 8px 10px; }
+  .party .stats > div { background: var(--bg); border-radius: 10px; padding: 8px 10px; }
   .party .stats b { display: block; font-size: 1.2rem; color: var(--ink); } .party .stats span { font-size: .8rem; color: var(--muted); }
+  .od-admin { grid-column: 1 / -1; background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+  .od-admin .what { font-weight: 700; } .od-admin .why { color: var(--muted); font-size: .88rem; }
   .backlog { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -4px 0 10px; font-size: .9rem; color: var(--muted); }
 </style>
 </head>
@@ -729,7 +731,7 @@ function renderParty() {
     statsAt = Date.now(); statsFor = p.start + (p.end || 0);
     call("/api/admin/action", { action: "stats" }).then((r) => {
       const t = r.stats; if (!t) return;
-      $("partyStats").replaceChildren(...statCells(t));
+      $("partyStats").replaceChildren(...statCells(t), ...orrdleBlock(t.orrdle));
       $("partyStats").hidden = false;
     }).catch(() => {});
   }
@@ -748,6 +750,18 @@ $("partyGo").onclick = (e) => {
 // The archive: every ended party, stepped through with the arrows (left: earlier, right: later).
 let archive = [], archAt = 0;
 const statCell = (n, label) => { const d = el("div"); d.append(el("b", null, n == null ? "–" : String(n)), el("span", null, label)); return d; };
+// Orrdle's night: plays, wins and who did best (fastest win, fewest guesses), then the top winners
+function orrdleBlock(o) {
+  if (!o) return [];
+  const t = (ms) => { const sec = Math.round(ms / 1000); return sec < 60 ? `${sec}s` : `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`; };
+  const box = el("div", "od-admin");
+  box.append(el("div", "what", "Orrdle"),
+    el("div", "why", `${o.plays} played · ${o.wins} won · ${o.players} ${o.players === 1 ? "player" : "players"}`));
+  if (o.fastest) box.append(el("div", "why", `Fastest: ${o.fastest.name}, ${t(o.fastest.ms)} (${o.fastest.word}, ${o.fastest.guesses} guesses)`));
+  if (o.fewest) box.append(el("div", "why", `Fewest guesses: ${o.fewest.name}, ${o.fewest.guesses} (${o.fewest.word})`));
+  if (o.top?.length) box.append(el("div", "why", "Most wins: " + o.top.map((x) => `${x.name} ${x.wins}`).join(", ")));
+  return [box];
+}
 function statCells(t) {
   return [statCell(t.played, "songs played"), statCell(t.requests, "requests"), statCell(t.guests, "guests"),
           statCell(t.messages, "messages aired"), statCell(t.skipped, "skipped"), statCell(t.medianWaitMin == null ? null : `${t.medianWaitMin} min`, "typical wait")];
@@ -764,7 +778,7 @@ function showArchive() {
   const at = (t) => new Date(t).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
   $("archTitle").textContent = p.title;
   $("archWhen").textContent = `${day} · ${at(p.start)} to ${at(p.end)} · ${partyTime(p.end - p.start)}`;
-  $("archStats").replaceChildren(...statCells(p.stats));
+  $("archStats").replaceChildren(...statCells(p.stats), ...orrdleBlock(p.stats.orrdle));
   $("archCount").textContent = `${archAt + 1} of ${archive.length}`;
 }
 async function openArchive(at) {
