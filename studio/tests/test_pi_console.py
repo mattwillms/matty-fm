@@ -458,3 +458,13 @@ def test_power_tells_the_watchdog_marker_when_it_switches():
     eng.power(False); eng.power(False)   # already off: no second call
     eng.power(True)
     assert seen == [True, False]
+
+
+def test_the_tap_only_used_when_on_and_the_loopback_is_there(monkeypatch):
+    monkeypatch.setattr(console.os.path, "exists", lambda p: p == "/proc/asound/Loopback")
+    monkeypatch.setattr(console, "TAP", False)
+    assert console.device("soma") == "soma"
+    monkeypatch.setattr(console, "TAP", True)
+    assert console.device("soma") == "soma_t"
+    monkeypatch.setattr(console.os.path, "exists", lambda p: False)   # module missing: plain, never silent
+    assert console.device("deckA") == "deckA"
