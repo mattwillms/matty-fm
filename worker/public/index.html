@@ -776,13 +776,13 @@
      bottom, and between them a slot with a plastic slider knob, pushed up or down */
   .toggle-sw { position: relative; flex: none; width: 38px; padding: 0; background: none; box-shadow: none; cursor: pointer;
                -webkit-tap-highlight-color: transparent; }
-  /* heavy brushed gold: fine vertical brushing over a warm sheen, a thick bevelled edge, sitting proud of the aluminum */
+  /* heavy brushed gold: brushing on an angle (two streak patterns that don't line up, so it isn't ruled), a diagonal
+     sheen, one thin bright rim inside a dark edge */
   .toggle-sw .plate { position: absolute; inset: 0; border-radius: var(--glass-r);
-                      background: repeating-linear-gradient(90deg, #ffffff14 0 1px, #0000 1px 2px, #00000012 2px 3px, #0000 3px 5px),
-                                  repeating-linear-gradient(90deg, #fff3 0 .5px, #0000 .5px 7px),
-                                  linear-gradient(90deg, #7a5212, #d9a93f 22%, #f6dc8a 40%, #c8902a 62%, #e9c364 80%, #6e480e);
-                      box-shadow: 0 2px 4px #000c, 0 1px 0 #000, inset 0 1px 0 #fff4c8, inset 0 -2px 0 #5a3a08,
-                                  inset 2px 0 0 #f8e2a0aa, inset -2px 0 0 #4a2f06aa; }
+                      background: repeating-linear-gradient(112deg, #fff2 0 .6px, #0000 .6px 2.3px, #0000001a 2.3px 2.9px, #0000 2.9px 4.1px),
+                                  repeating-linear-gradient(108deg, #ffffff10 0 1.1px, #0000 1.1px 6.7px, #00000014 6.7px 7.4px, #0000 7.4px 11px),
+                                  linear-gradient(118deg, #8a5d16 0%, #d7a43b 18%, #f7df92 34%, #cf9a32 52%, #edc86a 70%, #a8761f 88%, #7a5212 100%);
+                      box-shadow: 0 0 0 1px #3d2805, inset 0 0 0 1px #fbe7a866, 0 3px 5px #000b; }
   .toggle-sw .tab { position: absolute; left: 6px; right: 6px; height: 14px; border-radius: 2px; display: grid; place-items: center; }
   .toggle-sw .tab svg { width: 11px; height: 11px; fill: #fff; }
   .toggle-sw .tab.up { top: 4px; background: #b3261a; box-shadow: inset 0 1px 1px #0006; }
