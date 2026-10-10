@@ -13,6 +13,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,600..900,100,1&family=Jost:wght@400;500;700&family=Kalam:wght@400;700&family=Doto:ROND,wght@0..100,400..900&family=Michroma&display=swap" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Asset&text=matty&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600&text=0123456789AMP&display=swap" rel="stylesheet">
 <style>
   :root {
     --cocoa: #2A1A12; --walnut: #4A2E1E; --walnut-2: #5B3A26;
@@ -71,7 +72,7 @@
                       linear-gradient(transparent 0 40%, #ffffff40 46%, #ffffff10 52%, transparent 58%);
           background-size: 100% 100%, 100% 140%; }
   .cables { position: absolute; left: 0; top: -60px; width: 100%; height: 64px; overflow: visible; pointer-events: none; z-index: 2; }
-  .tube { position: relative; display: block; cursor: pointer; transform-origin: 50% 100%; --g: .8; -webkit-tap-highlight-color: transparent; }
+  .tube { position: relative; display: block; cursor: pointer; transform-origin: 50% calc(100% - 2px); top: 1px; --g: .8; -webkit-tap-highlight-color: transparent; }
   .tube svg { position: relative; display: block; overflow: visible; }
   .tube.t1 svg { width: 29px; height: 51px; } .tube.t2 svg { width: 19px; height: 42px; }   /* an octal power tube, and a slim 9-pin miniature */
   .tube .halo { position: absolute; left: 50%; top: 55%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; pointer-events: none;
@@ -84,6 +85,10 @@
                             radial-gradient(circle at 70% 50%, #000 0 .8px, transparent 1.2px), radial-gradient(circle at 50% 66%, #000 0 .8px, transparent 1.2px),
                             radial-gradient(ellipse at 50% 50%, #2a2622 0 52%, #a9a59c 60%, #e9e6df 70%, #6d6962 86%);
                 box-shadow: 0 1.5px 0 #8e8a82, 0 2.5px 0 #4a4640, 0 3.5px 3px #000b; }   /* proud of the wood: a chrome side wall, its shadow on the walnut */
+  .tube { z-index: 1; }
+  .seat::after { content: ""; position: absolute; left: 50%; bottom: -1px; width: 26px; height: 7px; margin-left: -13px; border-radius: 50%;
+                 z-index: 2; pointer-events: none; clip-path: inset(46% 0 0 0);   /* the front half of the chrome ring only; the hole stays open */
+                 background: radial-gradient(ellipse at 50% 50%, transparent 0 55%, #a9a59c 61%, #e9e6df 70%, #6d6962 86%); }
   .tube.gone svg, .tube.gone .halo { visibility: hidden; }   /* broken or blown: an empty socket until it's replaced */
   /* what a tapped tube can do: sparks, fire, smoke, a flash and arcs of electricity, drawn over everything */
   .fx { position: fixed; pointer-events: none; z-index: 60; border-radius: 50%; }
@@ -289,7 +294,7 @@
      the light, the floor a shade darker than the plate. Nothing outside them: a shadow outside reads as
      letters standing on the plate, not cut into it */
   .brand .maker { position: relative; font: 400 clamp(.82rem, 4.1vw, 1.05rem)/1 Asset, "Arial Black", sans-serif;   /* very wide: narrows on small phones so the lamp clears the screw */ letter-spacing: .01em;
-                  color: #6c6558; filter: url(#engrave); }   /* the cut's floor: the plate, a shade darker; its walls come from #engrave */
+                  color: #3e362a; filter: url(#engrave); }   /* the cut's floor: dark with the grime of years; its walls come from #engrave */
   .brand .req { display: flex; align-items: center; gap: 8px; }
   /* the lamp, set in the panel like a real indicator: a polished chrome bezel in a hole (the hole's top
      edge in shade, its lower lip lit), a dark recess inside the ring, and a domed glass lens with the
@@ -329,10 +334,12 @@
                      transform: translateY(-3px); transition: transform .05s, box-shadow .05s, background .05s; }
   .presets .preset:hover { filter: none; }
   /* the button's side wall below the cap: the same pebble-grained plastic, catching less light, its bottom edge dark */
-  .presets .preset::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% - 2px); height: 6px; z-index: -1;
-                            border-radius: 0 0 4px 4px; pointer-events: none;
-                            background: var(--grain) 0 2px / 32px 32px, linear-gradient(#4a4845, #383634 70%, #262523);
-                            background-blend-mode: overlay, normal; box-shadow: 0 1px 0 #141312, inset 1px 0 0 #ffffff12, inset -1px 0 0 #0006; }
+  /* the underside of the button, seen from a little below: it recedes into the board, so it narrows and
+     darkens away from the cap's bottom edge; the same pebble grain, squashed by the angle */
+  .presets .preset::after { content: ""; position: absolute; left: 0; right: 0; top: calc(100% - 1px); height: 5px; z-index: -1; pointer-events: none;
+                            clip-path: polygon(0 0, 100% 0, 92% 100%, 8% 100%);
+                            background: var(--grain) 0 0 / 32px 8px, linear-gradient(#3a3836, #242322 55%, #131211);
+                            background-blend-mode: overlay, normal; }
   .presets .preset:active::after, .presets .preset.down::after { display: none; }   /* sunk: no side wall */
   .presets .preset:active, .presets .preset.down {
     transform: translateY(1px); background: var(--grain) 0 0 / 32px 32px, linear-gradient(#21201f, #161515 45%, #0c0c0c);
@@ -519,6 +526,21 @@
   /* No prefers-reduced-motion switches here, on purpose: iPhones with Reduce Motion on lost the
      scrolling text (the only way to read long titles), the lamp's pulse (brightness, not motion) and
      every tap toy. Nothing on this page moves unless it carries information or was tapped. */
+  /* when a song asked for now should play: a slim strip under the request panel with a flip clock, as on a
+     70s bedside radio. A ballpark: rounded to 5 minutes, and it only flips when the estimate moves by more */
+  .eta { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: -6px 0 18px; padding: 10px 14px;
+         border-radius: 12px; background: linear-gradient(#1d1714, #141010); box-shadow: inset 0 1px 0 #ffffff12, 0 2px 6px #0007; }
+  .eta-say { margin: 0; color: var(--cream-dim); font-size: .95rem; line-height: 1.25; }
+  .flip { display: flex; align-items: center; gap: 3px; flex: none; perspective: 160px; }
+  .flip .fc { position: relative; display: grid; place-items: center; width: 27px; height: 38px; border-radius: 4px;
+              background: linear-gradient(#2e2e2e, #252525 49.5%, #0b0b0b 49.5%, #0b0b0b 51%, #1f1f1f 51%, #191919);
+              box-shadow: inset 0 1px 0 #ffffff1c, 0 1px 2px #000c; }
+  .flip .fc b { padding-top: 3px; font: 600 1.7rem/1 Oswald, "Arial Narrow", sans-serif; color: #f4f1ea; text-shadow: 0 1px 1px #000a; }
+  .flip .fc::before, .flip .fc::after { content: ""; position: absolute; top: 50%; width: 2px; height: 5px; margin-top: -2.5px; background: #050505; }
+  .flip .fc::before { left: -1px; } .flip .fc::after { right: -1px; }   /* the hinge pins at the split */
+  .flip .ap { position: absolute; left: 2.5px; top: 2.5px; font: 600 .36rem/1 Oswald, sans-serif; font-style: normal; color: #f4f1ea; letter-spacing: .04em; }
+  .flip .colon { width: 5px; height: 16px; background: radial-gradient(circle at 50% 3px, #f4f1ea 0 2px, transparent 2.5px),
+                 radial-gradient(circle at 50% 13px, #f4f1ea 0 2px, transparent 2.5px); }
 </style>
 </head>
 <body>
@@ -549,7 +571,7 @@
           <path d="M5.6 14Q5.6 6.6 13.0 6.6Q20.4 6.6 20.4 14Q13.0 12 5.6 14Z" fill="url(#miA)"/>
           <path d="M11.7 6.4L13.0 2L14.3 6.4Z" fill="url(#miA)"/>
           <path d="M5 36V14Q5 6 13.0 6Q21 6 21 14V36Z" fill="url(#glA)" stroke="#ffffff80" stroke-width=".5"/>
-          <rect x="4" y="35" width="18" height="11" rx="1.2" style="fill: var(--collar, #121010)"/><rect x="4" y="35" width="18" height="11" rx="1.2" fill="url(#bkA)"/>
+          <path d="M4 36.2Q4 35 5.2 35H20.8Q22 35 22 36.2V43.6A9 2.4 0 0 1 4 43.6Z" style="fill: var(--collar, #121010)"/><path d="M4 36.2Q4 35 5.2 35H20.8Q22 35 22 36.2V43.6A9 2.4 0 0 1 4 43.6Z" fill="url(#bkA)"/>
           <path d="M4.5 36.2H21.5" stroke="#ffffff30" stroke-width=".5"/>
         </svg></span></span>
       <span class="seat"><span class="sock"></span><span class="tube t2"><span class="halo"></span><svg viewBox="0 0 18 40" aria-hidden="true">
@@ -571,7 +593,7 @@
           <path d="M4.1 11Q4.1 5.6 9 5.6Q13.9 5.6 13.9 11L13.9 12.6Q9 11.4 4.1 12.6Z" fill="url(#miB)"/>
           <path d="M8 5.4Q8.3 3.2 9 1.8Q9.7 3.2 10 5.4Z" fill="#d9d2c4" fill-opacity=".55" stroke="#ffffff90" stroke-width=".3"/>
           <path d="M3.5 32V11Q3.5 5 9 5Q14.5 5 14.5 11V32Z" fill="url(#glB)" stroke="#ffffff80" stroke-width=".45"/>
-          <rect x="2.6" y="31.4" width="12.8" height="6.6" rx="1.1" style="fill: var(--collar, #121010)"/><rect x="2.6" y="31.4" width="12.8" height="6.6" rx="1.1" fill="url(#bkB)"/>
+          <path d="M2.6 32.5Q2.6 31.4 3.7 31.4H14.3Q15.4 31.4 15.4 32.5V36.2A6.4 1.8 0 0 1 2.6 36.2Z" style="fill: var(--collar, #121010)"/><path d="M2.6 32.5Q2.6 31.4 3.7 31.4H14.3Q15.4 31.4 15.4 32.5V36.2A6.4 1.8 0 0 1 2.6 36.2Z" fill="url(#bkB)"/>
           <path d="M3 32.6H15" stroke="#ffffff30" stroke-width=".45"/>
         </svg></span></span>
     </div>
@@ -647,6 +669,11 @@
     <ul id="results"></ul>
     <p class="hint">Can't find it? <button class="link" id="freeBtn" type="button">Type it in</button></p>
     <p id="closed" class="notice" hidden style="margin:14px 0 0">Requests are closed for tonight. Thanks for dancing.</p>
+  </section>
+
+  <section class="eta" id="etaBox" hidden aria-live="off">
+    <p class="eta-say" id="etaSay">Ask now, it plays around</p>
+    <div class="flip" id="etaClock" role="img"><span class="fc"><i class="ap"></i><b></b></span><span class="fc"><b></b></span><span class="colon"></span><span class="fc"><b></b></span><span class="fc"><b></b></span></div>
   </section>
 
   <section class="panel" id="form" hidden>
@@ -1335,8 +1362,19 @@ async function api(path, opts) {
   try { localStorage.setItem("mfm_k", k); } catch {}   // only a code that worked is remembered
   return r.json();
 }
+// "About 25 min": rounded to 5, and it only changes when the estimate moves by more than 4 minutes, so
+// the label doesn't tick about as songs come and go (a song's last shown value is kept per request)
+const shownMin = new Map();
+function aboutMin(id, sec) {
+  const min = sec / 60, last = shownMin.get(id);
+  if (last != null && Math.abs(min - last.raw) <= 4) return last.text;
+  const text = min < 4 ? "Any minute" : `About ${Math.max(5, Math.round(min / 5) * 5)} min`;
+  shownMin.set(id, { raw: min, text });
+  return text;
+}
 function badge(m) {
   const pos = m.position ? `#${m.position}` : "";
+  if (m.waitS != null && ["pending", "preparing", "ready"].includes(m.status)) return [aboutMin(m.id, m.waitS), m.status === "ready" ? "up" : ""];
   switch (m.status) {
     case "pending": return [pos ? `${pos} in line` : "In line", ""];
     case "preparing": return ["Preparing…", "prep"];
@@ -1848,6 +1886,35 @@ function showLimits() {
   if (!$("jsend").classList.contains("busy")) $("jsend").disabled = !accepting || blocked;
 }
 setInterval(showLimits, 10000);   // the urgent countdown
+// The flip clock under the request panel: roughly when a song asked for now would play (or, with no picks
+// left, when this phone's next one plays). It flips only when the estimate moves by more than 4 minutes.
+let etaShown = null;   // { raw: ms the shown time was worked out from, text: "h:mm" }
+function showEta(s) {
+  const st = songState(), mineNext = (s.mine || []).filter((m) => m.waitS != null && ["pending", "preparing", "ready", "queued"].includes(m.status))
+    .sort((a, b) => a.waitS - b.waitS)[0];
+  const sec = st.can ? s.waitS : mineNext?.waitS;
+  const show = sec != null && s.accepting && !offAir && (st.can || mineNext);
+  $("etaBox").hidden = !show;
+  if (!show) return;
+  $("etaSay").textContent = st.can ? "Ask now, it plays around" : "Your next song plays around";
+  const raw = Date.now() + sec * 1000;
+  if (etaShown && Math.abs(raw - etaShown.raw) <= 4 * 60000) return;
+  const t = new Date(Math.round(raw / 300000) * 300000), h = t.getHours() % 12 || 12, m = t.getMinutes();
+  const digits = [h >= 10 ? "1" : "", String(h % 10), String(Math.floor(m / 10)), String(m % 10)];
+  etaShown = { raw };
+  const cards = [...$("etaClock").querySelectorAll(".fc")];
+  $("etaClock").querySelector(".ap").textContent = t.getHours() < 12 ? "AM" : "PM";
+  $("etaClock").setAttribute("aria-label", `around ${h}:${String(m).padStart(2, "0")} ${t.getHours() < 12 ? "AM" : "PM"}`);
+  cards.forEach((c, i) => {
+    const b = c.querySelector("b");
+    if (b.textContent === digits[i]) return;
+    if (!b.textContent && !c._set) { b.textContent = digits[i]; c._set = true; return; }   // first show: no flip
+    c.animate([{ transform: "rotateX(0)" }, { transform: "rotateX(-90deg)" }], { duration: 140, easing: "ease-in" }).onfinish = () => {
+      b.textContent = digits[i];
+      c.animate([{ transform: "rotateX(90deg)" }, { transform: "rotateX(0)" }], { duration: 160, easing: "ease-out" });
+    };
+  });
+}
 // The preset buttons: the host's five sound pads. One press a minute per phone (the pressed one latches
 // down), and the whole house shares them: after anyone's press they all dim for the gap (admin: 5-60 s).
 // Free play: no limit. The host can switch them off.
@@ -1940,11 +2007,13 @@ async function refresh() {
     $("onbreak").hidden = !s.djOnBreak || offAir;   // off air says it better
     accepting = s.accepting; spent = s.spent || []; familyMode = s.familyMode !== false;
     if (s.limits) { limits = s.limits; limitsAt = Date.now(); }
+    notePage(s.page);
     $("closed").hidden = s.accepting; $("q").disabled = !s.accepting;
     $("freeBtn").disabled = !s.accepting; $("freeBtn").closest("p").hidden = !s.accepting;
     $("jokeBox").hidden = !s.accepting && !(s.myJokes || []).length;
     showJokes(s.myJokes);
-    showLimits();   // after "closed" is set: picks, the search box, the Send button (never mid-send)
+    showLimits();
+    showEta(s);   // after "closed" is set: picks, the search box, the Send button (never mid-send)
     showNow(offAir ? null : s.nowPlaying);
     $("nextBox").hidden = !s.upNext.length || offAir;
     const waiting = s.waitingCount ?? s.upNext.length;
@@ -2094,6 +2163,30 @@ function schedule(ms) {
   pollTimer = setInterval(() => { if (document.visibilityState === "visible") refresh(); }, ms);
 }
 schedule(15000);
+// Hotfixes: each poll carries a fingerprint of this page as deployed. When it changes, the page swaps itself
+// for the new one at a quiet moment: while the phone is locked or in another app, or after a minute and a half
+// untouched with nothing typed and nothing open. The scroll position comes back; nobody is asked to refresh.
+let pageSeen = "", pageStale = false, lastTouch = Date.now();
+for (const ev of ["pointerdown", "keydown", "scroll", "touchstart"]) addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true, capture: true });
+function quietSwap() {
+  if (!pageStale) return;
+  const busy = [...document.querySelectorAll("input, textarea")].some((e) => e.value && e.type !== "checkbox" && e.type !== "radio" && e.id !== "whoName")
+    || document.querySelector("dialog[open]") || document.querySelector(".busy")
+    || (document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName));
+  if (document.visibilityState === "hidden" || (!busy && Date.now() - lastTouch > 90000)) {
+    try { sessionStorage.setItem("mfm_scroll", String(scrollY)); } catch {}
+    location.reload();
+  }
+}
+function notePage(page) {
+  if (!page) return;
+  if (!pageSeen) pageSeen = page; else if (page !== pageSeen) pageStale = true;
+  quietSwap();
+}
+document.addEventListener("visibilitychange", quietSwap);
+setInterval(quietSwap, 15000);
+try { const y = Number(sessionStorage.getItem("mfm_scroll")); sessionStorage.removeItem("mfm_scroll");
+      if (y) addEventListener("load", () => setTimeout(() => scrollTo(0, y), 300)); } catch {}
 refresh();
 loadCached(); setInterval(loadCached, 5 * 60 * 1000);
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });

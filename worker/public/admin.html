@@ -175,6 +175,12 @@
            transition: opacity .2s, transform .2s; pointer-events: none; max-width: 90vw; text-align: center; z-index: 10; }
   #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); } #toast.err { background: #B23A22; color: #fff; }   /* 4.5:1 for white text */
   @media (prefers-reduced-motion: reduce) { button, .toggle::after { transition: none; } }
+  .party { padding: 12px 0 14px; border-bottom: 1px solid var(--line); margin-bottom: 4px; }
+  .party-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .party .clock { font: 600 1.6rem/1.1 ui-monospace, monospace; font-variant-numeric: tabular-nums; color: var(--ink); margin-top: 2px; }
+  .party .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .party .stats div { background: var(--bg); border-radius: 10px; padding: 8px 10px; }
+  .party .stats b { display: block; font-size: 1.2rem; color: var(--ink); } .party .stats span { font-size: .8rem; color: var(--muted); }
   .backlog { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: -4px 0 10px; font-size: .9rem; color: var(--muted); }
 </style>
 </head>
@@ -243,6 +249,11 @@
 
   <section aria-label="Station settings">
     <h2>Station</h2>
+    <div class="party" id="party">
+      <div class="party-top"><div><div class="what">Party clock</div><div class="clock" id="partyClock">Not started</div></div>
+        <button class="primary" id="partyGo" type="button">Start party</button></div>
+      <div class="stats" id="partyStats" hidden></div>
+    </div>
     <div class="switch-row off-row">
       <div><div class="what">Station off</div><div class="why">Fades everything to silence over 3 seconds, then stops every player and disconnects from SomaFM. Songs keep getting prepared; requests wait. Turn off to come back on SomaFM.</div></div>
       <button class="toggle danger" role="switch" id="stationOff" aria-label="Station off"></button>
@@ -323,7 +334,7 @@ async function call(path, body) {
   if (fromLink) { try { localStorage.setItem("mfm_t", token); } catch {} }   // a typo in the link never replaces a good token
   return r.json();
 }
-const DONE = { announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
+const DONE = { partyStart: "Party clock started", partyEnd: "Party clock stopped",  announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
   mute: "Phone muted", unmute: "Phone unmuted", release: "Released: they can pick two more", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
@@ -360,6 +371,7 @@ function renderStatus() {
     dotted(ok ? "var(--ok)" : "var(--bad)", ok ? "Studio OK" : age == null ? "Studio offline" : `Studio silent ${age}s`),
     dotted(src[1], src[0]),
     ...(h.error ? [dotted("var(--gold)", h.error)] : []),
+    ...(state.party?.start && !state.party.end ? [el("span", "chipstat", `Party ${partyTime(state.serverNow - state.party.start)}`)] : []),
     ...modeChips());
 }
 
@@ -545,7 +557,7 @@ function breakBlock(e) {
 }
 function render() {
   if (!state) return;
-  renderStatus(); renderNow(); renderSwitches(); renderTimer();
+  renderStatus(); renderNow(); renderSwitches(); renderTimer(); renderParty();
 
   const waiting = state.items.filter((i) => ["pending", "preparing", "ready", "queued"].includes(i.status));
   // guests' jokes, worked in as they'll be told: one at each song change, before the next song
@@ -628,9 +640,10 @@ let lastKey = "";
 async function load() {
   try {
     state = await call("/api/admin/state"); state.loadedAt = lastGood = Date.now();
+    notePage(state.page);
     // the lists rebuild only when what they show changed: a rebuild under a finger loses the tap
     const h = state.health || {};
-    const key = JSON.stringify([state.items, state.jokes, state.history, state.muted, state.cooldowns, state.settings, state.nowPlaying, state.held, state.line,
+    const key = JSON.stringify([state.items, state.jokes, state.history, state.muted, state.cooldowns, state.settings, state.nowPlaying, state.held, state.line, state.party,
                                 h.lastDj, h.source, h.current]);
     if (key !== lastKey) { lastKey = key; render(); } else { renderStatus(); renderTimer(); }
   }
@@ -662,6 +675,32 @@ $("skip").onclick = (e) => {
     .finally(() => load());
 };
 $("releaseAll").onclick = (e) => act({ action: "release" }, e);
+// The party clock: started by the host; the stats come once a minute (they read the whole night), not with every poll.
+let statsAt = 0, statsFor = 0;
+function partyTime(ms) { const m = Math.floor(ms / 60000); return `${Math.floor(m / 60)}:${String(m % 60).padStart(2, "0")}`; }
+function renderParty() {
+  const p = state?.party || {}, now = state ? state.serverNow + (Date.now() - state.loadedAt) : Date.now();
+  $("partyClock").textContent = !p.start ? "Not started" : p.end ? `Ran ${partyTime(p.end - p.start)}` : partyTime(now - p.start);
+  $("partyGo").textContent = !p.start || p.end ? "Start party" : "End party";
+  $("partyGo").className = !p.start || p.end ? "primary" : "sm danger";
+  if (p.start && (Date.now() - statsAt > 60000 || statsFor !== p.start + (p.end || 0))) {
+    statsAt = Date.now(); statsFor = p.start + (p.end || 0);
+    call("/api/admin/action", { action: "stats" }).then((r) => {
+      const t = r.stats; if (!t) return;
+      const cell = (n, label) => { const d = el("div"); d.append(el("b", null, n == null ? "–" : String(n)), el("span", null, label)); return d; };
+      $("partyStats").replaceChildren(cell(t.played, "songs played"), cell(t.requests, "requests"), cell(t.guests, "guests"),
+        cell(t.messages, "messages aired"), cell(t.skipped, "skipped"), cell(t.medianWaitMin == null ? null : `${t.medianWaitMin} min`, "typical wait"));
+      $("partyStats").hidden = false;
+    }).catch(() => {});
+  }
+  if (!p.start) $("partyStats").hidden = true;
+}
+setInterval(() => { if (state) renderParty(); }, 30000);   // the clock shows minutes: a tick every 30 s is enough
+$("partyGo").onclick = (e) => {
+  const p = state?.party || {}, running = p.start && !p.end;
+  if (running) confirm("End the party? The clock stops and the stats freeze. Nothing else changes.") && act({ action: "partyEnd" }, e);
+  else if (!p.end || confirm("Start the party clock over from now?")) act({ action: "partyStart" }, e);
+};
 $("dropJokes").onclick = (e) => confirm("Drop every joke still waiting? Announcements stay.") && act({ action: "dropJokes" }, e);
 for (const b of document.querySelectorAll("#padGap .segb"))
   b.onclick = (e) => act({ action: "settings", settings: { padGapS: Number(b.dataset.gap) } }, e);
@@ -727,6 +766,30 @@ $("addBtn").onclick = async (e) => {
   await act({ action: "add", track: picked, name: $("aname").value || "the family", message: $("amsg").value }, e);
   picked = null; $("aq").value = $("amsg").value = ""; $("aresults").replaceChildren(); updateAdd();
 };
+// Hotfixes: each poll carries a fingerprint of this page as deployed. When it changes, the page swaps itself
+// for the new one at a quiet moment: while the phone is locked or in another app, or after a minute and a half
+// untouched with nothing typed and nothing open. The scroll position comes back; nobody is asked to refresh.
+let pageSeen = "", pageStale = false, lastTouch = Date.now();
+for (const ev of ["pointerdown", "keydown", "scroll", "touchstart"]) addEventListener(ev, () => { lastTouch = Date.now(); }, { passive: true, capture: true });
+function quietSwap() {
+  if (!pageStale) return;
+  const busy = [...document.querySelectorAll("input, textarea")].some((e) => e.value && e.type !== "checkbox" && e.type !== "radio" && e.id !== "whoName")
+    || document.querySelector("dialog[open]") || document.querySelector(".busy")
+    || (document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName));
+  if (document.visibilityState === "hidden" || (!busy && Date.now() - lastTouch > 60000)) {
+    try { sessionStorage.setItem("mfm_scroll", String(scrollY)); } catch {}
+    location.reload();
+  }
+}
+function notePage(page) {
+  if (!page) return;
+  if (!pageSeen) pageSeen = page; else if (page !== pageSeen) pageStale = true;
+  quietSwap();
+}
+document.addEventListener("visibilitychange", quietSwap);
+setInterval(quietSwap, 15000);
+try { const y = Number(sessionStorage.getItem("mfm_scroll")); sessionStorage.removeItem("mfm_scroll");
+      if (y) addEventListener("load", () => setTimeout(() => scrollTo(0, y), 300)); } catch {}
 load(); setInterval(() => document.visibilityState === "visible" && load(), 3000);
 </script>
 </body>

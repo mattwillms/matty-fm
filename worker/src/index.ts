@@ -63,6 +63,25 @@ async function cachedSearch(q: string, ctx: ExecutionContext): Promise<unknown> 
   return { results };
 }
 
+/** A fingerprint of a page as deployed. Each poll carries it, so an open page can tell that a hotfix
+ *  changed it and reload itself at a quiet moment. Worked out once per Worker instance (a deploy starts
+ *  new instances), never per request. */
+const pageHashes = new Map<string, Promise<string>>();
+function pageHash(env: Env, file: string): Promise<string> {
+  if (!pageHashes.has(file))
+    pageHashes.set(file, (async () => {
+      try {
+        const r = await env.ASSETS.fetch(new Request(`https://assets.local${file}`));
+        const d = await crypto.subtle.digest("SHA-1", await r.arrayBuffer());
+        return [...new Uint8Array(d)].slice(0, 6).map((b) => b.toString(16).padStart(2, "0")).join("");
+      } catch {
+        pageHashes.delete(file);   // try again next poll
+        return "";
+      }
+    })());
+  return pageHashes.get(file)!;
+}
+
 export default {
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(req.url);
@@ -147,7 +166,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
 
     if (path.startsWith("/api/admin/")) {
       if (!same(req.headers.get("x-admin-token"), env.ADMIN_TOKEN)) return json({ error: "unauthorized" }, 401);
-      if (path === "/api/admin/state") return json(await party.adminState());
+      if (path === "/api/admin/state") return json({ ...(await party.adminState()), page: await pageHash(env, "/admin.html") });
       if (path === "/api/admin/search") return json(await cachedSearch(url.searchParams.get("q") ?? "", ctx));
       if (path === "/api/admin/action") return json(await party.adminAction(await body(req)));
       return json({ error: "not found" }, 404);
@@ -161,7 +180,7 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
       if (q.length < 2) return json({ results: [] }, 200, extra);
       return json(await cachedSearch(q, ctx), 200, extra);
     }
-    if (path === "/api/state") return json(await party.guestState(dev.id), 200, extra);
+    if (path === "/api/state") return json({ ...(await party.guestState(dev.id)), page: await pageHash(env, "/index.html") }, 200, extra);
     if (path === "/api/cached") {
       // Song keys the studio already has on disk (sent with each check-in): they play instantly.
       return json({ keys: await party.cachedKeys() }, 200, { ...extra, "cache-control": "max-age=60" });

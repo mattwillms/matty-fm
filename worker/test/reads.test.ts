@@ -49,12 +49,14 @@ describe("rows read per poll", () => {
     const p = await seed("reads");
     const counts = {
       beat: await rowsRead(p, (i) => i.beat({ ...beat })),
-      guest: await rowsRead(p, (i) => i.guestState("d3")),
+      guestFirst: await rowsRead(p, (i) => i.guestState("d3")),   // reads the line's order for the wait estimate
+      guest: await rowsRead(p, (i) => i.guestState("d3")),        // ...which every phone then shares for 20 s
       admin: await rowsRead(p, (i) => i.adminState()),
     };
     console.log("rows read", counts);
     expect(counts.beat).toBeLessThan(60);
     expect(counts.guest).toBeLessThan(350);   // this phone has 20 asks: more than a guest makes all night
+    expect(counts.guestFirst).toBeLessThan(400);
     expect(counts.admin).toBeLessThan(500);
   });
 });

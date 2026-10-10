@@ -404,3 +404,35 @@ describe("party test fixes", () => {
     expect(left.map((x) => x.kind)).toEqual(["announcement"]);
   });
 });
+
+describe("wait estimate", () => {
+  it("adds up song lengths and the DJ's talk; a new phone's fair turn comes earlier than the end", async () => {
+    const p = stub("wait-1");
+    for (const [d, t] of [["d1", "Waterloo"], ["d1", "SOS"], ["d2", "Mamma Mia"]]) await p.submit(d, T(t));
+    await sql(p, "UPDATE items SET status='ready', duration_s=200");
+    const s1 = await p.guestState("d1");
+    // fair turns: Waterloo (d1), Mamma Mia (d2), SOS (d1)
+    expect(s1.mine.map((m) => [m.title, m.waitS])).toEqual([["SOS", 430], ["Waterloo", 0]]);
+    expect(s1.waitS).toBe(645);                        // d1 has had its turns: the end of the line
+    expect((await p.guestState("d9")).waitS).toBe(430);   // a new phone goes after everyone's first song
+  });
+});
+
+describe("party clock", () => {
+  it("starts, ends, and counts the night since the start", async () => {
+    const p = stub("clock-1");
+    const old = await p.submit("d0", T("Fernando"));   // before the party: not counted
+    await sql(p, "UPDATE requesters SET created_at=created_at-3600000");
+    await p.adminAction({ action: "partyStart" });
+    const a = await p.submit("d1", T("Waterloo"));
+    await p.submit("d2", T("Waterloo"));
+    await p.submitJoke("d3", { name: "Ray", text: "Why did the chicken cross the road? Worms." });
+    await sql(p, "UPDATE items SET status='played', played_at=?, started_at=created_at+600000 WHERE id=?", Date.now(), a.id!);
+    const { stats } = (await p.adminAction({ action: "stats" })) as { stats: Record<string, number> };
+    expect(stats).toMatchObject({ played: 1, skipped: 0, requests: 2, guests: 3, messages: 0, medianWaitMin: 10 });
+    void old;
+    expect((await p.adminState()).party.end).toBeNull();
+    await p.adminAction({ action: "partyEnd" });
+    expect((await p.adminState()).party.end).toBeGreaterThan(0);
+  });
+});

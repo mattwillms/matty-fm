@@ -11,9 +11,11 @@ Version 0.1.0 (semver = big.small.bug).
 - Tests: `.venv/bin/pytest studio/tests -q` · `cd worker && npx vitest run`
 - Units: `systemctl --user {start,status} mattyfm-icecast mattyfm-station mattyfm-studio`
 
+- Listen on this PC: `python3 tools/listen.py` (opens a page with Play; needs `TAP=1` on the Pi and the mattyfm-tap unit)
 - Pi receiver: `scp -r pi mattyfm: && ssh mattyfm 'sudo bash pi/setup.sh http://192.168.86.44:8040/radio'`; logs `ssh mattyfm journalctl -u mattyfm-pi -f`
 
 ## Rules
+- **During the party, fix through `tools/hotfix.sh worker|studio|both` only** (rules: `docs/hotfix.md`). Pages swap themselves quietly; never reset the party or touch the Pi.
 - Secrets only in `~/.config/mattyfm/env` and Worker secrets. Never commit them.
 - Never rebind `reqs` in radio.liq (wrapped sources lose push/skip).
 - Liquidsoap image tag is pinned: `savonet/liquidsoap:v2.4.5`.

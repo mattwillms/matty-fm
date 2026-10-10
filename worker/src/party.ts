@@ -17,6 +17,9 @@ const MAX_WAITING_PER_DEVICE = 2;
 const MAX_ASKS_PER_SONG = 2;
 const PAD_EVERY_MS = 60_000;   // a guest's preset buttons: one sound a minute per phone
 const PAD_GAPS_S = [0, 5, 20, 60];   // the whole house shares the buttons: one sound per gap (admin; 0 = buttons off)
+const TALK_S = 15;            // the DJ's intro and the crossfade, per song: for the wait estimate
+const JOKE_S = 25;            // a joke or announcement read between songs
+const PREP_S = 90;            // a song nobody's waiting behind still has to be found and downloaded
 const LONG_LINE = 20;          // more songs than this waiting: one song per phone at a time, so more guests get a turn
 const JOKE_STALE_MS = 30 * 60_000;   // a joke not told by then is dropped ("the DJ ran out of time")
 const MYSTERY = "a mystery guest";   // who an anonymous message is from, on air and on the guest page   // a phone may ask for a song, and once more after it plays ("Request again")
@@ -55,6 +58,7 @@ const year = (y: unknown) => (/^(19|20)\d\d$/.test(String(y ?? "")) ? String(y) 
 
 export class Party extends DurableObject<Env> {
   sql: SqlStorage;
+  private turns: { at: number; ordered: Waiting[] } | null = null;   // the line's order for wait estimates (cached)
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -462,8 +466,32 @@ export class Party extends DurableObject<Env> {
     return { waiting, urgentInS: left(mine, 3_600_000), partyUrgentInS: left(party, 600_000), anonLeft };
   }
 
+  /** Seconds until each waiting song starts, and until a song this phone asked for now would start
+   *  (fair turns can put it ahead of the end of the line). From what's already known: the time left on
+   *  air, then each song's length plus the DJ's talk, plus the messages waiting. A ballpark: the page
+   *  rounds it and only changes what it shows when it moves by minutes. */
+  private waits(waiting: Row[], device: string, endsInS: number | null) {
+    const msgs = Number(this.one("SELECT COUNT(*) AS n FROM jokes WHERE status IN ('pending','preparing','ready')")?.n ?? 0);
+    const at = new Map<string, number>();
+    let t = endsInS ?? 0;
+    const spread = waiting.length ? (msgs * JOKE_S) / waiting.length : 0;   // messages go in at song changes
+    for (const i of waiting) {
+      at.set(String(i.id), Math.round(Math.max(t, i.status === "pending" || i.status === "preparing" ? PREP_S : 0)));
+      const len = Number(i.duration_s) > 0 ? Number(i.duration_s) : Number(i.duration_ms) > 0 ? Number(i.duration_ms) / 1000 : 210;
+      t += len + TALK_S + spread;
+    }
+    // whose song is whose, for fair turns: read at most every 20 s (every phone polls; an estimate can lag)
+    if (!this.turns || Date.now() - this.turns.at > 20_000) this.turns = { at: Date.now(), ordered: this.ordered() };
+    const rank = rankForNew(this.turns.ordered, device);
+    const ahead = waiting.filter((i) => i.status === "queued" || Number(i.rank) < rank).length;
+    const next = ahead < waiting.length ? at.get(String(waiting[ahead].id))! : t;
+    return { at, newS: Math.round(Math.max(next, PREP_S)) };
+  }
+
   async guestState(device: string) {
     const waiting = this.display();
+    const np = this.nowPlaying();
+    const est = this.waits(waiting, device, np && !np.soma ? (np as { endsInS: number | null }).endsInS : null);
     // newest of this phone's own asks first (joining an older song puts it at the top too)
     const mine = this.all(`SELECT i.*, MAX(r.created_at) AS mine_at FROM items i JOIN requesters r ON r.item_id=i.id
       WHERE r.device=? GROUP BY i.id ORDER BY mine_at DESC LIMIT 8`, device);
@@ -472,11 +500,13 @@ export class Party extends DurableObject<Env> {
       FROM requesters r JOIN items i ON i.id=r.item_id WHERE r.device=? GROUP BY i.song_key`, device);
     const askedN = new Map(asked.map((a) => [String(a.k), Number(a.n)]));
     return {
-      nowPlaying: this.nowPlaying(),
+      nowPlaying: np,
+      waitS: est.newS,   // a request sent now: roughly when it starts, in seconds from now
       upNext: this.lineup(waiting.slice(0, 6).map((i) => this.pub(i))),
       waitingCount: waiting.length,
       mine: mine.map((i) => ({ ...this.pub(i), status: String(i.status), skipped: Boolean(i.skipped),
         position: waiting.findIndex((w) => w.id === i.id) + 1 || null,
+        waitS: est.at.get(String(i.id)) ?? null,
         again: (askedN.get(String(i.song_key)) ?? 0) < MAX_ASKS_PER_SONG,   // "Request again" still allowed
         track: { durationMs: i.duration_ms == null ? null : Number(i.duration_ms), explicit: Boolean(i.explicit) } })),
       // songs this phone has used both asks on: shown as ⃠ in search
@@ -710,7 +740,8 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "party-fixes-1",         // read back after a deploy: proves the queue runs this code (no bump needed)
+      code: "party-fixes-2",
+      party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
               ...this.all("SELECT * FROM jokes WHERE ended_at IS NOT NULL AND +status<>'deleted' ORDER BY ended_at DESC LIMIT 10")]
@@ -720,6 +751,25 @@ export class Party extends DurableObject<Env> {
       line: { songs: waitingN, oneEach: !this.flags().freePlay && waitingN > LONG_LINE },
     };
   }
+  /** The night so far, since the host pressed Start party (or since the first request). */
+  private partyStats() {
+    const start = Number(this.setting("partyStart", "0")) || Number(this.one("SELECT MIN(created_at) AS t FROM items")?.t ?? Date.now());
+    const end = Number(this.setting("partyEnd", "0")) || Date.now();
+    const n = (q: string, ...b: SqlStorageValue[]) => Number(this.one(q, ...b)?.n ?? 0);
+    const waits = this.all(`SELECT started_at - created_at AS w FROM items WHERE status='played' AND started_at>0 AND created_at>=?
+      ORDER BY w`, start).map((r) => Number(r.w));
+    return {
+      start, end,
+      played: n("SELECT COUNT(*) AS n FROM items WHERE status='played' AND skipped=0 AND played_at BETWEEN ? AND ?", start, end),
+      skipped: n("SELECT COUNT(*) AS n FROM items WHERE status='played' AND skipped=1 AND played_at BETWEEN ? AND ?", start, end),
+      requests: n("SELECT COUNT(*) AS n FROM requesters WHERE created_at BETWEEN ? AND ?", start, end),
+      guests: n(`SELECT COUNT(*) AS n FROM (SELECT device FROM requesters WHERE created_at BETWEEN ?1 AND ?2 AND device<>'admin'
+                 UNION SELECT device FROM jokes WHERE created_at BETWEEN ?1 AND ?2 AND source='guest')`, start, end),
+      messages: n("SELECT COUNT(*) AS n FROM jokes WHERE status='played' AND played_at BETWEEN ? AND ?", start, end),
+      medianWaitMin: waits.length ? Math.round(waits[Math.floor(waits.length / 2)] / 60000) : null,
+    };
+  }
+
   private adminItem(i: Row) {
     return {
       id: String(i.id), title: String(i.title), artist: String(i.artist), status: String(i.status),
@@ -765,6 +815,15 @@ export class Party extends DurableObject<Env> {
           return { ok: false, error: "no such joke waiting" };
         this.sql.exec("UPDATE jokes SET status='deleted', ended_at=? WHERE id=?", Date.now(), String(a.id));
         return { ok: true };
+      case "partyStart":   // the host's party clock: from now (a restart starts it over)
+        this.set("partyStart", String(Date.now()));
+        this.sql.exec("DELETE FROM settings WHERE key='partyEnd'");
+        return { ok: true };
+      case "partyEnd":
+        if (Number(this.setting("partyStart", "0"))) this.set("partyEnd", String(Date.now()));
+        return { ok: true };
+      case "stats":   // asked for by the admin page about once a minute, not with every poll: it reads the whole night
+        return { ok: true, stats: this.partyStats() };
       case "dropJokes": {   // every guest joke still waiting (announcements stay)
         this.sql.exec(`UPDATE jokes SET status='deleted', ended_at=? WHERE status IN ('pending','preparing','ready')
           AND kind='joke'`, Date.now());
