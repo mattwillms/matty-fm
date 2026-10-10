@@ -56,7 +56,7 @@ if __name__ == "__main__":
     coin = blank_coin().convert("RGBA")
     words = engraving(text_mask(["RIP", "JAZZY", "BELLE"], 74, 1.02), depth=4)
     coin.alpha_composite(words, ((S - words.width) // 2, 86))
-    logo = engraving(logo_mask(210), depth=3)
+    logo = engraving(logo_mask(150), depth=3)
     coin.alpha_composite(logo, ((S - logo.width) // 2, 86 + words.height + 22))
     circle_alpha(coin).save(PUB / "golden-tails.webp", quality=88, method=6)
     print("wrote matty-engraved.webp, golden-tails.webp")

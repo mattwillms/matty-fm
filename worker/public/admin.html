@@ -56,7 +56,7 @@
   .timer .when.wait { font-size: .92rem; font-weight: 500; color: var(--faint); text-align: right; }
 
   /* ---- sound pads: the bottom row of the on-air panel ---- */
-  .pads { margin-top: 12px; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }   /* minmax: columns may shrink below their longest word */
+  .pads { margin-top: 12px; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }   /* minmax: columns may shrink below their longest word */
   .pad { aspect-ratio: 1; padding: 4px; display: grid; place-content: center; justify-items: center; gap: 2px; border-radius: 12px;
          background: var(--raise); box-shadow: inset 0 -3px 0 #0004; transition: box-shadow .15s, background .15s, transform .08s; }
   .pad .ico { font-size: 1.7rem; line-height: 1; }
@@ -471,7 +471,7 @@ function renderNow() {
 }
 
 // Five pads, each tied to a sound on the studio (media/breaks/pad-N.mp3), played on the PA.
-const PADS = [["📯", "Air horn"], ["🥁", "Rimshot"], ["👏", "Applause"], ["🎺", "Sad trombone"], ["🐔", "Cluck"]];
+const PADS = [["🚨", "Siren"], ["👏", "Applause"], ["🎉", "Yaaay"], ["😏", "Rizz"], ["🌮", "Bong"], ["💥", "Thud"], ["😱", "Faaah"], ["💨", "Bark fart"]];
 $("pads").replaceChildren(...PADS.map(([ico, lbl], i) => {
   const b = el("button", "pad"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl}`);
   b.append(el("span", "ico", ico), el("span", "lbl", lbl));

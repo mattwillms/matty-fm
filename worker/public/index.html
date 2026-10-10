@@ -352,11 +352,11 @@
                      opacity: calc(var(--g, .8) * .75); }
   .presets .preset { position: relative; z-index: 1; }
   .presets { --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .9 0 0 0 -.35'/%3E%3C/filter%3E%3Crect width='96' height='96' filter='url(%23g)'/%3E%3C/svg%3E"); }   /* fine pebble speckle: plain noise tiles seamlessly */
-  .presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 12px; padding: 6px 6px 8px;
+  .presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 7px 8px; margin-top: 8px; padding: 8px 8px 10px;
              border-radius: var(--glass-r);   /* the circuit board behind the buttons, mostly in their shadow */
              background: linear-gradient(#00000010, #00000030 60%, #00000099), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='48'%3E%3Crect width='64' height='48' fill='%2313281a'/%3E%3Cg fill='none' stroke='%23b9893a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' opacity='.75'%3E%3Cpath d='M0 10h14l6 6h18'/%3E%3Cpath d='M38 16l6-6h20'/%3E%3Cpath d='M8 48V34l6-6h10'/%3E%3Cpath d='M24 28h16l6 6v14'/%3E%3Cpath d='M52 0v8'/%3E%3Cpath d='M56 48V30l-6-6h-8'/%3E%3Cpath d='M30 0v6l-4 4'/%3E%3Cpath d='M0 40h4'/%3E%3C/g%3E%3Cg fill='%23c79a45' opacity='.85'%3E%3Ccircle cx='38' cy='16' r='2.4'/%3E%3Ccircle cx='24' cy='28' r='2.4'/%3E%3Ccircle cx='42' cy='24' r='2.4'/%3E%3Ccircle cx='26' cy='10' r='2'/%3E%3Ccircle cx='4' cy='40' r='2'/%3E%3Ccircle cx='52' cy='8' r='2'/%3E%3C/g%3E%3Cg fill='%230b170f'%3E%3Ccircle cx='38' cy='16' r='.9'/%3E%3Ccircle cx='24' cy='28' r='.9'/%3E%3Ccircle cx='42' cy='24' r='.9'/%3E%3C/g%3E%3Crect x='10' y='18' width='8' height='4' rx='1' fill='%232a2a28' opacity='.9'/%3E%3C/svg%3E") 0 0 / 64px 48px;
              box-shadow: inset 0 2px 0 #000c, inset 0 9px 10px -3px #000e, inset 0 -1px 2px #0008, 0 1px 0 #fff8; }   /* the faceplate's edge over it, and its shadow */
-  .presets .preset { aspect-ratio: 1.2; padding: 0; border-radius: 5px; color: #fff; font-size: 1.3rem; line-height: 1;
+  .presets .preset { aspect-ratio: 1.75; padding: 0; border-radius: 5px; color: #fff; font-size: 1.3rem; line-height: 1;
                      display: grid; place-items: center; cursor: pointer; filter: none;
                      background: var(--grain) 0 0 / 96px 96px, linear-gradient(#2b2a29, #1f1e1d 45%, #171615 80%, #111010);
                      background-blend-mode: soft-light, normal;   /* the cap: lit from above, fine-grained plastic */
@@ -721,7 +721,7 @@
   .m3d::before, .m3d::after { content: ""; position: absolute; inset: 0; border-radius: 50%; -webkit-backface-visibility: hidden; backface-visibility: hidden;
                                background: var(--f) center / 100% 100% no-repeat; transform: translateZ(5px); }
   /* the back: the award's name, and under it the matty signature cut into the metal (the golden quarter's own back has it already) */
-  .m3d::after { background: var(--engrave, url(/matty-engraved.webp)) 50% 74% / 50% auto no-repeat, var(--b) center / 100% 100% no-repeat;
+  .m3d::after { background: var(--engrave, url(/matty-engraved.webp)) 50% 72% / 36% auto no-repeat, var(--b) center / 100% 100% no-repeat;
                 transform: rotateY(180deg) translateZ(5px); }
   .m3d s { position: absolute; inset: 1px; border-radius: 50%; transform: translateZ(var(--z));
            background: repeating-conic-gradient(var(--r1) 0 2deg, var(--r2) 2deg 4deg); }
@@ -761,6 +761,21 @@
               clip-path: polygon(50% 0%, 59% 13%, 75% 6%, 76% 22%, 93% 25%, 86% 40%, 100% 50%, 86% 60%, 93% 75%, 76% 78%, 75% 94%, 59% 87%, 50% 100%, 41% 87%, 25% 94%, 24% 78%, 7% 75%, 14% 60%, 0% 50%, 14% 40%, 7% 25%, 24% 22%, 25% 6%, 41% 13%);
               filter: drop-shadow(0 2px 0 #0006); }
   .od-burst b { display: block; font-size: 1.05rem; }
+  /* the sound board's switch: a miniature slide switch, black housing, a pale plastic knob in its slot.
+     Speakers: the house PA (shared, timed). My phone: this phone only, as often as you like. */
+  .sb-row { display: flex; align-items: center; justify-content: flex-end; gap: 7px; margin-top: 10px; padding-right: 4px; }
+  .sb-lbl { font: 400 .5rem/1 Michroma, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #15130f;
+            -webkit-text-stroke: .2px #15130f; text-shadow: 0 1px 0 #ffffff70; }   /* printed on the aluminum, like REQUESTED */
+  .slide { position: relative; width: 42px; height: 17px; padding: 0; border-radius: 3px; cursor: pointer; -webkit-tap-highlight-color: transparent;
+           background: linear-gradient(#2c2b2a, #121111); box-shadow: 0 0 0 1px #000, 0 1px 0 1px #ffffff40, inset 0 1px 0 #ffffff26, 0 2px 3px #0009; }
+  .slide::before { content: ""; position: absolute; left: 5px; right: 5px; top: 5px; bottom: 5px; border-radius: 2px; background: #050505;
+                   box-shadow: inset 0 1px 2px #000; }   /* the slot */
+  .slide::after { content: ""; position: absolute; top: 2px; bottom: 2px; left: -3px; width: 4px; border-radius: 1px; background: #1a1918;
+                  box-shadow: 46px 0 0 #1a1918; }   /* the mounting tabs at each end */
+  .slide .knob { position: absolute; top: 3px; left: 5px; width: 15px; height: 11px; border-radius: 2px;
+                 background: linear-gradient(#f4f1e8, #c9c4b8); box-shadow: 0 1px 1px #000c, inset 0 -1px 0 #0003; transition: left .12s ease-out; }
+  .slide[aria-checked="true"] .knob { left: 22px; }
+  .presets.local .preset { filter: none; }
 </style>
 </head>
 <body>
@@ -845,7 +860,10 @@
         <div class="ticks"></div>
         <div class="needle" id="needle"></div>
       </div>
-      <div class="presets" id="presets" role="group" aria-label="Sound buttons: play a sound on the speakers"></div>
+      <div class="sb-row"><span class="sb-lbl" aria-hidden="true">Speakers</span>
+        <button class="slide" id="padMode" type="button" role="switch" aria-checked="false" aria-label="Play the sound buttons on my phone only"><span class="knob"></span></button>
+        <span class="sb-lbl" aria-hidden="true">My phone</span></div>
+      <div class="presets" id="presets" role="group" aria-label="Sound buttons"></div>
       <div class="lcd msg-screen" aria-live="polite">
         <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
       </div>
@@ -2257,23 +2275,48 @@ function showEta(s) {
 // The preset buttons: the host's five sound pads. One press a minute per phone (the pressed one latches
 // down), and the whole house shares them: after anyone's press they all dim for the gap (admin: 5-60 s).
 // Free play: no limit. The host can switch them off.
-const PRESETS = [["📯", "Air horn"], ["🥁", "Rimshot"], ["👏", "Applause"], ["🎺", "Sad trombone"], ["🐔", "Cluck"]];
+const PRESETS = [["🚨", "Siren"], ["👏", "Applause"], ["🎉", "Yaaay"], ["😏", "Rizz"], ["🌮", "Bong"], ["💥", "Thud"], ["😱", "Faaah"], ["💨", "Bark fart"]];
 let padUntil = 0, shareUntil = 0, padDown = -1, padTimer = null, padsOff = false;
 function showPresets() {
-  const now = Date.now(), wait = padUntil - now, share = shareUntil - now;
+  const now = Date.now(), wait = padLocal ? 0 : padUntil - now, share = padLocal ? 0 : shareUntil - now;
   [...$("presets").children].forEach((b, i) => {
     b.classList.toggle("down", wait > 0 && i === padDown);
     b.setAttribute("aria-disabled", String(wait > 0 || share > 0 || padsOff));
   });
-  $("presets").classList.toggle("resting", padsOff || (share > 0 && wait <= 0));
+  $("presets").classList.toggle("resting", !padLocal && (padsOff || (share > 0 && wait <= 0)));
   clearTimeout(padTimer);
   const next = Math.max(wait, share);
   if (next > 0) padTimer = setTimeout(showPresets, next + 50);   // pops back up when the wait is over
 }
+let padLocal = false;
+try { padLocal = localStorage.getItem("mfm_padlocal") === "1"; } catch {}
+const padSounds = new Map();   // pad number -> its loaded clip (played on this phone in "My phone" mode)
+function playHere(n) {
+  if (!padSounds.has(n)) padSounds.set(n, new Audio(`/pads/pad-${n}.mp3`));
+  const a = padSounds.get(n).cloneNode();   // a fresh copy each press, so quick presses overlap
+  a.play().catch(() => {});
+}
+function showPadMode() {
+  $("padMode").setAttribute("aria-checked", String(padLocal));
+  $("presets").classList.toggle("local", padLocal);
+  [...$("presets").children].forEach((b, i) => b.setAttribute("aria-label", `Play ${PRESETS[i][1]} ${padLocal ? "on this phone" : "on the speakers"}`));
+  showPresets();
+}
+$("padMode").onclick = () => {
+  padLocal = !padLocal;
+  try { localStorage.setItem("mfm_padlocal", padLocal ? "1" : "0"); } catch {}
+  showPadMode();
+  toast(padLocal ? "Sound buttons: on your phone, as many as you like." : "Sound buttons: on the speakers.");
+};
 $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
   const b = el("button", "preset"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl} on the speakers`);
   b.append(el("span", "ico", ico));
   b.onclick = async () => {
+    if (padLocal) {   // this phone only: no limits, no server; a quick press of the button
+      playHere(i + 1);
+      b.classList.add("down"); setTimeout(() => b.classList.remove("down"), 160);
+      return;
+    }
     if (offAir) { toast("OrrFM is off the air."); return; }
     if (padsOff) { toast("The buttons are off right now."); return; }
     const wait = padUntil - Date.now(), share = shareUntil - Date.now();
@@ -2291,6 +2334,7 @@ $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
   };
   return b;
 }));
+showPadMode();
 $("urgent").addEventListener("change", showLimits);
 $("anon").addEventListener("change", () => { if ($("anon").checked) $("urgent").checked = false; showLimits(); });
 let accepting = true, familyMode = true, offAir = false;

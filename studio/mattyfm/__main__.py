@@ -394,7 +394,7 @@ def main() -> None:
                 time.sleep(max(0.0, BEAT_S - (time.monotonic() - started)))
                 continue
             for c in reply["commands"]:
-                pad = re.fullmatch(r"pad([1-5])", c["type"])
+                pad = re.fullmatch(r"pad([1-8])", c["type"])
                 if pad:   # a sound pad from the admin page: straight to the console's fx channel
                     log.info("command: pad %s", pad[1])
                     try:

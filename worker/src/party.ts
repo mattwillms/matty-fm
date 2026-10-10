@@ -480,7 +480,7 @@ export class Party extends DurableObject<Env> {
   /** A guest presses one of the radio's preset buttons: the matching sound pad plays on the PA. */
   async guestPad(device: string, pad: unknown) {
     const n = typeof pad === "number" ? pad : NaN;
-    if (!Number.isInteger(n) || n < 1 || n > 5) return { ok: false, error: "No such button." };
+    if (!Number.isInteger(n) || n < 1 || n > 8) return { ok: false, error: "No such button." };
     if (this.flags().stationOff) return { ok: false, error: "OrrFM is off the air. Requests open again when it's back." };
     if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Requests are paused for this phone." };
     if (!this.flags().padGapS) return { ok: false, error: "The buttons are off right now." };
@@ -895,7 +895,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "names-1",
+      code: "pads-8",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -954,7 +954,7 @@ export class Party extends DurableObject<Env> {
         return { ok: true };
       case "pad": {   // a sound pad, 1 to 5: played on the console's fx channel
         const n = typeof a.pad === "number" ? a.pad : NaN;
-        if (!Number.isInteger(n) || n < 1 || n > 5) return { ok: false, error: "no such pad" };
+        if (!Number.isInteger(n) || n < 1 || n > 8) return { ok: false, error: "no such pad" };
         this.command(`pad${n}`);
         return { ok: true };
       }

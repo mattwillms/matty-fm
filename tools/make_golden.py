@@ -66,10 +66,18 @@ def heads() -> Image.Image:
     cover = Image.open(PUB / "nocover.webp").convert("RGB")
     hen = cover.crop((180, 170, 650, 640)).resize((300, 300), Image.LANCZOS)
     # the hen against the cover's brown: brighter and more saturated than the paper behind her
-    _, _, val = hen.convert("HSV").split()
-    # the cover's paper is a dull brown (value ~90); the hen is bright: keep the bright, close the gaps her ink lines leave
-    m = val.point(lambda v: 255 if v > 150 else 0)
-    m = m.filter(ImageFilter.MaxFilter(9)).filter(ImageFilter.MinFilter(9)).filter(ImageFilter.MinFilter(3)).filter(ImageFilter.GaussianBlur(1.2))
+    # the hen is everything that isn't the cover's brown paper: her ink outline, legs and feet included. The paper's
+    # colour is read from the crop's corners; distance from it, closed up, is her silhouette
+    px = hen.load()
+    corners = [px[x, y] for x in (3, 296) for y in (3, 296)]
+    bg = tuple(sum(c[i] for c in corners) / 4 for i in range(3))
+    m = Image.new("L", hen.size, 0)
+    mp = m.load()
+    for y in range(hen.height):
+        for x in range(hen.width):
+            r, g, b = px[x, y]
+            mp[x, y] = 255 if ((r - bg[0]) ** 2 + (g - bg[1]) ** 2 + (b - bg[2]) ** 2) ** .5 > 42 else 0
+    m = m.filter(ImageFilter.MedianFilter(3)).filter(ImageFilter.MaxFilter(5)).filter(ImageFilter.MinFilter(5)).filter(ImageFilter.GaussianBlur(.8))
     relief = Image.new("L", (S, S), 150)
     mask = Image.new("L", (S, S), 0)
     off = ((S - 300) // 2, (S - 300) // 2 + 6)
