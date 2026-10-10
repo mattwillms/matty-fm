@@ -1,4 +1,4 @@
-"""Studio main loop: one beat every 3 s; preparation runs in a 2-thread pool."""
+"""Studio main loop: one beat every 3 s; preparation runs in a 3-thread pool."""
 
 import json
 import logging
@@ -147,6 +147,7 @@ def main() -> None:
     last_seen = None   # (source, current, queued) — logged whenever it changes   # executed locally; acked every beat until the Worker drops them
     last_error = ""
 
+    cached_now: list[str] = []   # the songs on disk, listed every ~30 s
     unsent: dict[str, dict] = {}   # finished results the Worker hasn't taken yet: re-sent every beat
     joke_working: set[str] = set()   # guests' jokes being written up and recorded
     writer_tries: dict[str, int] = {}   # messages the writer couldn't reach, per id (3 tries, then failed)
@@ -272,15 +273,16 @@ def main() -> None:
         except Exception:
             log.exception("blend for %s failed; the joke stands in as recorded", rid)
 
+    job_error = [""]   # set by a prepare thread; sent with the next beat, then cleared
+
     def run_job(item: dict) -> None:
-        nonlocal last_error
         result = None
         try:
             result = prepare.prepare(item, deps)
             api.result(result)
             log.info("%s %s: %s - %s", item["id"], result["status"], item["artist"], item["title"])
         except Exception as e:
-            last_error = f"result {item['id']}: {type(e).__name__}"[:200]
+            job_error[0] = f"result {item['id']}: {type(e).__name__}"[:200]
             log.exception("job %s", item["id"])
             if result is not None:   # the work is done, only the post failed: keep it, and its lease
                 with lock:
@@ -296,7 +298,8 @@ def main() -> None:
             todo = list(unsent.items())
         for rid, result in todo:
             try:
-                api.result(result)
+                api.result({k: v for k, v in result.items() if k != "_tries"})
+                log.info("%s %s delivered late", rid, result["status"])
             except Exception as e:
                 tries = result.get("_tries", 0) + 1
                 result["_tries"] = tries
@@ -304,7 +307,6 @@ def main() -> None:
                 if tries < 20:
                     return   # still unwell: next beat
                 log.error("result %s given up after %d tries: its lease lapses and it's prepared again", rid, tries)
-            log.info("%s %s delivered late", rid, result["status"])
             with lock:
                 unsent.pop(rid, None)
                 working.discard(rid)
@@ -322,18 +324,21 @@ def main() -> None:
                 log.info("station: source=%s current=%s queued=%s remaining=%.0fs",
                          seen[0], seen[1] or "-", seen[2], status["remaining"])
                 last_seen = seen
+            soma_now = soma_np.get()   # SomaFM's feed (and on a song change an Apple lookup): never under the lock
+            if beat_no % 10 == 0:      # the songs on disk, for the guests' Ready now: every ~30 s is plenty
+                cached_now = sorted(p.stem for p in (cfg.media_dir / "cache").glob("*.mp3"))
             with lock:
                 body = {**status, "pushed": pushed, "working": sorted(working | joke_working),
-                        "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error,
+                        "want": WORKERS - len(working), "ack": sorted(done_cmds), "error": last_error or job_error[0],
                         "wantJokes": 0 if joke_working else 1, "jokesPlayed": list(jokes_played), "aired": list(aired),
-                        "wantNext": feed.wants_next(status), "soma": soma_np.get(),
+                        "wantNext": feed.wants_next(status), "soma": soma_now,
                         "lastDj": dict(last_dj) or None,
                         "nextBreakS": round(sched.seconds_left(time.monotonic(), joke_ready=bool(next_joke))),
                         "breakHold": sched.holding(time.monotonic())}   # due, waiting for SomaFM's next song
-                cached = sorted(p.stem for p in (cfg.media_dir / "cache").glob("*.mp3"))
-                if cached != cached_sent or time.monotonic() - cached_at > 600:   # only when it changes (or now and then)
-                    body["cached"] = cached
+            if cached_now != cached_sent or time.monotonic() - cached_at > 600:   # only when it changes (or now and then)
+                body["cached"] = cached_now
             reply = api.beat(body)
+            job_error[0] = ""
             if "cached" in body:
                 cached_sent, cached_at = body["cached"], time.monotonic()
             beat_no += 1
@@ -372,7 +377,7 @@ def main() -> None:
                 pool.submit(run_joke, j)
             resend()
             fresh = [c for c in reply["commands"] if c["id"] not in done_cmds]
-            done_cmds = {c["id"] for c in reply["commands"]} | {c["id"] for c in fresh}
+            seen_cmds = {c["id"] for c in reply["commands"]}   # acked at the end of this beat, once they've run
             reply = {**reply, "commands": fresh}
             sched.set_gap(60 * reply["settings"].get("breakEveryMin", 10))
             djline.set_family(reply["settings"].get("familyMode", True))   # the DJ's rating: family or PG-13
@@ -520,6 +525,7 @@ def main() -> None:
             if joke_on != joke_on_saved:   # which queued song carries which joke: survives a studio restart
                 save_joke_on()
                 joke_on_saved = dict(joke_on)
+            done_cmds = seen_cmds
             last_error = ""
         except Exception as e:
             msg = f"{type(e).__name__}: {e}"[:200]
