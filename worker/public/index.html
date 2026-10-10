@@ -2544,7 +2544,13 @@ $("q").addEventListener("input", () => {
     }));
   }, 400);
 });
+let searchY = null;   // where the page was when a song was picked: Back returns there, the results as they were
+function backToSearch() {
+  $("form").hidden = true; $("find").hidden = false;
+  if (searchY != null) { const y = searchY; searchY = null; requestAnimationFrame(() => scrollTo({ top: y, behavior: "instant" })); }
+}
 function choose(t, free) {
+  searchY = scrollY;
   chosen = t; $("freeFields").hidden = !free; $("chosen").hidden = free; $("chosen").replaceChildren(...(free ? [] : [songRow(t)]));
   if (!free) {   // a back arrow beside the song: back to the search, same as Return
     const back = el("button", "again"); back.type = "button"; back.setAttribute("aria-label", "Back to the search");
@@ -2558,9 +2564,9 @@ function choose(t, free) {
 }
 function closeForm() {
   if (history.state?.form) history.back();   // popstate below does the closing
-  else { $("form").hidden = true; $("find").hidden = false; }
+  else backToSearch();
 }
-addEventListener("popstate", () => { $("form").hidden = true; $("find").hidden = false; });
+addEventListener("popstate", backToSearch);
 $("freeBtn").onclick = () => typeIn($("q").value.trim());
 // The typed-in form, filled from the search box: "Artist - Song" and "Song by Artist" split; otherwise the guest adds the artist.
 function typeIn(q) {
