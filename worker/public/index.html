@@ -810,6 +810,19 @@
   /* a guest's own button: their picture as a legend, drained to grey and inset like the emoji */
   .presets .preset .ico-img { width: 24px; height: 24px; border-radius: 50%; filter: grayscale(1) contrast(1.4) brightness(1.08)
                               drop-shadow(0 -1.3px 0 #000e) drop-shadow(0 1.3px 0 #ffffff60); }
+  /* the signature at the foot of the page, and the story behind it */
+  .made-by { display: grid; place-items: center; margin: 8px 0 26px; }
+  .made-by button { display: grid; justify-items: center; gap: 2px; padding: 8px 18px; background: none; box-shadow: none; color: var(--cream-dim); }
+  .made-by span { font: 500 .78rem/1 Jost, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+  .made-by img { width: 120px; height: auto; filter: drop-shadow(0 1px 0 #000a) drop-shadow(0 0 8px #f0a92b44); }
+  .made-by button:active img { transform: scale(.97); }
+  .about { width: min(90vw, 520px); margin: 0 auto; padding: calc(70px + env(safe-area-inset-top)) 0 48px; color: var(--cream); }
+  .about .ab-sig { display: block; width: 190px; margin: 0 auto 10px; filter: drop-shadow(0 0 10px #f0a92b55); }
+  .about .ab-lede { text-align: center; font: 600 1.15rem/1.4 Jost, sans-serif; color: var(--cream); text-wrap: balance; }
+  .about h3 { margin: 28px 0 10px; font: 800 1.35rem/1.15 Fraunces, Georgia, serif; color: var(--gold); }
+  .about p, .about li { font: 400 1.02rem/1.55 Jost, sans-serif; color: var(--cream-dim); }
+  .about .ab-flow { display: block; width: 100%; max-width: 360px; margin: 6px auto 14px; }
+  .about .ab-parts { padding-left: 1.1em; margin: 0; }
 </style>
 </head>
 <body>
@@ -1041,7 +1054,73 @@
     <div class="medals" id="medals" role="list" aria-label="Medals"></div>
   </section>
 
+  <footer class="made-by"><button id="aboutBtn" type="button" aria-label="Made by matty: how OrrFM was made">
+    <span>Made by</span><img src="/matty-sig.webp" alt=""></button></footer>
 </main>
+  <dialog class="sleeve-box about-box" id="about" aria-label="About OrrFM">
+    <div class="sleeve-bar" aria-hidden="true"></div>
+    <button class="sleeve-close" id="aboutClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <article class="about">
+      <img class="ab-sig" src="/matty-sig.webp" alt="matty">
+      <p class="ab-lede">OrrFM is a radio station made for one night: the Orr family reunion.</p>
+      <h3>Who made it</h3>
+      <p>Matt Willms (matty) builds websites and software. He works from two Arch Linux towers he built himself, kept identical by one
+        set of config files, and he builds alongside an AI pair programmer: Claude, in Claude Code. OrrFM came together over a few
+        days and nights before the reunion.</p>
+      <h3>How a request travels</h3>
+      <svg class="ab-flow" viewBox="0 0 320 470" role="img" aria-label="How a request travels: your phone, the queue in the cloud, the studio at home, the console by the speakers, the party">
+  <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#f0a92b"/></marker></defs>
+  <g font-family="Jost, sans-serif" text-anchor="middle">
+    <rect x="70" y="4" width="180" height="56" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="27" fill="#f3e3c3" font-size="15" font-weight="700">Your phone</text><text x="160" y="46" fill="#cdb591" font-size="11">pick a song, a joke, a sound</text>
+    <path d="M160 62v30" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="40" y="96" width="240" height="64" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="119" fill="#f3e3c3" font-size="15" font-weight="700">The queue (Cloudflare)</text><text x="160" y="137" fill="#cdb591" font-size="11">fair turns, limits, medals, Orrdle,</text><text x="160" y="151" fill="#cdb591" font-size="11">one source of truth for the night</text>
+    <path d="M160 162v30" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="20" y="196" width="280" height="92" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="219" fill="#f3e3c3" font-size="15" font-weight="700">The studio (a PC at home)</text>
+    <text x="160" y="238" fill="#cdb591" font-size="11">finds the song (YouTube search, Apify download)</text>
+    <text x="160" y="254" fill="#cdb591" font-size="11">Claude writes the DJ's line</text>
+    <text x="160" y="270" fill="#cdb591" font-size="11">ElevenLabs gives it a voice</text>
+    <path d="M160 290v30" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="30" y="324" width="260" height="64" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="347" fill="#f3e3c3" font-size="15" font-weight="700">The console (a Raspberry Pi)</text><text x="160" y="365" fill="#cdb591" font-size="11">mixes SomaFM, two song decks, the DJ</text><text x="160" y="379" fill="#cdb591" font-size="11">and the sound buttons, live</text>
+    <path d="M160 390v30" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="80" y="424" width="160" height="42" rx="10" fill="#e2621b"/>
+    <text x="160" y="450" fill="#241208" font-size="15" font-weight="800">The party speakers</text>
+  </g></svg>
+      <p>Your phone talks to a small program in Cloudflare's cloud that keeps the line fair. A PC at home finds and downloads each song, has Claude write what the DJ says about it, and records that in an ElevenLabs voice. A Raspberry Pi wired to the speakers mixes it all live: SomaFM's 70s station between requests, the next song fading in under the DJ, and the sound buttons on top.</p>
+      <h3>How it was built</h3>
+      <svg class="ab-flow" viewBox="0 0 320 250" role="img" aria-label="The build loop: Matt asks, Claude builds and tests, a check in real browsers, a security review, a quiet deploy, Matt looks and asks again">
+  <defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6fe3c8"/></marker></defs>
+  <g font-family="Jost, sans-serif" text-anchor="middle" font-size="12">
+    <circle cx="160" cy="125" r="88" fill="none" stroke="#6fe3c855" stroke-width="2" stroke-dasharray="4 5"/>
+    <g fill="#2a1a12" stroke="#6fe3c8" stroke-width="1.4">
+      <rect x="110" y="14" width="100" height="34" rx="17"/><rect x="226" y="66" width="88" height="34" rx="17"/><rect x="226" y="152" width="88" height="34" rx="17"/>
+      <rect x="110" y="202" width="100" height="34" rx="17"/><rect x="6" y="152" width="88" height="34" rx="17"/><rect x="6" y="66" width="88" height="34" rx="17"/></g>
+    <g fill="#f3e3c3"><text x="160" y="36">Matt asks</text><text x="270" y="88">Claude builds</text><text x="270" y="174">tests run</text>
+      <text x="160" y="224">real browsers</text><text x="50" y="174">safety review</text><text x="50" y="88">quiet deploy</text></g>
+    <g stroke="#6fe3c8" stroke-width="1.6" fill="none" marker-end="url(#ar2)">
+      <path d="M212 34q30 6 40 28"/><path d="M272 102v46"/><path d="M252 188q-12 22-40 30"/><path d="M108 218q-30-6-40-28"/><path d="M48 150v-46"/><path d="M68 64q14-22 40-30"/></g>
+  </g></svg>
+      <p>Matt directs; Claude builds. Most requests arrived as a screenshot from his phone with a line of text: "this looks
+        floating, not engraved", "the coin goes behind the slot", or a photo of a real 1970s jukebox coin plate. Claude writes the code,
+        then checks its own work: a few hundred automated tests, screenshots in real browsers at phone size, and a security review of
+        every change before it goes live. Fixes reach the party without interrupting anyone: open pages update themselves at a quiet moment.</p>
+      <p>Bigger pieces follow a set routine: talk the idea through first, write a short spec, plan the steps, and write each test
+        before the code it tests. Before the party, a simulated party ran for three hours: eighteen fake guests, some careful,
+        some button-mashing, some baffled, to find what breaks first.</p>
+      <h3>The notebook</h3>
+      <p>Matt keeps a notes vault called mathom (a hobbit's word for a thing kept because it might be useful someday). Every lesson
+        learned the hard way goes in it: why something failed, what fixed it, what to check before building the next one. Claude reads
+        it before starting work and adds to it when a session teaches something, so a mistake made once isn't made again on the next
+        project. This build added one: how to listen in on the Pi's live mix without ever being able to silence the party.</p>
+      <h3>The parts</h3>
+      <ul class="ab-parts"><li>Cloudflare Workers and Durable Objects</li><li>Python on a home PC</li><li>A Raspberry Pi and a USB sound card</li>
+        <li>Claude (the DJ's words) and ElevenLabs (the DJ's voice)</li><li>SomaFM's Seventies station, between requests</li><li>YouTube and Apify for the songs, LRCLIB for the lyrics</li></ul>
+    </article>
+  </dialog>
+
 <script>
 const $ = (id) => document.getElementById(id);
 const params = new URLSearchParams(location.search);
@@ -2587,7 +2666,7 @@ $("q").addEventListener("input", () => {
 // Back from a picked song: the search panel comes to the top, as the request panel did, its results still there
 function backToSearch() {
   $("form").hidden = true; $("find").hidden = false;
-  requestAnimationFrame(() => $("find").scrollIntoView({ behavior: "smooth", block: "start" }));
+  requestAnimationFrame(() => $("find").scrollIntoView({ behavior: "instant", block: "start" }));   // a jump, no glide
 }
 function choose(t, free) {
   chosen = t; $("freeFields").hidden = !free; $("chosen").hidden = free; $("chosen").replaceChildren(...(free ? [] : [songRow(t)]));
@@ -3080,6 +3159,10 @@ document.querySelectorAll(".screw").forEach((sc) => sc.addEventListener("click",
   screwSpins.set(sc, Date.now());
   if (screwSpins.size === 4 && [...screwSpins.values()].every((t) => Date.now() - t < 10000)) earn("screws");
 }));
+// Made by: the story of the app, for anyone who asks
+$("aboutBtn").onclick = () => { const d = $("about"); d.classList.remove("closing"); d.showModal(); d.scrollTop = 0; document.documentElement.classList.add("od-open"); };
+$("aboutClose").onclick = () => { const d = $("about"); d.classList.add("closing"); setTimeout(() => { d.classList.remove("closing"); d.close(); }, 240); };
+$("about").addEventListener("close", () => document.documentElement.classList.remove("od-open"));
 // Hotfixes: each poll carries a fingerprint of this page as deployed. When it changes, the page swaps itself
 // for the new one at a quiet moment: while the phone is locked or in another app, or after a minute and a half
 // untouched with nothing typed and nothing open. The scroll position comes back; nobody is asked to refresh.
