@@ -1,7 +1,7 @@
 """Engravings for the coins' backs, from tools/matty-script.png (the matty script logo, white on black):
   worker/public/matty-engraved.webp   the logo as a cut: a dark groove, its upper-left wall in shade, its lower-right
                                       wall catching the light; translucent, so it reads as cut into any metal
-  worker/public/golden-tails.webp     the golden quarter's back: RIP / JAZZY / BELLE, the logo cut beneath
+  worker/public/golden-tails.webp     the golden quarter's back: RIP / Deandra / (Dee Dee), the logo cut beneath
 Run: .venv/bin/python tools/make_engraving.py   (after tools/make_golden.py, whose coin blank it reuses)"""
 
 from pathlib import Path
@@ -54,7 +54,7 @@ def text_mask(lines: list[str], size: int, gap: float) -> Image.Image:
 if __name__ == "__main__":
     engraving(logo_mask(440), depth=4).save(PUB / "matty-engraved.webp", quality=90, method=6)
     coin = blank_coin().convert("RGBA")
-    words = engraving(text_mask(["RIP", "JAZZY", "BELLE"], 74, 1.02), depth=4)
+    words = engraving(text_mask(["RIP", "Deandra", "(Dee Dee)"], 66, 1.08), depth=4)
     coin.alpha_composite(words, ((S - words.width) // 2, 86))
     logo = engraving(logo_mask(150), depth=3)
     coin.alpha_composite(logo, ((S - logo.width) // 2, 86 + words.height + 22))
