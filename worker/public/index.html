@@ -738,7 +738,7 @@
   .plank-word.gleaming::before { animation: signGleam .9s ease-in-out; }   /* the anime glint across a lens, on gold letters */
   @keyframes signGleam { 0% { opacity: 1; background-position: 160% 0; } 100% { opacity: 1; background-position: -60% 0; } }
   .plank-word.shiny { filter: drop-shadow(0 1px 0 #fff3c2) drop-shadow(0 -1px 0 #5a3c0c) drop-shadow(0 3px 2px #000c) drop-shadow(0 0 6px #ffd76a66); }
-  .fx.spk { border-radius: 0; background: none; filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 7px #ffd76a); }
+  .fx.spk { z-index: 80; border-radius: 0; background: none; filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 7px #ffd76a); }
   .fx.spk svg { display: block; width: 100%; height: 100%; overflow: visible; }
   .m3d .gleam { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; -webkit-backface-visibility: hidden; backface-visibility: hidden;
                 background: linear-gradient(115deg, transparent 40%, #ffffff55 47%, #ffffffb0 50%, #ffffff55 53%, transparent 60%) 170% 0 / 300% 100% no-repeat;
