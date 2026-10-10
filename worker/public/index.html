@@ -147,7 +147,7 @@
   .ticks { position: absolute; left: 12px; right: 12px; bottom: 7px; height: 10px;
            background: repeating-linear-gradient(90deg, #cdb59188 0 1px, transparent 1px 10px) 0 0 / calc(100% - 8px) 100% no-repeat; }   /* clear of the end stop */
   .ticks::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--cream-dim) 0 2px, transparent 2px 50px) 0 0 / calc(100% - 8px) 100% no-repeat; height: 12px; }
-  .ticks::before { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: var(--cream-dim); }   /* the last tick, like the others */   /* the scale's end stop */
+  .ticks::before { content: ""; position: absolute; right: 0; top: 0; height: 12px; width: 2px; background: var(--cream-dim); }   /* the scale's last tick: the same size as the big ticks */
   .needle { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--orange);
             box-shadow: 0 0 8px var(--orange); left: 0; will-change: transform; }   /* placed and moved by transform only (see the dial script) */
   .dial { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
