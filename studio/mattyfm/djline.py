@@ -153,6 +153,12 @@ def _safe(text: str) -> str:
     # Fold to ASCII FIRST: NFKC turns full-width ＜ ＞ into < >, which must then be removed.
     return " ".join(speech_text(text).replace("<", " ").replace(">", " ").split())
 
+
+def _song(s: dict) -> str:
+    """ "ABBA with Waterloo", or just the title when the feed gave no artist."""
+    return f"{_safe(s['artist'])} with {_safe(s['title'])}" if s.get("artist") else _safe(s["title"])
+
+
 SYSTEM = f"""You are the DJ of {STATION}, a pretend 1970s FM radio station playing at \
 a family reunion. Write what the DJ says over the crossfade into a requested song.
 
@@ -300,7 +306,6 @@ def write_line(item: dict, client) -> DJLine:
     if not isinstance(raw, str):   # null or missing: never voice "None"
         return _fallback(item, "no script")
     script = pause_cues(speech_text(raw))   # at most one pause and one delivery cue; nothing else in brackets
-    title = _safe(item["title"])
     song = song_phrase(item)
     if script and song and not _names_song(script, item) and not SIGN_OFF.search(display(script)):
         script = f"{script.rstrip()}{'' if script.rstrip()[-1:] in '.!?' else '.'} Here's {song}."   # the rule: end on the song
@@ -366,13 +371,13 @@ def backannounce(prev: dict | None, cur: dict, client, returning: bool = False, 
     returning: the guests' requests just handed back to SomaFM, whose song is already underway.
     message: a guest's joke or announcement (its recorded script) to work in; only blended if it survives intact."""
     if returning:
-        fallback = DJLine(True, "funny", f"Back to the seventies on {STATION}. This is {_safe(cur['artist'])} with {_safe(cur['title'])}.", True)
+        fallback = DJLine(True, "funny", f"Back to the seventies on {STATION}. This is {_song(cur)}.", True)
         lines = ["coming back from the guests' requests to the music feed",
                  f"song already playing on the feed: {_safe(cur['title'])} by {_safe(cur['artist'])}"]
         if prev:
             lines.append(f"the last request, just ended: {_safe(prev['title'])} by {_safe(prev['artist'])}")
     else:
-        fallback = DJLine(True, "funny", f"You're on {STATION}. Here's {_safe(cur['artist'])} with {_safe(cur['title'])}.", True)
+        fallback = DJLine(True, "funny", f"You're on {STATION}. Here's {_song(cur)}.", True)
         lines = [f"new song: {_safe(cur['title'])} by {_safe(cur['artist'])}"]
         if prev:
             lines.append(f"previous song: {_safe(prev['title'])} by {_safe(prev['artist'])}")

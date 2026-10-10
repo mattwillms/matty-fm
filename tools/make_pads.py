@@ -50,4 +50,8 @@ def main() -> None:
 
 
 if __name__ == "__main__":
+    # the live pads are hand-picked clips: this demo generator would overwrite them and spend ElevenLabs credit
+    if "--overwrite-the-real-pads" not in sys.argv:
+        sys.exit("make_pads.py made the old demo pads; the live ones are hand-picked (see the top of this file). "
+                 "Pass --overwrite-the-real-pads to replace them anyway.")
     main()

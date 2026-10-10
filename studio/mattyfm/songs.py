@@ -5,7 +5,6 @@ import json
 import logging
 import re
 import subprocess
-import sys
 import time
 import unicodedata
 from collections.abc import Callable
@@ -126,36 +125,10 @@ def pick(cands: list[Candidate], title: str, artist: str,
 
 
 def _reason(e: subprocess.SubprocessError) -> str:
-    """yt-dlp's own last ERROR line, not the command line."""
+    """A failed tool's own last ERROR line, not the command line."""
     err = getattr(e, "stderr", "") or ""
     lines = [l for l in str(err).splitlines() if "ERROR" in l] or str(err).splitlines() or [str(e)]
     return lines[-1].strip()[:200]
-
-
-def yt_search(query: str) -> list[Candidate]:
-    out = subprocess.run(
-        [sys.executable, "-m", "yt_dlp", "--flat-playlist", "--dump-json", "--no-warnings",
-         f"ytsearch8:{query}"],
-        capture_output=True, text=True, timeout=60, check=True,
-    ).stdout
-    cands = []
-    for line in out.splitlines():
-        d = json.loads(line)
-        if d.get("duration"):
-            cands.append(Candidate(d["id"], d.get("title") or "",
-                                   d.get("channel") or d.get("uploader") or "", float(d["duration"])))
-    return cands
-
-
-def yt_download(video_id: str, dest: Path) -> None:
-    tmp = dest.with_name(dest.stem + ".dl")
-    subprocess.run(
-        [sys.executable, "-m", "yt_dlp", "-q", "--no-warnings", "-f", "bestaudio",
-         "-x", "--audio-format", "mp3", "--audio-quality", "0", "--sleep-requests", "1",
-         "-o", f"{tmp}.%(ext)s", "--", video_id],
-        capture_output=True, text=True, timeout=300, check=True,
-    )
-    Path(f"{tmp}.mp3").rename(dest)
 
 
 def cache_name(key: str) -> str:
@@ -167,8 +140,8 @@ def cache_name(key: str) -> str:
 
 
 def get_song(item: dict, cache_dir: Path,
-             search: Callable[[str], list[Candidate]] | None = yt_search,
-             download: Callable[[str, Path], None] | list | None = yt_download,
+             search: Callable[[str], list[Candidate]] | None = None,
+             download: Callable[[str, Path], None] | list | None = None,
              tries: int = MAX_TRIES, verify: Callable[[Path], bool] | None = None,
              verify_cached: Callable[[Path], bool] | None = None,
              budget_s: float = DOWNLOAD_BUDGET_S, clock: Callable[[], float] = time.monotonic) -> SongFile:

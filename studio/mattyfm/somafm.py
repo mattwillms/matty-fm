@@ -27,7 +27,11 @@ class NowPlaying:
                 r = self.http.get(FEED, headers={"User-Agent": "OrrFM-studio/1.0"}, timeout=5)
                 r.raise_for_status()
                 song = r.json()["songs"][0]
-                now = {"artist": song["artist"], "title": song["title"], "since": int(song["date"])}
+                # a station ID or a gap can come with no artist or title: never let "None" reach the DJ
+                now = {"artist": (song.get("artist") or "").strip(), "title": (song.get("title") or "").strip(),
+                       "since": int(song["date"])}
+                if not now["title"]:
+                    return self.last
                 if self.last and (self.last["artist"], self.last["title"]) == (now["artist"], now["title"]):
                     for k in ("artwork", "year", "album", "apple"):
                         if self.last.get(k):

@@ -23,7 +23,6 @@ def test_load_reads_defaults(monkeypatch):
     assert cfg.sample_rate == 44100
     assert cfg.worker_url == "https://fm.willms.co"
     assert cfg.media_dir == cfg.repo / "media"
-    assert cfg.station_media_dir == "/media"
 
 
 def test_load_env_strips_matching_quotes(tmp_path, monkeypatch):

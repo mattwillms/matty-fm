@@ -76,6 +76,20 @@ def is_audio(path: Path, expected_s: float | None = None) -> bool:
         return False
 
 
+_answers: dict = {}
+
+
+def _memo(key: tuple, ask, keep_empty: bool = False):
+    """A Claude or Apple answer for a song asked about before tonight (repeats are common at a party).
+    An empty answer is kept only with keep_empty: Apple's {} may be an outage, worth asking again."""
+    if key not in _answers:
+        got = ask()
+        if not got and not keep_empty:
+            return got
+        _answers[key] = got
+    return _answers[key]
+
+
 def prepare(item: dict, deps: Deps) -> dict:
     media: Path = deps.cfg.media_dir
     rid = item["id"]
@@ -91,7 +105,9 @@ def prepare(item: dict, deps: Deps) -> dict:
         log.exception("%s song lookup failed", rid)
         return {"id": rid, "status": "failed", "error": f"Song lookup failed: {type(e).__name__}: {e}"[:300]}
     confidence, note = check_match(song, item)
-    held = djline.doubt(item, song.title or "", song.channel or "", deps.claude)   # junk ("%%%") waits for the host
+    # junk ("%%%") waits for the host; the same request matched to the same video gets the same answer
+    held = _memo(("doubt", item["title"], item["artist"], song.video_id),
+                 lambda: djline.doubt(item, song.title or "", song.channel or "", deps.claude), keep_empty=True)
     if held:
         log.info("%s held for the host: %s", rid, held)
     log.info("%s song ready in %.1fs: %s (video %s, confidence %.0f -> %.0f): %s", rid, time.monotonic() - t0,
@@ -128,6 +144,7 @@ def prepare(item: dict, deps: Deps) -> dict:
             engine = "generic"
             seconds, voice_s = mix.prepare_files(song.path, raw_voice, media / "ready" / f"{rid}.mp3",
                                                  media / "voice" / f"{rid}.mp3", deps.cfg.sample_rate)
+            raw_voice.unlink(missing_ok=True)
     except Exception as e:  # any failure here must not kill the studio
         log.exception("prepare %s failed", item["id"])
         if mixing and not is_audio(song.path):
@@ -138,7 +155,8 @@ def prepare(item: dict, deps: Deps) -> dict:
     log.info("%s files ready in %.1fs (song %.0fs, voice %.1fs); total %.1fs", rid, time.monotonic() - t1,
              seconds, voice_s, time.monotonic() - t0)
     # year, album and the Apple Music link for the guests' record sleeve (iPhones can't ask Apple themselves)
-    info = apple.release_info(item["artist"], item["title"], deps.http) if deps.http else {}
+    info = _memo(("apple", item["artist"], item["title"]),
+                 lambda: apple.release_info(item["artist"], item["title"], deps.http)) if deps.http else {}
     extra = {k2: info[k1] for k1, k2 in (("year", "year"), ("apple", "appleUrl"), ("album", "albumName"),
                                           ("artwork", "artworkUrl")) if info.get(k1)}
     return {**extra, "id": item["id"], "status": "ready", "file": f"{item['id']}.mp3", "durationS": seconds,

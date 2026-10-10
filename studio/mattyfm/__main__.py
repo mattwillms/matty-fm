@@ -41,12 +41,15 @@ def main() -> None:
     api = WorkerAPI(cfg.worker_url, cfg.studio_secret)
     station = PiLink(cfg.pi_url, cfg.pi_token)
     write_backup_index(cfg.media_dir)
+    # raw TTS takes are deleted once mixed; a crash or a failed mix can leave one behind
+    for raw in [*(cfg.media_dir / "voice").glob("*.raw.mp3"), *(cfg.media_dir / "breaks").glob("*.raw.mp3")]:
+        raw.unlink(missing_ok=True)
     yt_key, apify = os.environ.get("YOUTUBE_API_KEY", ""), os.environ.get("APIFY_TOKEN", "")
     if not (yt_key and apify):
         log.error("YOUTUBE_API_KEY / APIFY_TOKEN missing: only cached songs can play")
     deps = prepare.Deps(cfg=cfg, claude=anthropic.Anthropic(max_retries=1), http=httpx.Client(),
                         aura=api.tts, names=tts.load_names(cfg.repo / "studio" / "names.toml"),
-                        search=sources.YouTubeSearch([yt_key, os.environ.get("YOUTUBE_API_KEY_2", "")], httpx.Client(), cfg.media_dir / "cache" / "search.json") if yt_key else None,
+                        search=sources.YouTubeSearch(yt_key, httpx.Client(), cfg.media_dir / "cache" / "search.json") if yt_key else None,
                         download=sources.downloaders(apify) if apify else None)
     soma_np = somafm.NowPlaying(httpx.Client())
     sched = breaks.Scheduler(now=time.monotonic())

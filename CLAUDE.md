@@ -4,26 +4,23 @@ Family-reunion radio. Spec: `spec.md`. Plan: `docs/superpowers/plans/2026-10-07-
 Version 0.1.0 (semver = big.small.bug).
 
 ## Run
-- Icecast: `station/icecast.sh` (libretime/icecast:2.4.4, host port 8040, mount /radio)
-- Station: `station/run.sh` (Liquidsoap 2.4.5 in Docker, host network, streams into Icecast, telnet 127.0.0.1:1234)
-- Studio: `cd studio && ../.venv/bin/python -m mattyfm`
-- Worker: `cd worker && npx wrangler dev` / `npx wrangler deploy`
+- Studio: `systemctl --user {start,status} mattyfm-studio` (or `cd studio && ../.venv/bin/python -m mattyfm`); it serves the Pi
+  its files via `mattyfm-files`. Tap listener: `mattyfm-listen` (http://127.0.0.1:8045).
+- Worker: `cd worker && npx wrangler dev` / `npx wrangler deploy`. Party-day fixes: `tools/hotfix.sh worker|studio|both`.
 - Tests: `.venv/bin/pytest studio/tests -q` · `cd worker && npx vitest run`
-- Units: `systemctl --user {start,status} mattyfm-studio mattyfm-files mattyfm-listen`
-
-- Listen on this PC: http://127.0.0.1:8045 (the `mattyfm-listen` user unit runs `tools/listen.py`; needs `TAP=1` on the Pi and its mattyfm-tap unit)
-- Pi receiver: `scp -r pi mattyfm: && ssh mattyfm 'sudo bash pi/setup.sh http://192.168.86.44:8040/radio'`; logs `ssh mattyfm journalctl -u mattyfm-pi -f`
+- Pi receiver: `scp -r pi mattyfm: && ssh mattyfm 'sudo bash pi/setup.sh http://192.168.86.44:8040 <PI_TOKEN>'`; logs `ssh mattyfm journalctl -u mattyfm-pi -f`
+- Sound pads are hand-picked clips (top of `tools/make_pads.py`); the script refuses to run without `--overwrite-the-real-pads`.
 
 ## Rules
 - **During the party, fix through `tools/hotfix.sh worker|studio|both` only** (rules: `docs/hotfix.md`). Pages swap themselves quietly; never reset the party or touch the Pi.
 - Secrets only in `~/.config/mattyfm/env` and Worker secrets. Never commit them.
-- Never rebind `reqs` in radio.liq (wrapped sources lose push/skip).
-- Liquidsoap image tag is pinned: `savonet/liquidsoap:v2.4.5`.
 - Pi audio card is addressed by name (`plughw:CARD=<name>`), never by index.
-- The Worker queue is the single source of truth; Liquidsoap holds at most one pushed item.
+- The Worker queue is the single source of truth; the Pi holds at most one pushed item.
+- **Text size floor on the guest page (small phones, older guests):** reading text ≥ 17px, hints and secondary
+  text ≥ 16px, the radio's stamped labels (dial numbers, REQUESTED, RETURN, placards) ≥ 12px. Nothing smaller.
 
 ## Findings
-- **Song sources keep the home IP off YouTube:** search = YouTube Data API v3 (key `YOUTUBE_API_KEY`, ~100 searches/day; the studio can rotate to `YOUTUBE_API_KEY_2`, but a second Google project for the same app breaks YouTube's API policy and risks suspending both, so it stays unset, cached in media/cache/search.json); download = Apify actors on their servers (`APIFY_TOKEN`; primary thenetaji/youtube-music-downloader, fallback lurkapi). yt-dlp from home tripped "confirm you're not a bot" after ~50 downloads — do not use it on party day.
+- **Song sources keep the home IP off YouTube:** search = YouTube Data API v3 (key `YOUTUBE_API_KEY`, ~100 searches/day; one key only: a second Google project for the same app breaks YouTube's API policy and risks suspending both; cached in media/cache/search.json); download = Apify actors on their servers (`APIFY_TOKEN`; primary thenetaji/youtube-music-downloader, fallback lurkapi). yt-dlp from home tripped "confirm you're not a bot" after ~50 downloads — the studio no longer has a yt-dlp path at all.
 - **A deploy reaches the live queue (Durable Object) slowly: ~5½ min on 2026-10-08**, not at once. Never bump `QUEUE_VERSION` to make a change live; deploy, then read back `code` in `/api/admin/state` (bump its value in party.ts with each queue change) until it shows. Earlier bumps came from checking after 40 s. A bump is the last resort and is no longer destructive: a never-used queue takes over the previous version's state (`exportState`/`importState`, ids kept).
 - Pi is the console (pi/console.py): SomaFM + deckA/deckB + dj + fx softvols into dmix (fx = admin sound pads, media/breaks/pad-1..5.mp3, made by tools/make_pads.py; tap → PA ≈ 1.5–3 s via the studio beat); transition = outgoing fades to silence (1.5 s), DJ at +0.5 s, 0.4 s gap, incoming fades up to full as the voice ends. Liquidsoap/Icecast retired.
 - **SomaFM drops any client whose user agent contains "Liquidsoap"** (their no-restreaming rule). The Pi plays SomaFM itself; never disguise the station's user agent.

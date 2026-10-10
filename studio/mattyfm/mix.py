@@ -6,16 +6,7 @@ import subprocess
 from pathlib import Path
 
 SONG_LUFS, VOICE_LUFS, TRUE_PEAK = -16, -14, -1.5
-# The DJ talks over the transition: the voice starts VOICE_AT seconds in at full
-# level while the Pi fades SomaFM (or the last song) down under the first half of
-# the script; the new song starts at the script's midpoint and fades up to full
-# volume as the script ends.
-VOICE_AT = 0.5
-
-
-def song_start(voice_s: float) -> float:
-    """Where the song begins in the mix: the midpoint of the script."""
-    return VOICE_AT + voice_s / 2
+# The Pi times the transition (pi/console.py); this file only makes the files.
 
 
 VOICE_CHAIN = ("highpass=f=80,equalizer=f=3000:t=q:w=1:g=3,"

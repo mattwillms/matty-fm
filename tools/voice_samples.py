@@ -108,12 +108,15 @@ def run(*cmd: str) -> None:
 
 
 def fetch_song(dest: Path) -> None:
+    """The request's song from the studio's cache (never yt-dlp from home: YouTube flags the address)."""
     if dest.exists():
         return
     r = REQUEST
-    run("yt-dlp", "-q", "-x", "--audio-format", "mp3",
-        "-o", str(dest.with_suffix(".%(ext)s")),
-        f"ytsearch1:{r['artist']} - {r['title']} official audio")
+    cached = sorted((ROOT / "media" / "cache").glob(f"{r['artist'].lower()}*{r['title'].lower()}*.mp3")) \
+        or sorted((ROOT / "media" / "cache").glob("*.mp3"))
+    if not cached:
+        sys.exit("no cached song in media/cache to talk over")
+    dest.write_bytes(cached[0].read_bytes())
 
 
 def fetch_soma(dest: Path) -> None:

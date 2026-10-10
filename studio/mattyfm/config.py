@@ -34,9 +34,6 @@ class Config:
     studio_secret: str
     repo: Path
     media_dir: Path
-    station_media_dir: str
-    telnet_host: str
-    telnet_port: int
     sample_rate: int
     pi_url: str
     pi_token: str
@@ -49,9 +46,6 @@ def load() -> Config:
         studio_secret=os.environ.get("STUDIO_SECRET", ""),
         repo=REPO,
         media_dir=REPO / "media",
-        station_media_dir="/media",
-        telnet_host="127.0.0.1",
-        telnet_port=1234,
         sample_rate=int(os.environ.get("MATTYFM_RATE", "44100")),
         pi_url=os.environ.get("MATTYFM_PI_URL", "http://192.168.86.31:8042"),
         pi_token=os.environ.get("PI_TOKEN", ""),
