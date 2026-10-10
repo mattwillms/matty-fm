@@ -699,6 +699,9 @@ export class Party extends DurableObject<Env> {
     };
   }
 
+  /** Family mode, for the record sleeve's lyrics (rude words starred out). */
+  async familyMode() { return this.flags().familyMode; }
+
   /** Song keys the studio already has on disk: they play instantly. */
   async cachedKeys(): Promise<string[]> {
     try {

@@ -147,7 +147,7 @@
   .ticks { position: absolute; left: 12px; right: 12px; bottom: 7px; height: 10px;
            background: repeating-linear-gradient(90deg, #cdb59188 0 1px, transparent 1px 10px) 0 0 / calc(100% - 8px) 100% no-repeat; }   /* clear of the end stop */
   .ticks::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--cream-dim) 0 2px, transparent 2px 50px) 0 0 / calc(100% - 8px) 100% no-repeat; height: 12px; }
-  .ticks::before { content: ""; position: absolute; right: 0; top: -2px; bottom: 0; width: 3px; background: var(--cream-dim); }   /* the scale's end stop */
+  .ticks::before { content: ""; position: absolute; right: 0; top: 0; bottom: 0; width: 2px; background: var(--cream-dim); }   /* the last tick, like the others */   /* the scale's end stop */
   .needle { position: absolute; top: -4px; bottom: -4px; width: 3px; background: var(--orange);
             box-shadow: 0 0 8px var(--orange); left: 0; will-change: transform; }   /* placed and moved by transform only (see the dial script) */
   .dial { cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
@@ -408,17 +408,28 @@
   @keyframes fade { from { opacity: 0; } }
   @keyframes sleeve-in { from { opacity: 0; transform: scale(.96); } }
   @keyframes sleeve-out { to { opacity: 0; } }
-  .listen { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin: 20px -8px 0; }
-  .listen-btn { display: inline-flex; align-items: center; gap: 6px; height: 40px; padding: 0 11px; border-radius: 999px;
+  /* the app links ride in the top bar with the close button: round icons, the name for screen readers */
+  .listen { position: fixed; z-index: 2; top: calc(14px + env(safe-area-inset-top)); left: calc(14px + env(safe-area-inset-left)); display: flex; gap: 8px; margin: 0; }
+  .listen-btn span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+  .listen-btn { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border-radius: 50%; box-shadow: inset 0 0 0 1.5px #f3e3c366;
                 font: 500 .86rem Jost, sans-serif; color: var(--cream); text-decoration: none; background: #0005; white-space: nowrap;
                 box-shadow: inset 0 0 0 1.5px #cdb59166; transition: background .15s, box-shadow .15s; }
   .listen-btn:hover, .listen-btn:focus-visible { background: #0008; box-shadow: inset 0 0 0 1.5px var(--gold); outline: none; }
   .listen-btn:active { transform: scale(.97); }
-  .listen-btn svg { width: 16px; height: 16px; fill: currentColor; flex: none; }
+  .listen-btn svg { width: 19px; height: 19px; fill: currentColor; flex: none; }
   .sleeve-close:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
-  .sleeve-fig { margin: 0; min-height: 100%; display: grid; place-content: center; justify-items: center; gap: 26px; }
+  /* the record near the top (clear of the bar), the song under it, its words under that; the sleeve scrolls itself */
+  .sleeve-fig { margin: 0; padding: calc(64px + env(safe-area-inset-top)) 0 40px; display: grid; align-content: start; justify-items: center; gap: 22px; }
+  dialog.sleeve-box { overflow-y: auto; overscroll-behavior: contain; }
+  .lyrics { width: min(90vw, 460px); display: grid; gap: 22px; margin-top: 4px; }
+  .sleeve-bar { position: fixed; z-index: 1; left: 0; right: 0; top: 0; height: calc(84px + env(safe-area-inset-top)); pointer-events: none;
+                background: linear-gradient(#120a06 0, #120a06ee 62%, #120a0600); }   /* the words fade out under the top bar */
+  .lyrics .chunk { margin: 0; font: 600 1.15rem/1.42 Jost, sans-serif; color: var(--cream); text-wrap: pretty; }   /* a few lines at a time, big enough to read */
+  .lyrics .chunk:nth-child(odd) { color: #f3e3c3; } .lyrics .chunk:nth-child(even) { color: #e6cf9f; }
+  .lyrics .note { margin: 0; text-align: center; color: var(--cream-dim); font: 400 1rem/1.4 Jost, sans-serif; }
+  .lyrics .credit { margin: 6px 0 0; text-align: center; color: #8f7a5f; font-size: .8rem; }
   @media (max-height: 380px) { .sleeve-fig { gap: 12px; } .listen { margin-top: 10px; } .sl-t { font-size: 1.5rem; } }
-  .sleeve-stage { --w: min(66vw, 360px, 50vh, 42svh, calc(100svh - 230px)); position: relative; width: var(--w); height: var(--w); margin-right: calc(var(--w) * .3); }
+  .sleeve-stage { --w: min(58vw, 300px, 38svh); position: relative; width: var(--w); height: var(--w); margin-right: calc(var(--w) * .3); }
   .vinyl { position: absolute; inset: 3%; border-radius: 50%; box-shadow: 0 8px 22px #000b; will-change: transform;
            animation: pull .8s .3s cubic-bezier(.2, .7, .2, 1) both; }   /* starts as the fade finishes */
   .vinyl::after { content: ""; position: absolute; inset: 0; border-radius: 50%; pointer-events: none;   /* the shine stays put while the disc turns */
@@ -899,7 +910,13 @@
   <p id="onbreak" class="notice" hidden>The DJ is on a short break. Your request is saved and will play.</p>
 
   <dialog class="sleeve-box" id="sleeve" aria-label="Record sleeve">
+    <div class="sleeve-bar" aria-hidden="true"></div>
     <button class="sleeve-close" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <nav class="listen" aria-label="Play this song in an app">
+          <a class="listen-btn" id="toApple" aria-label="Apple Music" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026-.747.043-1.49.123-2.193.4-1.336.53-2.3 1.452-2.865 2.78-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.801.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03a12.5 12.5 0 001.57-.1c.822-.106 1.596-.35 2.295-.81a5.046 5.046 0 001.88-2.207c.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zm-6.423 3.99v5.712c0 .417-.058.827-.244 1.206-.29.59-.76.962-1.388 1.14-.35.1-.706.157-1.07.173-.95.045-1.773-.6-1.943-1.536a1.88 1.88 0 011.038-2.022c.323-.16.67-.25 1.018-.324.378-.082.758-.153 1.134-.24.274-.063.457-.23.51-.516a.904.904 0 00.02-.193c0-1.815 0-3.63-.002-5.443a.725.725 0 00-.026-.185c-.04-.15-.15-.243-.304-.234-.16.01-.318.035-.475.066-.76.15-1.52.303-2.28.456l-2.325.47-1.374.278c-.016.003-.032.01-.048.013-.277.077-.377.203-.39.49-.002.042 0 .086 0 .13-.002 2.602 0 5.204-.003 7.805 0 .42-.047.836-.215 1.227-.278.64-.77 1.04-1.434 1.233-.35.1-.71.16-1.075.172-.96.036-1.755-.6-1.920-1.544-.14-.812.23-1.685 1.154-2.075.357-.15.73-.232 1.108-.31.287-.06.575-.116.86-.177.383-.083.583-.323.6-.714v-.15c0-2.96 0-5.922.002-8.882 0-.123.013-.25.042-.37.07-.285.273-.448.546-.518.255-.066.515-.112.774-.165.733-.15 1.466-.296 2.2-.444l2.27-.46c.67-.134 1.34-.27 2.01-.403.22-.043.442-.088.663-.106.31-.025.523.17.554.482.008.073.012.148.012.223.002 1.910.002 3.822 0 5.732z"/></svg><span>Apple Music</span></a>
+          <a class="listen-btn" id="toSpotify" aria-label="Spotify" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.020zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.020-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.020 15.721 1.621.539.3.719 1.020.419 1.56-.299.421-1.020.599-1.559.3z"/></svg><span>Spotify</span></a>
+          <a class="listen-btn" id="toYoutube" aria-label="YouTube" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.070 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg><span>YouTube</span></a>
+        </nav>
     <figure class="sleeve-fig">
       <div class="sleeve-stage">
         <div class="vinyl" aria-hidden="true"><div class="disc"><img src="/hen.png" alt=""></div></div>
@@ -909,12 +926,8 @@
         <p class="sl-t" id="sleeveTitle"></p>
         <p class="sl-a" id="sleeveArtist"></p>
         <p class="sl-al" id="sleeveAlbum"></p>
-        <nav class="listen" aria-label="Play this song in an app">
-          <a class="listen-btn" id="toApple" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.994 6.124a9.23 9.23 0 00-.24-2.19c-.317-1.31-1.062-2.31-2.18-3.043a5.022 5.022 0 00-1.877-.726 10.496 10.496 0 00-1.564-.15c-.04-.003-.083-.01-.124-.013H5.986c-.152.01-.303.017-.455.026-.747.043-1.49.123-2.193.4-1.336.53-2.3 1.452-2.865 2.78-.192.448-.292.925-.363 1.408-.056.392-.088.785-.1 1.18 0 .032-.007.062-.01.093v12.223c.01.14.017.283.027.424.05.815.154 1.624.497 2.373.65 1.42 1.738 2.353 3.234 2.801.42.127.856.187 1.293.228.555.053 1.11.06 1.667.06h11.03a12.5 12.5 0 001.57-.1c.822-.106 1.596-.35 2.295-.81a5.046 5.046 0 001.88-2.207c.186-.42.293-.87.37-1.324.113-.675.138-1.358.137-2.04-.002-3.8 0-7.595-.003-11.393zm-6.423 3.99v5.712c0 .417-.058.827-.244 1.206-.29.59-.76.962-1.388 1.14-.35.1-.706.157-1.07.173-.95.045-1.773-.6-1.943-1.536a1.88 1.88 0 011.038-2.022c.323-.16.67-.25 1.018-.324.378-.082.758-.153 1.134-.24.274-.063.457-.23.51-.516a.904.904 0 00.02-.193c0-1.815 0-3.63-.002-5.443a.725.725 0 00-.026-.185c-.04-.15-.15-.243-.304-.234-.16.01-.318.035-.475.066-.76.15-1.52.303-2.28.456l-2.325.47-1.374.278c-.016.003-.032.01-.048.013-.277.077-.377.203-.39.49-.002.042 0 .086 0 .13-.002 2.602 0 5.204-.003 7.805 0 .42-.047.836-.215 1.227-.278.64-.77 1.04-1.434 1.233-.35.1-.71.16-1.075.172-.96.036-1.755-.6-1.920-1.544-.14-.812.23-1.685 1.154-2.075.357-.15.73-.232 1.108-.31.287-.06.575-.116.86-.177.383-.083.583-.323.6-.714v-.15c0-2.96 0-5.922.002-8.882 0-.123.013-.25.042-.37.07-.285.273-.448.546-.518.255-.066.515-.112.774-.165.733-.15 1.466-.296 2.2-.444l2.27-.46c.67-.134 1.34-.27 2.01-.403.22-.043.442-.088.663-.106.31-.025.523.17.554.482.008.073.012.148.012.223.002 1.910.002 3.822 0 5.732z"/></svg>Apple Music</a>
-          <a class="listen-btn" id="toSpotify" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.020zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.020-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.020 15.721 1.621.539.3.719 1.020.419 1.56-.299.421-1.020.599-1.559.3z"/></svg>Spotify</a>
-          <a class="listen-btn" id="toYoutube" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.070 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg>YouTube</a>
-        </nav>
       </figcaption>
+      <div class="lyrics" id="sleeveLyrics" aria-live="polite"></div>
     </figure>
   </dialog>
 
@@ -1456,6 +1469,32 @@ function decoded(src) {   // resolves when the picture is ready to paint (or fai
   return img.decode().then(() => true, () => false);
 }
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+// The song's words under the sleeve, a few lines at a time (as Apple Music and Genius show them): verses split
+// where the song does, a long verse cut into chunks of four lines or fewer.
+function lyricChunks(text) {
+  const out = [];
+  for (const verse of text.replace(/\r/g, "").split(/\n\s*\n/)) {
+    const lines = verse.split("\n").map((l) => l.trim()).filter(Boolean);
+    for (let i = 0; i < lines.length; i += 4) {
+      const take = lines.length - i === 5 ? 3 : 4;   // never leave one line on its own
+      out.push(lines.slice(i, i + take)); if (take === 3) { out.push(lines.slice(i + 3, i + 5)); break; }
+    }
+  }
+  return out;
+}
+async function loadLyrics(np) {
+  const box = $("sleeveLyrics");
+  box.replaceChildren(el("p", "note", "Looking for the words…"));
+  let r = null;
+  try { r = await api(`/api/lyrics?artist=${encodeURIComponent(np.artist)}&title=${encodeURIComponent(cleanTitle(np.title))}&s=${np.durationS || ""}`,
+                      { signal: AbortSignal.timeout(9000) }); } catch {}
+  if (sleeveFor !== np) return;
+  if (!r || (!r.lyrics && !r.instrumental)) { box.replaceChildren(el("p", "note", "No words found for this one.")); return; }
+  if (r.instrumental && !r.lyrics) { box.replaceChildren(el("p", "note", "An instrumental: no words, just the music.")); return; }
+  box.replaceChildren(...lyricChunks(r.lyrics).map((lines) => {
+    const p = el("p", "chunk"); lines.forEach((l, i) => { if (i) p.append(el("br")); p.append(l); }); return p;
+  }), el("p", "credit", "Lyrics from LRCLIB"));
+}
 async function openSleeve(np = onAir) {
   if (!np || !np.artist || sleeveFor === np && $("sleeve").open) return;   // a hidden (offensive) title has no artist
   sleeveFor = np;
@@ -1468,6 +1507,7 @@ async function openSleeve(np = onAir) {
   await Promise.race([Promise.all([infoP.then((i) => { info = i; }), bigP.then((ok) => { bigReady = ok; })]), wait(450)]);
   if (sleeveFor !== np) return;
   $("sleeveTitle").textContent = cleanTitle(np.title);
+  $("sleeve").scrollTop = 0; loadLyrics(np);
   $("sleeveArtist").textContent = np.artist;
   $("sleeveAlbum").textContent = info?.album || ""; $("sleeveAlbum").classList.remove("late");
   $("sleeveYear").textContent = info?.year || ""; $("sleeveYear").hidden = !info?.year;
@@ -1507,7 +1547,7 @@ function closeSleeve() {
   d.addEventListener("animationend", onEnd);
   setTimeout(() => d.open && d.classList.contains("closing") && done(), 400);   // in case no animation runs
 }
-$("sleeve").onclick = (e) => { if (!e.target.closest("a")) closeSleeve(); };   // tap anywhere but a link to put it back
+$("sleeve").onclick = (e) => { if (!e.target.closest("a, .lyrics")) closeSleeve(); };   // tap anywhere but a link or the words to put it back
 $("sleeve").addEventListener("cancel", (e) => { e.preventDefault(); closeSleeve(); });   // Escape fades too
 // ---- screws: tap one and it spins loose, slowing under friction, never past 1.5 s ----
 function slitAngle(slit) {

@@ -1,6 +1,7 @@
 // Router + auth. Guests: party code + device cookie. Admin: x-admin-token. Studio: bearer secret.
 import { Party } from "./party";
 import { searchAll } from "./search";
+import { isOffensive } from "./queue";
 
 export { Party };
 
@@ -48,6 +49,31 @@ async function device(req: Request, env: Env, mint: boolean): Promise<{ id: stri
   if (!(await env.NEWDEV_LIMIT.limit({ key: ip })).success) return { id: crypto.randomUUID() };   // no cookie: can look, can't request
   const id = crypto.randomUUID();
   return { id, cookie: `mfm_dev=${id}.${await sign(id, env)}; Path=/; Max-Age=2592000; HttpOnly; Secure; SameSite=Lax` };
+}
+
+/** A song's words, from LRCLIB (free, no key): the exact match by artist, title and length, else its search. Cached a
+ *  day for everyone, so a song's words are fetched once a party. Rude words are starred out in family mode. */
+async function cachedLyrics(artist: string, title: string, seconds: number, family: boolean, ctx: ExecutionContext) {
+  const norm = (t: string) => t.toLowerCase().replace(/\s+/g, " ").trim();
+  const key = new Request(`https://lyrics.mattyfm.internal/?a=${encodeURIComponent(norm(artist))}&t=${encodeURIComponent(norm(title))}`);
+  let found: { lyrics: string; instrumental: boolean } = { lyrics: "", instrumental: false };
+  const hit = await caches.default.match(key);
+  if (hit) found = await hit.json();
+  else {
+    const ua = { "user-agent": "OrrFM/1.0 (a family party radio)" };
+    const q = new URLSearchParams({ artist_name: artist, track_name: title, ...(seconds ? { duration: String(Math.round(seconds)) } : {}) });
+    const get = async (u: string) => { try { const r = await fetch(u, { headers: ua, signal: AbortSignal.timeout(5000) }); return r.ok ? await r.json() : null; } catch { return null; } };
+    let row = await get(`https://lrclib.net/api/get?${q}`) as Record<string, unknown> | null;
+    if (!row?.plainLyrics && !row?.instrumental) {
+      const list = await get(`https://lrclib.net/api/search?${new URLSearchParams({ artist_name: artist, track_name: title })}`) as Record<string, unknown>[] | null;
+      row = (Array.isArray(list) ? list.find((x) => x.plainLyrics) : null) ?? row;
+    }
+    found = { lyrics: String(row?.plainLyrics ?? "").slice(0, 12000), instrumental: Boolean(row?.instrumental) };
+    if (row) ctx.waitUntil(caches.default.put(key, Response.json(found, { headers: { "cache-control": "max-age=86400" } })));
+  }
+  if (family && found.lyrics)   // family mode: a rude word shows as its first letter and stars
+    found = { ...found, lyrics: found.lyrics.replace(/[\p{L}'*]+/gu, (w) => isOffensive(w) ? w[0] + "*".repeat(w.length - 1) : w) };
+  return found;
 }
 
 async function cachedSearch(q: string, ctx: ExecutionContext): Promise<unknown> {
@@ -179,6 +205,11 @@ async function route(req: Request, env: Env, ctx: ExecutionContext, url: URL, pa
       const q = (url.searchParams.get("q") ?? "").trim();
       if (q.length < 2) return json({ results: [] }, 200, extra);
       return json(await cachedSearch(q, ctx), 200, extra);
+    }
+    if (path === "/api/lyrics") {   // the record sleeve: the song's words
+      const u = url.searchParams, family = await party.familyMode();
+      return json(await cachedLyrics(String(u.get("artist") ?? "").slice(0, 200), String(u.get("title") ?? "").slice(0, 200),
+        Number(u.get("s")) || 0, family !== false, ctx), 200, { ...extra, "cache-control": "max-age=3600" });
     }
     if (path === "/api/state") return json({ ...(await party.guestState(dev.id)), page: await pageHash(env, "/index.html") }, 200, extra);
     if (path === "/api/cached") {
