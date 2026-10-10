@@ -395,6 +395,8 @@
   dialog.sleeve-box::backdrop { background: radial-gradient(circle at 50% 38%, #3d2518, #120a06 72%); }   /* solid: no page clutter behind the buttons */
   .sleeve-close { z-index: 2; position: fixed; top: calc(14px + env(safe-area-inset-top)); right: calc(14px + env(safe-area-inset-right)); width: 44px; height: 44px; padding: 0; border: 0; border-radius: 50%;
                   display: grid; place-items: center; background: #0007; color: var(--cream); cursor: pointer; }
+  .sleeve-close { box-shadow: inset 0 0 0 1.5px #f3e3c366; }   /* a rim, so it reads as a button on any picture */
+  .od-statsbtn { right: auto; left: calc(14px + env(safe-area-inset-left)); }
   .sleeve-close svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; }   /* drawn, not a glyph: a font's × sits off-centre */
   /* fade in on open, out on close (the .closing class waits for the fade before closing) */
   /* in order: ground and sleeve fade in, then the record slides out, then the price sticker lands.
@@ -640,7 +642,6 @@
   .od-title { margin: 4px 0 0; font: 900 2.2rem/1 Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
                letter-spacing: .06em; color: var(--cream);
                text-shadow: .04em .04em 0 var(--cocoa), .07em .07em 0 var(--gold), .1em .1em 0 var(--cocoa), .13em .13em 0 var(--orange); }
-  .od-sub { margin: -4px 0 0; color: var(--cream-dim); font-size: .9rem; text-align: center; }
   .od-board { display: grid; grid-template-rows: repeat(6, 1fr); gap: 6px; width: min(300px, 76vw, calc((100dvh - 330px) * .8)); flex: none; }
   .od-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
   .od-row.shake { animation: odShake .4s; }
@@ -659,17 +660,18 @@
   .od-k.wide { max-width: 64px; flex: 1.5; font-size: .78rem; }
   .od-k[data-k="Enter"] { background: #6f8f2e; }
   .od-k.ok { background: #6f8f2e; } .od-k.near { background: #d79a2b; color: #2a1608; } .od-k.no { background: #2f221a; color: #8f7b62; }
-  .od-stats { display: grid; gap: 12px; width: min(340px, 100%); padding: 14px 16px; border-radius: 14px; background: var(--walnut);
+  .od-stats { display: grid; gap: 10px; width: min(340px, 100%); padding: 14px 16px; border-radius: 14px; background: var(--walnut);
                box-shadow: inset 0 1px 0 #ffffff12, 0 2px 6px #0007; }
   .od-nums { display: grid; grid-template-columns: repeat(4, 1fr); text-align: center; }
   .od-nums b { display: block; font: 700 1.5rem/1.1 Jost, sans-serif; color: var(--cream); }
   .od-nums span { font-size: .75rem; color: var(--cream-dim); }
-  .od-dist { display: grid; gap: 4px; }
-  .od-bar { display: grid; grid-template-columns: 14px 1fr; gap: 6px; align-items: center; font-size: .85rem; color: var(--cream-dim); }
-  .od-bar i { display: block; min-width: 22px; padding: 1px 6px; border-radius: 3px; background: #3a2a20; color: var(--cream);
-               font-style: normal; font-weight: 700; text-align: right; box-sizing: border-box; }
-  .od-bar i.now { background: #6f8f2e; }
-  .od-bar i.zero { text-align: center; padding: 1px 0; }
+  /* guesses per win as six short columns (the count above, the guess number below): fits under the board on a phone */
+  .od-dist { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; align-items: end; height: 70px; }
+  .od-col { display: grid; justify-items: center; align-content: end; gap: 2px; height: 100%; font-size: .78rem; color: var(--cream-dim); }
+  .od-col b { color: var(--cream); font-size: .8rem; }
+  .od-col i { display: block; width: 100%; min-height: 3px; border-radius: 3px 3px 0 0; background: #3a2a20; }
+  .od-col i.now { background: #6f8f2e; }
+  dialog.orrdle-box.stats-on .od-board { width: min(300px, 76vw, calc((100dvh - 390px) * .8)); }
   .od-again { justify-self: center; }
 </style>
 </head>
@@ -786,7 +788,7 @@
   <dialog class="sleeve-box orrdle-box" id="orrdleBox" aria-label="Orrdle">
     <button class="sleeve-close" id="orrdleClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <h2 class="od-title">ORRDLE</h2>
-    <p class="od-sub">Guess the family name in six tries. <button class="link" id="odMine" type="button">Your stats</button></p>
+    <button class="sleeve-close od-statsbtn" id="odMine" type="button" aria-label="Your stats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-9"/></svg></button>
     <div class="od-board" id="odBoard"></div>
     <div class="od-msg" id="odMsg" role="status"></div>
     <div class="od-keys" id="odKeys"></div>
@@ -880,7 +882,6 @@
       </svg>
       <button class="plank-play" id="orrdlePlay" type="button">Play</button>
     </div>
-    <p class="log-say">A family Wordle. Guess the name in six tries.</p>
   </section>
 
   <section class="panel" id="hunt" aria-labelledby="huntH">
@@ -2406,16 +2407,17 @@ function odShowStats(stats, wonIn) {
   }
   const top = Math.max(1, ...st.dist), dist = el("div", "od-dist");
   st.dist.forEach((n, i) => {
-    const row = el("div", "od-bar"), bar = el("i", (i + 1 === wonIn ? "now" : "") + (n ? "" : " zero"), String(n));
-    bar.style.width = `${Math.max(8, 100 * n / top)}%`; row.append(el("span", null, String(i + 1)), el("div")); row.lastChild.append(bar); dist.append(row);
+    const col = el("div", "od-col"), bar = el("i", i + 1 === wonIn ? "now" : "");
+    bar.style.height = `${Math.round(42 * n / top)}px`;
+    col.append(el("b", null, String(n)), bar, el("span", null, String(i + 1))); dist.append(col);
   });
   const again = el("button", "od-again", od && od.done ? "Play another" : "Keep playing"); again.type = "button";
-  again.onclick = () => od && od.done ? odStart() : ($("odStats").hidden = true, $("odKeys").hidden = false);
-  $("odStats").replaceChildren(el("b", null, "Your Orrdle"), nums, dist, again);
-  $("odStats").hidden = false; $("odKeys").hidden = true;
+  again.onclick = () => od && od.done ? odStart() : ($("odStats").hidden = true, $("odKeys").hidden = false, $("orrdleBox").classList.remove("stats-on"));
+  $("odStats").replaceChildren(nums, dist, again);
+  $("odStats").hidden = false; $("odKeys").hidden = true; $("orrdleBox").classList.add("stats-on");
 }
 async function odStart() {
-  odBuild(); $("odStats").hidden = true; $("odKeys").hidden = false; odSay("Dealing a name…");
+  odBuild(); $("odStats").hidden = true; $("odKeys").hidden = false; $("orrdleBox").classList.remove("stats-on"); odSay("Dealing a name…");
   od = { id: null, rows: [], cur: "", done: false, busy: false, stats: null };
   odPaint();
   try {
@@ -2425,10 +2427,16 @@ async function odStart() {
     Object.assign(od, { id: r.id, stats: r.stats }); odSay("");
   } catch { odSay("Couldn't reach the DJ booth. Try again in a moment."); }
 }
+// "Juliarific!", "Aaronarific!", "Mattytastic!": the name, then a suffix that joins it the way you'd say it
+function odCheer(word) {
+  const name = word[0] + word.slice(1).toLowerCase(), vowel = /[aeiouy]$/i.test(word);
+  const ends = vowel ? ["rific", "tastic", "licious", "riffic"] : ["arific", "tastic", "alicious", "arama"];
+  return `${name}${ends[Math.floor(Math.random() * ends.length)]}!`;
+}
 function odFinish(r) {
   od.done = true; od.stats = r.stats || od.stats;
   const n = od.rows.length;
-  odSay(r.won ? ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Great!", "Phew!"][n - 1] : `It was ${r.word}.`);
+  odSay(r.won ? odCheer(r.word) : `It was ${r.word}.`);
   setTimeout(() => odShowStats(od.stats, r.won ? n : 0), 1200);
 }
 async function odGuess(g) {
