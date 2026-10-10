@@ -54,6 +54,11 @@ class Handler(http.server.BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
+        # only this computer's own name for the page: a web page elsewhere can't rebind a hostname of its own
+        # to 127.0.0.1 and read the stream (DNS rebinding)
+        if self.headers.get("host", "") not in (f"127.0.0.1:{PORT}", f"localhost:{PORT}"):
+            self.send_error(403)
+            return
         if self.path == "/":
             self.send_response(200)
             self.send_header("content-type", "text/html; charset=utf-8")
