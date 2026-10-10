@@ -143,7 +143,7 @@
   .dial::after { content: ""; position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none;
                  background: linear-gradient(170deg, #ffffff1c 0 30%, transparent 30%); box-shadow: inset 0 3px 8px #000d, inset 0 -3px 6px #000a; }
   .scale { position: absolute; inset: 5px 12px auto; display: flex; justify-content: space-between;
-           font: 400 .6rem Michroma, sans-serif; color: var(--cream-dim); letter-spacing: .04em; }   /* hi-fi faceplate numerals */
+           font: 400 .78rem Michroma, sans-serif; color: var(--cream-dim); letter-spacing: .02em; }   /* hi-fi faceplate numerals */
   .ticks { position: absolute; left: 12px; right: 12px; bottom: 7px; height: 10px;
            background: repeating-linear-gradient(90deg, #cdb59188 0 1px, transparent 1px 10px) 0 0 / calc(100% - 8px) 100% no-repeat; }   /* clear of the end stop */
   .ticks::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, var(--cream-dim) 0 2px, transparent 2px 50px) 0 0 / calc(100% - 8px) 100% no-repeat; height: 12px; }
@@ -177,13 +177,12 @@
   .glass::after { content: ""; position: absolute; inset: 0; border-radius: var(--glass-r); pointer-events: none;
                   background: linear-gradient(165deg, #ffffff14 0 22%, transparent 22%); }
   /* stacked: the sleeve as wide as the lines under it, the title centered, then the artist left and the time right */
-  .display img, .display .art { display: block; margin: 2px 0 10px; }
+  .display img { display: block; margin: 2px 0 10px; }
   .vfd .t:not(.ticking) { text-align: center; }   /* a title too long to fit scrolls from the left instead */
   .vfd:not(.timed) .a:not(.ticking) { text-align: center; }   /* SomaFM has no time: the artist centers under the title */
   .vfd .foot { display: flex; align-items: baseline; gap: 12px; }
   .vfd .foot .aw { flex: 1; min-width: 0; overflow: hidden; }
-  .display img, .display .art { width: 100%; height: auto; aspect-ratio: 1; border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
-  .display .art { display: grid; place-items: center; font-size: 42px; background: #16201d; text-shadow: none; }
+  .display img { width: 100%; height: auto; aspect-ratio: 1; border-radius: 3px; object-fit: cover; flex: none; filter: saturate(.85); }
   /* LED dot matrix, near-square dots, drawn narrow: each line is laid out 25% wider and squeezed
      to 80%, so it still fills its screen while the letters come out slim, as on a real display */
   .vfd, .lcd { font-family: Doto, monospace; font-weight: 800; font-variation-settings: "ROND" 20; }   /* ROND: 0 square … 100 round */
@@ -298,7 +297,7 @@
   body.off-air .presets .preset { cursor: default; }
   #q::placeholder { color: #9c8466; opacity: 1; }   /* readable on the dark box, clearly not typed text */
   .allow a { color: var(--gold); font-weight: 700; text-underline-offset: 3px; }
-  .allow { margin: -4px 0 12px; color: var(--cream-dim); font-size: .95rem; line-height: 1.35; }
+  .allow { margin: -4px 0 12px; color: var(--cream-dim); font-size: 1.0625rem; line-height: 1.35; }
   .allow b { color: var(--cream); font-weight: 600; }
   .allow:has(+ #q[hidden]) { margin-bottom: 0; }   /* no search box under it: no gap either */
   /* the status and its Request again, side by side at one height */
@@ -309,8 +308,7 @@
   .again::before { content: ""; position: absolute; inset: -7px; border-radius: 50%; }   /* a fingertip-sized target */
   .again svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
   .again[aria-disabled="true"] { color: #8a6f52; opacity: .7; cursor: default; }
-  .again.spent { color: #8a6f52; box-shadow: inset 0 0 0 2px #4a3324; cursor: default; }
-  .again.spent:active, .again[aria-disabled="true"]:active { transform: none; }
+  .again[aria-disabled="true"]:active { transform: none; }
   .earlier { display: block; margin: 8px 0 0; font-size: .92rem; }
   .pick:disabled { opacity: .5; cursor: default; }
   /* Cancel: the same round button as Request again, beside the status; the first tap arms it (red) */
@@ -341,18 +339,17 @@
                           box-shadow: inset 0 -2px 3px #000a, inset 0 1px 1px #ffffff26; }
   .brand .lamp::after { content: ""; position: absolute; left: 20%; top: 10%; width: 46%; height: 32%; border-radius: 50%;
                         background: radial-gradient(ellipse at 50% 40%, #ffffffd8, #ffffff00 70%); }   /* the lens's highlight */
-  .brand .label { font: 400 clamp(.532rem, 2.66vw, .684rem)/1 Michroma, sans-serif; letter-spacing: .08em; color: #15130f; white-space: nowrap;
+  .brand .label { font: 400 .75rem/1 Michroma, sans-serif; letter-spacing: .04em; color: #15130f; white-space: nowrap;
                   -webkit-text-stroke: .3px #15130f; text-shadow: 0 1px 0 #ffffff70; }   /* thick, dark ink: readable on a phone */
   /* preset buttons, as on an old car radio: chunky square black plastic in a recessed slot. A pressed one
      latches down until the phone may press again (a minute); tap toys of the whole party share the PA */
   /* the board glows amber from above, as if another tube inside lights it: the tubes' pulse, subdued */
-  .presets { position: relative; isolation: isolate; }
   .presets::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 0;
                      background: radial-gradient(ellipse 80% 110% at 50% 15%, #ffa040, #ff8a2a66 45%, #ff8a2a00 80%); mix-blend-mode: screen;
                      opacity: calc(var(--g, .8) * .75); }
   .presets .preset { position: relative; z-index: 1; }
   .presets { --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96'%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  .9 0 0 0 -.35'/%3E%3C/filter%3E%3Crect width='96' height='96' filter='url(%23g)'/%3E%3C/svg%3E"); }   /* fine pebble speckle: plain noise tiles seamlessly */
-  .presets { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 7px; margin-top: 8px; padding: 6px 7px 8px;
+  .presets { position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px 7px; margin-top: 8px; padding: 6px 7px 8px;
              border-radius: var(--glass-r);   /* the circuit board behind the buttons, mostly in their shadow */
              background: linear-gradient(#00000010, #00000030 60%, #00000099), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='48'%3E%3Crect width='64' height='48' fill='%2313281a'/%3E%3Cg fill='none' stroke='%23b9893a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' opacity='.75'%3E%3Cpath d='M0 10h14l6 6h18'/%3E%3Cpath d='M38 16l6-6h20'/%3E%3Cpath d='M8 48V34l6-6h10'/%3E%3Cpath d='M24 28h16l6 6v14'/%3E%3Cpath d='M52 0v8'/%3E%3Cpath d='M56 48V30l-6-6h-8'/%3E%3Cpath d='M30 0v6l-4 4'/%3E%3Cpath d='M0 40h4'/%3E%3C/g%3E%3Cg fill='%23c79a45' opacity='.85'%3E%3Ccircle cx='38' cy='16' r='2.4'/%3E%3Ccircle cx='24' cy='28' r='2.4'/%3E%3Ccircle cx='42' cy='24' r='2.4'/%3E%3Ccircle cx='26' cy='10' r='2'/%3E%3Ccircle cx='4' cy='40' r='2'/%3E%3Ccircle cx='52' cy='8' r='2'/%3E%3C/g%3E%3Cg fill='%230b170f'%3E%3Ccircle cx='38' cy='16' r='.9'/%3E%3Ccircle cx='24' cy='28' r='.9'/%3E%3Ccircle cx='42' cy='24' r='.9'/%3E%3C/g%3E%3Crect x='10' y='18' width='8' height='4' rx='1' fill='%232a2a28' opacity='.9'/%3E%3C/svg%3E") 0 0 / 64px 48px;
              box-shadow: inset 0 2px 0 #000c, inset 0 9px 10px -3px #000e, inset 0 -1px 2px #0008, 0 1px 0 #fff8; }   /* the faceplate's edge over it, and its shadow */
@@ -512,20 +509,18 @@
   button:active { transform: scale(.96); filter: brightness(.9); }
   button:focus-visible { outline: 3px solid var(--gold); outline-offset: 3px; }
   button:disabled, button.busy { opacity: .55; cursor: progress; }
-  button.quiet { background: transparent; color: var(--cream-dim); box-shadow: inset 0 0 0 2px #6b4a32; }
   button.link { background: none; padding: 11px 4px; margin: -11px -4px; border-radius: 0;   /* a finger-sized target, same layout */
                 color: var(--gold); text-decoration: underline; text-underline-offset: 3px; font-weight: 700; }
   .row { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; } .row > * { flex: 1 1 7.5em; padding-inline: 12px; }   /* wraps at big zoom, never off-screen */
-  .hint { margin: 12px 0 0; color: var(--cream-dim); font-size: .95rem; }
+  .hint { margin: 12px 0 0; color: var(--cream-dim); font-size: 1.0625rem; }
   /* who's listening: asked once, then every request and message goes out under that name */
   #who { display: none; } body.noname #who { display: block; }
   /* first visit, before a name: only the radio and the name panel. Every other section goes, including any added later */
   body.noname main > section:not(.cabinet):not(#who) { display: none !important; }
   #who h2 { margin-bottom: 4px; }
   #who form { display: flex; gap: 10px; margin-top: 12px; } #who input { flex: 1; min-width: 0; } #who button { flex: none; }
-  .as { margin: 14px 0 0; color: var(--cream-dim); font-size: .95rem; }
+  .as { margin: 14px 0 0; color: var(--cream-dim); font-size: 1.0625rem; }
   .as b { color: var(--cream); } .as button.link { margin-left: 6px; }
-  .fine { color: #a88d6a; font-size: .85rem; margin: 22px 2px 0; }
 
   /* ---- song rows ---- */
   ul { list-style: none; margin: 0; padding: 0; }
@@ -535,10 +530,9 @@
   .song.tappable:focus-visible { outline: 3px solid var(--gold); outline-offset: -3px; }
   li:first-child > .song, .song:first-child { border-top: 0; }
   .song > img, .song > .art { width: 50px; height: 50px; border-radius: 6px; object-fit: cover; background: #2f1f15; flex: none; }
-  .song .art { display: grid; place-items: center; font-size: 24px; }
   .song .meta { flex: 1; min-width: 0; }
   .song .t { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .song .a { color: var(--cream-dim); font-size: .92rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .song .a { color: var(--cream-dim); font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .song.held .a { white-space: normal; line-height: 1.3; }   /* the note to bring Matt a beer: read in full */
   .chip { flex: none; font-size: .78rem; font-weight: 700; padding: 4px 10px; border-radius: 999px; background: #2f1f15; color: var(--cream-dim); }
   .chip.playing { background: var(--orange); color: #2A1A12; } .chip.up { background: var(--avocado); color: #1c1a08; }
@@ -556,7 +550,8 @@
   #toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom)); transform: translateX(-50%) translateY(16px); opacity: 0;
            background: var(--cream); color: var(--cocoa); padding: 12px 18px; border-radius: 18px; font-weight: 700;
            font-size: 22px; line-height: 1.25; box-shadow: 0 8px 24px #0009; transition: opacity .2s, transform .2s;
-           pointer-events: none; width: max-content; max-width: min(400px, calc(100vw - 24px)); text-align: center; z-index: 10;
+           pointer-events: none; width: max-content; max-width: min(400px, calc(100vw - 24px)); text-align: center; z-index: 80;
+           top: auto; right: auto; margin: 0; border: 0; overflow: visible;   /* undo the popover defaults */
            /* big enough to read at arm's length; up to three even lines, never a long line and one word under it */
            text-wrap: balance; }
   #toast span { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }   /* the cut is clean: no third line in the padding */
@@ -573,7 +568,7 @@
          background-blend-mode: soft-light, normal; box-shadow: inset 0 1px 0 #ffffff12, 0 2px 6px #0007; }
   .eta .stitch { position: absolute; inset: 4px; width: calc(100% - 8px); height: calc(100% - 8px); pointer-events: none; overflow: visible; }
   .eta .stitch rect { fill: none; stroke: #d9a679b0; stroke-width: 1.1; stroke-dasharray: 5 3.5; stroke-linecap: round; }
-  .eta-say { margin: 0; color: var(--cream-dim); font-size: .95rem; line-height: 1.25; text-wrap: balance; }
+  .eta-say { margin: 0; color: var(--cream-dim); font-size: 1.0625rem; line-height: 1.25; text-wrap: balance; }
   .flip { display: flex; align-items: center; gap: 3px; flex: none; perspective: 160px; }
   .flip .fc { position: relative; display: grid; place-items: center; width: 27px; height: 38px; border-radius: 4px;
               background: linear-gradient(#2e2e2e, #252525 49.5%, #0b0b0b 49.5%, #0b0b0b 51%, #1f1f1f 51%, #191919);
@@ -581,7 +576,7 @@
   .flip .fc b { padding-top: 3px; font: 600 1.7rem/1 Oswald, "Arial Narrow", sans-serif; color: #f4f1ea; text-shadow: 0 1px 1px #000a; }
   .flip .fc::before, .flip .fc::after { content: ""; position: absolute; top: 50%; width: 2px; height: 5px; margin-top: -2.5px; background: #050505; }
   .flip .fc::before { left: -1px; } .flip .fc::after { right: -1px; }   /* the hinge pins at the split */
-  .flip .ap { position: absolute; left: 2.5px; top: 2.5px; font: 600 .36rem/1 Oswald, sans-serif; font-style: normal; color: #f4f1ea; letter-spacing: .04em; }
+  .flip .ap { align-self: flex-end; margin-left: 2px; font: 600 .8rem/1 Oswald, sans-serif; font-style: normal; color: var(--cream-dim); letter-spacing: .04em; }
   .flip .colon { width: 5px; height: 16px; background: radial-gradient(circle at 50% 3px, #f4f1ea 0 2px, transparent 2.5px),
                  radial-gradient(circle at 50% 13px, #f4f1ea 0 2px, transparent 2.5px); }
   /* Send and Back on the coin plate of a 70s jukebox: a wide, worn chrome plate (scratches, a little pitting) with a
@@ -598,12 +593,12 @@
   .coinop button { -webkit-tap-highlight-color: transparent; }
   .coinop button:disabled { opacity: 1; cursor: default; }   /* a machine doesn't grey out while it takes your coin */
   .coin-send { position: relative; z-index: 3; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0; background: none; box-shadow: none; }
-  .cp-card { flex: none; width: 92px; border-radius: 4px; overflow: hidden; transform: skewX(-8deg);
+  .cp-card { flex: none; width: 104px; border-radius: 4px; overflow: hidden; transform: skewX(-8deg);
              box-shadow: 0 0 0 2px #8f8b84, 0 0 0 3px #f6f4ef, inset 0 2px 3px #0005; }   /* the window, set in a chrome frame */
   .cp-top { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 4px 3px; background: #f1e8d2;
-            color: #c7311c; font: 700 .7rem/1.1 Jost, sans-serif; letter-spacing: .02em; }
+            color: #c7311c; font: 700 .8rem/1.1 Jost, sans-serif; letter-spacing: .01em; }
   .cp-top svg { width: 16px; height: 7px; fill: #c7311c; flex: none; }
-  .cp-bot { display: block; padding: 4px 3px 5px; background: #d2391f; color: #f6ead0; text-align: center; font: 700 .66rem/1 Jost, sans-serif; letter-spacing: .03em; white-space: nowrap; }
+  .cp-bot { display: block; padding: 4px 3px 5px; background: #d2391f; color: #f6ead0; text-align: center; font: 700 .75rem/1 Jost, sans-serif; letter-spacing: .02em; white-space: nowrap; }
   .cp-card > span { transform: skewX(8deg); }
   .cp-track { flex: 1; display: flex; justify-content: flex-start; align-items: center; min-width: 46px; }
   .cq { position: relative; z-index: 3; flex: none; width: 40px; height: 40px; }
@@ -630,7 +625,7 @@
                    background: radial-gradient(circle at 36% 30%, #ffd2c8 0, #e0503a 18%, #a8261a 55%, #5e120a 100%);
                    box-shadow: 0 2px 2px #000c, inset 0 -2px 3px #0007; transition: transform .06s, box-shadow .06s; }   /* the domed red cap */
   .coin-return:active .cr-btn::after { transform: translateY(1.5px) scale(.96); box-shadow: 0 0 1px #000c, inset 0 2px 3px #0008; }
-  .cr-lbl { text-align: center; font: 800 .62rem/1 Jost, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #8e1f12;
+  .cr-lbl { text-align: center; font: 800 .78rem/1 Jost, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #8e1f12;
             line-height: .75; text-shadow: 0 1px 0 #fff9; }   /* stamped, bold; no line spacing below, so the letters sit on the line */
   /* Orrdle: a dark walnut plank nailed up, the name in raised polished gold sitting on it, an old heart-and-arrow
      carved into the wood (cuts show the paler wood inside, shaded on their upper side), and a gold Play plate */
@@ -655,7 +650,6 @@
                  background: linear-gradient(#fff3c4, #f0c860 30%, #c8901f 62%, #9a6a12);
                  box-shadow: inset 0 1px 0 #fff8dc, inset 0 -2px 0 #6b4a0c, 0 3px 0 #3f2a07, 0 5px 8px #000b; }
   .plank-play:active { transform: translateY(2px); box-shadow: inset 0 1px 0 #fff8dc, inset 0 -1px 0 #6b4a0c, 0 1px 0 #3f2a07, 0 2px 4px #000b; }
-  .log-say { margin: 8px 4px 0; color: var(--cream-dim); font-size: .92rem; }
   /* the game: full screen like the record sleeve */
   dialog.orrdle-box { display: none; }
   /* a column the height of the screen: board up top, keyboard (or the stats) at the bottom; it scrolls itself, never the page */
@@ -681,7 +675,7 @@
   .od-krow { display: flex; gap: 5px; justify-content: center; }
   .od-k { flex: 1; max-width: 42px; height: 52px; padding: 0; border-radius: 6px; font: 700 1rem Jost, sans-serif; color: var(--cream);
            background: #5b3a26; box-shadow: 0 2px 0 #2a1a12; text-transform: uppercase; touch-action: manipulation; }
-  .od-k.wide { max-width: 64px; flex: 1.5; font-size: .78rem; }
+  .od-k.wide { max-width: 64px; flex: 1.5; font-size: 1rem; }
   .od-k[data-k="Enter"] { background: #6f8f2e; }
   .od-k.ok { background: #6f8f2e; } .od-k.near { background: #d79a2b; color: #2a1608; } .od-k.no { background: #2f221a; color: #8f7b62; }
   .od-stats { display: grid; gap: 10px; width: min(340px, 100%); padding: 14px 16px; border-radius: 14px; background: var(--walnut);
@@ -764,20 +758,18 @@
                 animation: coinGleam 3.2s ease-in-out infinite; }   /* no blend mode: Safari flattens a 3D coin with one inside, and its rim paints over its faces */
   .m3d .gleam.front { transform: translateZ(5.2px); } .m3d .gleam.back { transform: rotateY(180deg) translateZ(5.2px); animation-delay: 1.6s; }
   @keyframes coinGleam { 0%, 55% { background-position: 170% 0; } 85%, 100% { background-position: -70% 0; } }
-  .fx.glint { width: 14px; height: 14px; border-radius: 0; background: none; color: #fff7d6; font-size: 14px; line-height: 14px; text-align: center;
-              text-shadow: 0 0 6px #ffd76a, 0 0 12px #ffb02e; }
   /* Orrdle: a starburst, like a sticker on a box of cereal */
   /* Orrdle: a starburst on the title's right corner, tilted right, like the sticker on a cereal box: a darker burst behind as its edge,
      a shaded yellow face, a shadow on the page */
-  .od-burst { position: absolute; top: calc(2px + env(safe-area-inset-top)); left: calc(50% + 78px); width: 48px; height: 48px; z-index: 2;
+  .od-burst { position: absolute; top: calc(2px + env(safe-area-inset-top)); left: calc(50% + 72px); width: 66px; height: 66px; z-index: 2;
               pointer-events: none; transform: rotate(14deg); filter: drop-shadow(0 3px 3px #000a); }
   .od-burst i, .od-burst em { position: absolute; inset: 0; clip-path: polygon(50% 0%, 59% 13%, 75% 6%, 76% 22%, 93% 25%, 86% 40%, 100% 50%, 86% 60%, 93% 75%, 76% 78%, 75% 94%, 59% 87%, 50% 100%, 41% 87%, 25% 94%, 24% 78%, 7% 75%, 14% 60%, 0% 50%, 14% 40%, 7% 25%, 24% 22%, 25% 6%, 41% 13%); }
   .od-burst i { background: #b2361f; transform: translate(2px, 3px); }   /* the burst's edge, seen below its face */
   .od-burst em { background: radial-gradient(circle at 40% 32%, #fff4a8, #ffd23f 42%, #f0a92b 85%); }
   .od-burst span { position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
-                   color: #b2361f; font: 900 .4rem/1 Fraunces, Georgia, serif; text-transform: uppercase; letter-spacing: .02em;
+                   color: #b2361f; font: 900 .75rem/1 Fraunces, Georgia, serif; text-transform: uppercase; letter-spacing: .02em;
                    text-shadow: 0 1px 0 #fff6c9; }
-  .od-burst b { display: block; font-size: .51rem; margin-top: 1px; }
+  .od-burst b { display: block; font-size: .8rem; margin-top: 1px; }
   /* the sound board's switch: a toggle at the side of the buttons, up for the speakers, down for this phone only.
      No labels: a toast says what it does when it's flipped. A black plate, a chrome bat lever on a pivot nut. */
   .presets { grid-template-columns: repeat(4, minmax(0, 1fr)); flex: 1; min-width: 0; margin-top: 0; }
@@ -813,7 +805,7 @@
   /* the signature at the foot of the page, and the story behind it */
   .made-by { display: grid; place-items: center; margin: 0 0 -22px; }   /* 18px below, as above: the page's own 40px bottom padding, less 22 */
   .made-by button { display: grid; justify-items: center; gap: 2px; padding: 8px 18px; background: none; box-shadow: none; color: var(--cream-dim); }
-  .made-by span { font: 500 .78rem/1 Jost, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
+  .made-by span { font: 500 1rem/1 Jost, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
   .made-by img { width: 120px; height: auto; filter: drop-shadow(0 1px 0 #000a) drop-shadow(0 0 8px #f0a92b44); }
   .made-by button:active img { transform: scale(.97); }
   .about { width: min(90vw, 520px); margin: 0 auto; padding: calc(70px + env(safe-area-inset-top)) 0 48px; color: var(--cream); }
@@ -1011,7 +1003,7 @@
   <section class="eta" id="etaBox" hidden aria-live="off">
     <svg class="stitch" aria-hidden="true"><rect width="100%" height="100%" rx="8.5"/></svg>
     <p class="eta-say" id="etaSay">Request now and it'll play around</p>
-    <div class="flip" id="etaClock" role="img"><span class="fc"><i class="ap"></i><b></b></span><span class="fc"><b></b></span><span class="colon"></span><span class="fc"><b></b></span><span class="fc"><b></b></span></div>
+    <div class="flip" id="etaClock" role="img"><span class="fc"><b></b></span><span class="fc"><b></b></span><span class="colon"></span><span class="fc"><b></b></span><span class="fc"><b></b></span><i class="ap"></i></div>
   </section>
 
   <section class="panel" id="jokeBox">
@@ -1026,7 +1018,7 @@
     <label class="check" id="urgentRow" hidden><input type="checkbox" id="urgent">
       <span>Urgent: read it as soon as it's ready <small id="urgentNote">(one an hour)</small></span></label>
     <label class="check" id="anonRow"><input type="checkbox" id="anon">
-      <span>Send anonymously <small id="anonNote">(one a night)</small></span></label>
+      <span>Send anonymously <small id="anonNote" style="font-size: 1.0625rem">(one a night)</small></span></label>
     <p class="as" id="jokeAs">Sending as <b class="myName"></b><button class="link rename" type="button">Change</button></p>
     <p class="as" id="jokeAnonAs" hidden>The DJ will say it's from <b>a mystery guest</b>. The host still sees who sent it.</p>
     <div class="row"><button id="jsend" type="button">Send to the DJ</button></div>
@@ -1072,40 +1064,45 @@
         set of config files, and he builds alongside an AI pair programmer: Claude, in Claude Code. OrrFM came together over a few
         days and nights before the reunion.</p>
       <h3>How a request travels</h3>
-      <svg class="ab-flow" viewBox="0 0 320 470" role="img" aria-label="How a request travels: your phone, the queue in the cloud, the studio at home, the console by the speakers, the party">
+      <svg class="ab-flow" viewBox="0 0 320 476" role="img" aria-label="How a request travels: your phone, the queue in the cloud, the studio at home, the console by the speakers, the party">
   <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#f0a92b"/></marker></defs>
   <g font-family="Jost, sans-serif" text-anchor="middle">
-    <rect x="70" y="4" width="180" height="56" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
-    <text x="160" y="27" fill="#f3e3c3" font-size="15" font-weight="700">Your phone</text><text x="160" y="46" fill="#cdb591" font-size="11">pick a song, a joke, a sound</text>
-    <path d="M160 62v30" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
-    <rect x="40" y="96" width="240" height="64" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
-    <text x="160" y="119" fill="#f3e3c3" font-size="15" font-weight="700">The queue (Cloudflare)</text><text x="160" y="137" fill="#cdb591" font-size="11">fair turns, limits, medals, Orrdle,</text><text x="160" y="151" fill="#cdb591" font-size="11">one source of truth for the night</text>
-    <path d="M160 162v30" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
-    <rect x="20" y="196" width="280" height="92" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
-    <text x="160" y="219" fill="#f3e3c3" font-size="15" font-weight="700">The studio (a PC at home)</text>
-    <text x="160" y="238" fill="#cdb591" font-size="11">finds the song (YouTube search, Apify download)</text>
-    <text x="160" y="254" fill="#cdb591" font-size="11">Claude writes the DJ's line</text>
-    <text x="160" y="270" fill="#cdb591" font-size="11">ElevenLabs gives it a voice</text>
-    <path d="M160 290v30" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
-    <rect x="30" y="324" width="260" height="64" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
-    <text x="160" y="347" fill="#f3e3c3" font-size="15" font-weight="700">The console (a Raspberry Pi)</text><text x="160" y="365" fill="#cdb591" font-size="11">mixes SomaFM, two song decks, the DJ</text><text x="160" y="379" fill="#cdb591" font-size="11">and the sound buttons, live</text>
-    <path d="M160 390v30" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
-    <rect x="80" y="424" width="160" height="42" rx="10" fill="#e2621b"/>
-    <text x="160" y="450" fill="#241208" font-size="15" font-weight="800">The party speakers</text>
+    <rect x="40" y="4" width="240" height="53" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="29" fill="#f3e3c3" font-size="17" font-weight="700">Your phone</text>
+    <text x="160" y="51" fill="#cdb591" font-size="15">pick a song, a joke, a sound</text>
+    <path d="M160 59v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="16" y="91" width="288" height="72" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="116" fill="#f3e3c3" font-size="17" font-weight="700">The queue (Cloudflare)</text>
+    <text x="160" y="138" fill="#cdb591" font-size="15">fair turns, limits, medals, Orrdle:</text>
+    <text x="160" y="157" fill="#cdb591" font-size="15">one source of truth for the night</text>
+    <path d="M160 165v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="8" y="197" width="304" height="91" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="222" fill="#f3e3c3" font-size="17" font-weight="700">The studio (a PC at home)</text>
+    <text x="160" y="244" fill="#cdb591" font-size="15">finds and downloads the song</text>
+    <text x="160" y="263" fill="#cdb591" font-size="15">Claude writes the DJ's line</text>
+    <text x="160" y="282" fill="#cdb591" font-size="15">ElevenLabs gives it a voice</text>
+    <path d="M160 290v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="8" y="322" width="304" height="72" rx="10" fill="#4a2e1e" stroke="#f0a92b" stroke-width="1.5"/>
+    <text x="160" y="347" fill="#f3e3c3" font-size="17" font-weight="700">The console (a Raspberry Pi)</text>
+    <text x="160" y="369" fill="#cdb591" font-size="15">mixes SomaFM, two song decks,</text>
+    <text x="160" y="388" fill="#cdb591" font-size="15">the DJ and the sound buttons, live</text>
+    <path d="M160 396v26" stroke="#f0a92b" stroke-width="2" marker-end="url(#ar)"/>
+    <rect x="70" y="428" width="180" height="44" rx="10" fill="#e2621b"/>
+    <text x="160" y="456" fill="#241208" font-size="17" font-weight="800">The party speakers</text>
   </g></svg>
       <p>Your phone talks to a small program in Cloudflare's cloud that keeps the line fair. A PC at home finds and downloads each song, has Claude write what the DJ says about it, and records that in an ElevenLabs voice. A Raspberry Pi wired to the speakers mixes it all live: SomaFM's 70s station between requests, the next song fading in under the DJ, and the sound buttons on top.</p>
       <h3>How it was built</h3>
       <svg class="ab-flow" viewBox="0 0 320 250" role="img" aria-label="The build loop: Matt asks, Claude builds and tests, a check in real browsers, a security review, a quiet deploy, Matt looks and asks again">
   <defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6fe3c8"/></marker></defs>
-  <g font-family="Jost, sans-serif" text-anchor="middle" font-size="12">
+  <g font-family="Jost, sans-serif" text-anchor="middle" font-size="15">
     <circle cx="160" cy="125" r="88" fill="none" stroke="#6fe3c855" stroke-width="2" stroke-dasharray="4 5"/>
     <g fill="#2a1a12" stroke="#6fe3c8" stroke-width="1.4">
-      <rect x="110" y="14" width="100" height="34" rx="17"/><rect x="226" y="66" width="88" height="34" rx="17"/><rect x="226" y="152" width="88" height="34" rx="17"/>
-      <rect x="110" y="202" width="100" height="34" rx="17"/><rect x="6" y="152" width="88" height="34" rx="17"/><rect x="6" y="66" width="88" height="34" rx="17"/></g>
-    <g fill="#f3e3c3"><text x="160" y="36">Matt asks</text><text x="270" y="88">Claude builds</text><text x="270" y="174">tests run</text>
-      <text x="160" y="224">real browsers</text><text x="50" y="174">safety review</text><text x="50" y="88">quiet deploy</text></g>
+      <rect x="105" y="14" width="110" height="34" rx="17"/><rect x="208" y="66" width="110" height="34" rx="17"/><rect x="208" y="152" width="110" height="34" rx="17"/>
+      <rect x="105" y="202" width="110" height="34" rx="17"/><rect x="2" y="152" width="110" height="34" rx="17"/><rect x="2" y="66" width="110" height="34" rx="17"/></g>
+    <g fill="#f3e3c3"><text x="160" y="36">Matt asks</text><text x="263" y="88">Claude builds</text><text x="263" y="174">tests run</text>
+      <text x="160" y="224">real browsers</text><text x="57" y="174">safety review</text><text x="57" y="88">quiet deploy</text></g>
     <g stroke="#6fe3c8" stroke-width="1.6" fill="none" marker-end="url(#ar2)">
-      <path d="M212 34q30 6 40 28"/><path d="M272 102v46"/><path d="M252 188q-12 22-40 30"/><path d="M108 218q-30-6-40-28"/><path d="M48 150v-46"/><path d="M68 64q14-22 40-30"/></g>
+      <path d="M217 32q30 6 42 30"/><path d="M272 102v46"/><path d="M252 188q-6 22-34 30"/><path d="M103 218q-30-6-40-28"/><path d="M48 150v-46"/><path d="M62 64q14-24 40-32"/></g>
   </g></svg>
       <p>Matt directs; Claude builds. Most requests arrived as a screenshot from his phone with a line of text: "this looks
         floating, not engraved", "the coin goes behind the slot", or a photo of a real 1970s jukebox coin plate. Claude writes the code,
@@ -1143,9 +1140,20 @@ let chosen = null, timer = null, lastNow = "";
 
 function el(tag, cls, text) { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
 function toast(msg, isErr) {
-  let t = $("toast"); if (!t) { t = el("div"); t.id = "toast"; t.setAttribute("role", "status"); document.body.append(t); }
+  let t = $("toast"); if (!t) { t = el("div"); t.id = "toast"; t.setAttribute("role", "status"); if (t.showPopover) t.popover = "manual"; document.body.append(t); }
   const line = el("span", null, msg); t.replaceChildren(line); t.className = "show" + (isErr ? " err" : "");
+  // a dialog sits in the browser's top layer, above any z-index: the toast joins that layer, last in so on top
+  if (t.showPopover) try { if (t.matches(":popover-open")) t.hidePopover(); t.showPopover(); } catch {}
   clearTimeout(toast.timer); toast.timer = setTimeout(() => { t.className = isErr ? "err" : ""; }, 2800);
+}
+// one overlay at a time: an open dialog or the medal viewer keeps another from opening over it
+function overlayUp(except) { return [...document.querySelectorAll("dialog[open]")].some((d) => d !== except) || !!document.querySelector(".mview"); }
+// dialogs fade in and out; reopening during the fade-out cancels the pending close
+function fadeShow(d) { clearTimeout(d.closeTimer); d.classList.remove("closing"); if (!d.open) d.showModal(); d.scrollTop = 0; }
+function fadeClose(d) {
+  if (!d.open) return;
+  d.classList.add("closing"); clearTimeout(d.closeTimer);
+  d.closeTimer = setTimeout(() => { d.classList.remove("closing"); d.close(); }, 240);
 }
 async function busy(btn, label, work) {
   if (btn.disabled) return;
@@ -1225,8 +1233,7 @@ function scrollFrame(now) {
     } else x = loopX(sc, now);
     track.style.transform = `translate3d(${x.toFixed(2)}px,0,0)`;
   }
-  if (typeof scanFrame === "function") scanFrame(now);
-  if (typeof tubeFrame === "function") tubeFrame(now);
+  scanFrame(now); tubeFrame(now);
   requestAnimationFrame(scrollFrame);
 }
 requestAnimationFrame(scrollFrame);
@@ -1586,7 +1593,7 @@ async function loadLyrics(np) {
   }), el("p", "credit", "Lyrics from LRCLIB"));
 }
 async function openSleeve(np = onAir) {
-  if (!np || !np.artist || sleeveFor === np && $("sleeve").open) return;   // a hidden (offensive) title has no artist
+  if (!np || !np.artist || sleeveFor === np && $("sleeve").open || overlayUp($("sleeve"))) return;   // a hidden (offensive) title has no artist
   sleeveFor = np;
   // Ask for everything first, give it up to 450 ms, then open with whatever is ready: a complete
   // first frame. Anything slower fades in later without moving the rest.
@@ -1610,6 +1617,7 @@ async function openSleeve(np = onAir) {
   $("toSpotify").href = `https://open.spotify.com/search/${q}`;
   $("toYoutube").href = `https://www.youtube.com/results?search_query=${q}`;
   if (info?.apple) $("toApple").href = musicLink(info.apple);
+  if (overlayUp($("sleeve"))) return;   // something else opened while the details loaded
   $("sleeve").classList.remove("closing");
   if (!$("sleeve").open) $("sleeve").showModal();
   if (info) return;
@@ -1632,8 +1640,9 @@ function closeSleeve() {
   const d = $("sleeve");
   if (!d.open || d.classList.contains("closing")) return;
   d.classList.add("closing");
-  const done = () => { d.classList.remove("closing"); d.close(); };
-  const onEnd = (e) => { if (e.target === d) { d.removeEventListener("animationend", onEnd); done(); } };   // not the vinyl's own animations
+  // the listener goes with the close, whichever ends it: left behind, it would shut the next sleeve as it opened
+  const done = () => { d.removeEventListener("animationend", onEnd); d.classList.remove("closing"); d.close(); };
+  const onEnd = (e) => { if (e.target === d) done(); };   // not the vinyl's own animations
   d.addEventListener("animationend", onEnd);
   setTimeout(() => d.open && d.classList.contains("closing") && done(), 400);   // in case no animation runs
 }
@@ -1882,8 +1891,8 @@ function layCables() {
   const cab = document.querySelector(".cabinet"), riser = document.querySelector(".tubes"); if (!cab || !riser) return;
   const c = cab.getBoundingClientRect(), r = riser.getBoundingClientRect(), face = document.querySelector(".faceplate").getBoundingClientRect();
   const X = (x) => +(x - c.left).toFixed(1), Y = (y) => +(y - c.top + 60).toFixed(1);   // into the svg's box (it starts 60px above)
-  const edge = Y(face.top), ry = Y(r.bottom - 7), L = X(r.left), R = X(r.right);
-  const p1 = Math.max(X(face.left) + 30, L - 22), p2 = Math.min(X(face.right) - 30, R + 26), top1 = edge - 20, top2 = edge - 20;
+  const edge = Y(face.top), ry = Y(r.bottom - 7), R = X(r.right);
+  const p2 = Math.min(X(face.right) - 30, R + 26), top2 = edge - 20;
   const plug = (x) => `
     <g class="plug"><rect x="${x - 9}" y="${edge - 24}" width="18" height="27" fill="transparent"/>
       <ellipse cx="${x}" cy="${edge + .4}" rx="5.2" ry="1.7" fill="url(#jackRing)"/>
@@ -1897,8 +1906,6 @@ function layCables() {
     <path class="cord" d="${d}" fill="none" stroke="${base}" stroke-width="2.8" stroke-linecap="round"/>
     <path class="cord" d="${d}" fill="none" stroke="${stripe}" stroke-width="2.8" stroke-dasharray="${dash}"/>
     <path class="cord" d="${d}" fill="none" stroke="#ffffff30" stroke-width=".8" transform="translate(-.5 -.7)"/>`;
-  // direct-ish: out of the riser's left end, a lazy sag, down into the left plug
-  const d1 = `M${L + 2} ${ry}C${L - 10} ${ry + 3} ${p1 + 9} ${top1 - 16} ${p1} ${top1}`;
   // the loop: out of the right end, up and round in a curl, then down into the right plug
   const lx = R + 8, ly = ry - 11;   // a tight curl, low, so it stays clear of the hen
   // a: the plug's tilt in degrees; the cord's end rides the top of the plug's spring. b: the tilt a moment
@@ -1925,7 +1932,11 @@ function layCables() {
   plugEl.addEventListener("click", jiggle);
   svg.querySelector(".cord-hit").addEventListener("click", () => jiggle({ currentTarget: plugEl }));   // the whole cable is a tap target
 }
-addEventListener("load", layCables); addEventListener("resize", layCables);
+// relaid when the width changes (a turn, a new font size), once per burst: iOS fires resize on every scroll that
+// hides or shows the address bar, and that changes only the height
+let cableW = 0, cableT = 0;
+addEventListener("load", () => { cableW = innerWidth; layCables(); });
+addEventListener("resize", () => { if (innerWidth === cableW) return; clearTimeout(cableT); cableT = setTimeout(() => { cableW = innerWidth; layCables(); }, 120); });
 // Tap the plug: it jiggles in its jack, and the screen flickers like an old TV with a loose connection.
 function jiggle(e) {
   earn("static");
@@ -1970,9 +1981,17 @@ function jiggle(e) {
 })();
 const tubeEls = [...document.querySelectorAll(".tube")], boardEl = $("presets"), dialEl = document.querySelector(".dial");
 let tubePower = 1;   // eases to 0 when the station is switched off, back to 1 when it's on
+// the glow is redrawn at most 30 times a second, and not at all while the radio is off screen or covered by a
+// dialog (the battery: it would otherwise restyle the whole set every frame, all night)
+let tubeLast = 0, tubesSeen = true;
+const glowing = new Set();   // the tubes, the dial and the preset board: whichever are on screen
+const glowSeen = new IntersectionObserver((es) => { es.forEach((e) => e.isIntersecting ? glowing.add(e.target) : glowing.delete(e.target)); tubesSeen = glowing.size > 0; });
+[...tubeEls, boardEl, dialEl].forEach((x) => x && glowSeen.observe(x));
 function tubeFrame(now) {
+  if (!tubesSeen || now - tubeLast < 33 || document.querySelector("dialog[open], .mview")) return;
+  const dt = Math.min(200, now - tubeLast); tubeLast = now;
   const t = now / 1000;
-  tubePower += ((offAir ? 0 : 1) - tubePower) * .03;
+  tubePower += ((offAir ? 0 : 1) - tubePower) * (1 - Math.pow(.97, dt / 16.7));   // the same warm-up at any frame rate
   const g = [.72 + .14 * Math.sin(t * 1.61) + .08 * Math.sin(t * 4.07 + 1.3) + .04 * Math.sin(t * 9.3 + .4),
              .72 + .14 * Math.sin(t * 1.23 + 2.1) + .08 * Math.sin(t * 3.51 + .2) + .04 * Math.sin(t * 8.1 + 2.6)];
   tubeEls.forEach((el, i) => {
@@ -2262,9 +2281,11 @@ for (const id of ["msg", "joke", "ft", "fa", "q"]) $(id).addEventListener("input
 // a name this phone kept from before: claimed once on load; if someone else has it now, this phone is a new guest
 // under it, numbered ("Ann 2"); a name tonight's rules don't allow is asked for again
 // (after the first check-in: that's what gives this phone its id; a refusal for any other reason keeps the name)
-let nameClaimed = false;
+let nameClaimed = false, reclaimAt = 0;
 async function reclaimName() {
-  const n = myName(); if (!n || nameClaimed) return;
+  // one try at a time, and a refusal that isn't one of tonight's rules (busy, offline) waits 2 min, not one poll
+  const n = myName(); if (!n || nameClaimed || Date.now() < reclaimAt) return;
+  reclaimAt = Date.now() + 120_000;
   try {
     const r = await claimName(n, true);
     if (r.ok) { nameClaimed = true; if (r.name !== n) { keepName(r.name); toast(`You're ${r.name} tonight.`); } return; }
@@ -2364,7 +2385,7 @@ function showLimits() {
   // a long line takes one coin away: its slot shows empty (a coin past max is gone, not spent)
   [...$("slots").querySelectorAll("i")].forEach((i, n) => { i.classList.toggle("gone", n >= sg.max); i.classList.toggle("used", n >= sg.max - usedN); });
   $("slots").setAttribute("aria-label", free ? "" : `${sg.max - usedN} of ${sg.max} song picks left`);
-  const say = (id, html) => { $(id).hidden = !html; $(id).innerHTML = html || ""; };
+  const say = (id, html) => { html = html || ""; const e = $(id); e.hidden = !html; if (e.dataset.said !== html) { e.dataset.said = html; e.innerHTML = html; } };   // unchanged: left alone
   say("songAllow", free ? "<b>Free play:</b> request as many songs as you like."
     : st.spare === "golden" ? "<b>Golden quarter!</b> Your scavenger hunt prize: spend it on one more song."
     : st.spare === "coin" ? "<b>A quarter on the house.</b> Spend it on one more song."
@@ -2531,9 +2552,8 @@ function setOffAir(off) {
   screenKey = null; lcdKey = "";   // redraw the screen and the ticker for the new state
 }
 
-// Request again: one tap, once per song. Spent (asked twice): a circle with a slash.
+// Request again: one tap, once per song.
 const ICON_AGAIN = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9"/><path d="M20 4v5h-5"/></svg>';
-const ICON_SPENT = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M6 18L18 6"/></svg>';
 function againButton(m) {
   const b = el("button", "again"); b.type = "button";
   if (!m.again && !(limits && limits.freePlay)) return null;   // asked twice: no button (a search says so if they try)
@@ -2563,7 +2583,15 @@ function isSpent(t) {
 }
 
 let stateLoaded = false;
-async function refresh() {
+// one poll at a time: one asked for mid-poll (a send, a tap on Earlier, the phone waking) runs once it's back,
+// so two replies can't land out of order and paint an older state over a newer one
+let polling = null, pollAgain = false;
+function refresh() {
+  if (polling) { pollAgain = true; return polling; }
+  polling = poll().finally(() => { polling = null; if (pollAgain) { pollAgain = false; refresh(); } });
+  return polling;
+}
+async function poll() {
   if (!k) { $("gate").hidden = false; return; }
   try {
     const s = await api(stateLoaded ? "/api/state" : "/api/state?load=1", { signal: AbortSignal.timeout(8000) });   // a hung poll never piles up
@@ -2747,9 +2775,10 @@ async function coinSend(work) {
   let ok = false;
   try { ok = Boolean(await work()); }
   finally {
-    b.disabled = false; $("cpSay").textContent = "Insert coin";
+    $("cpSay").textContent = "Insert coin";
     if (ok) setTimeout(() => { coinHome(); op.classList.remove("clunk"); }, 400);   // the panel has closed by then
     else { cq.style.visibility = ""; await rollTo(dx, 600, true); coinHome(); }   // back out of the slot
+    b.disabled = false;   // only once the coin is home: a tap mid-roll would start a second roll over the first
   }
 }
 $("send").setAttribute("aria-label", "Send to the DJ");
@@ -2911,14 +2940,11 @@ addEventListener("keydown", (e) => {
 });
 $("odMine").onclick = () => odShowStats(od && od.stats, 0);
 $("orrdlePlay").onclick = () => {
-  const d = $("orrdleBox"); d.classList.remove("closing"); d.showModal(); d.scrollTop = 0;
+  const d = $("orrdleBox"); if (overlayUp(d)) return; fadeShow(d);
   document.documentElement.classList.add("od-open");   // the page behind stays put
   if (!od || od.done) odStart(); else { odBuild(); odPaint(); }   // an unfinished game picks up where it was
 };
-$("orrdleClose").onclick = () => {
-  const d = $("orrdleBox"); d.classList.add("closing");
-  setTimeout(() => { d.classList.remove("closing"); d.close(); }, 240);
-};
+$("orrdleClose").onclick = () => fadeClose($("orrdleBox"));
 $("orrdleBox").addEventListener("close", () => document.documentElement.classList.remove("od-open"));
 // the REQUESTED lamp: a tap glides down to wherever a song is asked for (the name panel on a first visit)
 document.querySelector(".brand .req").addEventListener("click", () => {
@@ -3004,6 +3030,7 @@ let hunt = { medals: [], total: MEDAL_IDS.length, golden: "none", coins: 0 }, hu
 function showHunt(h) {
   if (h) hunt = h;
   const got = new Map(hunt.medals.map((m) => [m.id, m.at])), key = JSON.stringify([...got.keys(), hunt.golden, hunt.coins]);
+  if (pendingMedals().some((id) => got.has(id))) setPending(pendingMedals().filter((id) => !got.has(id)));
   if (key === huntShown) return;
   const fresh = huntPrev ? [...got.keys()].filter((id) => !huntPrev.has(id)) : [];   // just earned: it drops into its slot
   huntShown = key; huntPrev = new Set(got.keys());
@@ -3032,12 +3059,23 @@ function showHunt(h) {
   $("slots").classList.toggle("spare", hunt.golden === "ready" || hunt.coins > 0);
   g.title = hunt.golden === "ready" ? "Your golden quarter" : hunt.coins > 0 ? "A quarter on the house" : "Earn another quarter";
 }
-// earned on this phone, waiting for the Worker (kept if a poll or the network fails)
-function pendingMedals() { try { return JSON.parse(localStorage.getItem("mfm_medals_due") || "[]"); } catch { return []; } }
-function setPending(list) { try { localStorage.setItem("mfm_medals_due", JSON.stringify(list)); } catch {} }
+// earned on this phone, waiting for the Worker (kept if a poll or the network fails, or the Worker says "slow");
+// each with when it was earned: one still refused after 15 min is dropped, so a hunt the host reset stays reset
+const DUE_MS = 15 * 60_000;
+function dueList() {
+  try { return JSON.parse(localStorage.getItem("mfm_medals_due") || "[]").map((d) => typeof d === "string" ? { id: d, at: Date.now() } : d)
+    .filter((d) => d && MEDAL[d.id] && Date.now() - d.at < DUE_MS); } catch { return []; }
+}
+function pendingMedals() { return dueList().map((d) => d.id); }
+function setPending(ids) {
+  const at = new Map(dueList().map((d) => [d.id, d.at]));
+  try { localStorage.setItem("mfm_medals_due", JSON.stringify(ids.map((id) => ({ id, at: at.get(id) ?? Date.now() })))); } catch {}
+}
+const earning = new Set();   // one claim per medal in flight: two quick triggers must not toast twice
 async function earn(id) {
-  if (!MEDAL[id] || hunt.medals.some((m) => m.id === id)) return;
+  if (!MEDAL[id] || hunt.medals.some((m) => m.id === id) || earning.has(id)) return;
   if (!pendingMedals().includes(id)) setPending([...pendingMedals(), id]);
+  earning.add(id);
   try {
     const r = await api("/api/medal", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ medal: id }), signal: AbortSignal.timeout(10000) });
@@ -3049,7 +3087,7 @@ async function earn(id) {
     if (!wasDone && r.hunt.medals.length >= r.hunt.total)
       setTimeout(() => toast("🏅 Every medal! A golden quarter is yours: one more song."), 3200);
     showLimits();
-  } catch {}
+  } catch {} finally { earning.delete(id); }
 }
 function flushMedals() { for (const id of pendingMedals()) earn(id); }
 // a medal up close: up out of its slot spinning, then hanging in the air cocked, turning slowly; drag to turn it
@@ -3060,6 +3098,7 @@ function viewMedal(id, slot, at) {
   viewCoin({ name: m.name, desc: m.desc, why: m.why, at, front: medalFront(id), back: medalBack(id), metal: m.metal }, slot);
 }
 function viewCoin(m, slot) {
+  if (overlayUp()) return;
   const at = m.at, view = el("div", "mview"), stage = el("div", "mview-stage"), coin = el("div", "m3d");
   coin.style.setProperty("--f", m.front); coin.style.setProperty("--b", m.back);
   if (m.engraved) coin.style.setProperty("--engrave", "none");
@@ -3110,6 +3149,8 @@ function viewCoin(m, slot) {
   };
   close.onclick = putBack;
   view.addEventListener("click", (e) => { if (e.target === view) putBack(); });
+  const onKey = (e) => { if (!view.isConnected) return removeEventListener("keydown", onKey); if (e.key === "Escape") putBack(); };
+  addEventListener("keydown", onKey);
 }
 // An anime sparkle: a four-point star with a glow and a long thin cross flare, popping in, turning, popping out.
 // host: where it lives (it goes when that goes, and scrolls with it); x and y are screen coordinates
@@ -3136,7 +3177,6 @@ function sparkleAround(target, n, inset = .1, host = document.body) {   // n spa
 (() => {
   const word = document.querySelector(".plank-word");
   let tarn = 1, prev = null, lastSpark = 0;
-  try { localStorage.removeItem("mfm_polished"); } catch {}   // the medal (on the server) says whether it's been polished, not this phone
   word.style.setProperty("--tarn", tarn);
   // polished exactly when the Elbow Grease medal is earned: a hunt reset tarnishes it again
   window.signPolished = (on) => {
@@ -3173,8 +3213,8 @@ document.querySelectorAll(".screw").forEach((sc) => sc.addEventListener("click",
   if (screwSpins.size === 4 && [...screwSpins.values()].every((t) => Date.now() - t < 10000)) earn("screws");
 }));
 // Made by: the story of the app, for anyone who asks
-$("aboutBtn").onclick = () => { const d = $("about"); d.classList.remove("closing"); d.showModal(); d.scrollTop = 0; document.documentElement.classList.add("od-open"); };
-$("aboutClose").onclick = () => { const d = $("about"); d.classList.add("closing"); setTimeout(() => { d.classList.remove("closing"); d.close(); }, 240); };
+$("aboutBtn").onclick = () => { const d = $("about"); if (overlayUp(d)) return; fadeShow(d); document.documentElement.classList.add("od-open"); };
+$("aboutClose").onclick = () => fadeClose($("about"));
 $("about").addEventListener("close", () => document.documentElement.classList.remove("od-open"));
 // Hotfixes: each poll carries a fingerprint of this page as deployed. When it changes, the page swaps itself
 // for the new one at a quiet moment: while the phone is locked or in another app, or after a minute and a half
@@ -3184,7 +3224,7 @@ for (const ev of ["pointerdown", "keydown", "scroll", "touchstart"]) addEventLis
 function quietSwap() {
   if (!pageStale) return;
   const busy = [...document.querySelectorAll("input, textarea")].some((e) => e.value && e.type !== "checkbox" && e.type !== "radio" && e.id !== "whoName")
-    || document.querySelector("dialog[open]") || document.querySelector(".busy")
+    || document.querySelector("dialog[open], .mview, .busy")
     || (document.activeElement && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName));
   if (document.visibilityState === "hidden" || (!busy && Date.now() - lastTouch > 90000)) {
     try { sessionStorage.setItem("mfm_scroll", String(scrollY)); } catch {}
@@ -3201,7 +3241,7 @@ setInterval(quietSwap, 15000);
 try { const y = Number(sessionStorage.getItem("mfm_scroll")); sessionStorage.removeItem("mfm_scroll");
       if (y) addEventListener("load", () => setTimeout(() => scrollTo(0, y), 300)); } catch {}
 refresh();
-loadCached(); setInterval(loadCached, 5 * 60 * 1000);
+loadCached(); setInterval(() => { if (document.visibilityState === "visible") loadCached(); }, 5 * 60 * 1000);   // not while locked
 document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") refresh(); });
 </script>
 </body>

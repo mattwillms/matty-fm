@@ -13,7 +13,7 @@ const [out = "ui-soak", hours = "1", count = "3"] = process.argv.slice(2);
 mkdirSync(out, { recursive: true });
 const env = Object.fromEntries(readFileSync(`${process.env.HOME}/.config/mattyfm/env`, "utf8").split("\n")
   .filter((l) => l.includes("=") && !l.startsWith("#")).map((l) => { const i = l.indexOf("="); return [l.slice(0, i).replace(/^export\s+/, ""), l.slice(i + 1).replace(/^["']|["']$/g, "")]; }));
-const URL = `https://fm.willms.co/?k=${encodeURIComponent(env.PARTY_CODE)}`;
+const URL = process.env.SOAK_URL || `https://fm.willms.co/?k=${encodeURIComponent(env.PARTY_CODE)}`;   // SOAK_URL: a dev server
 const end = Date.now() + Number(hours) * 3600_000;
 const log = (row) => appendFileSync(`${out}/ui.jsonl`, JSON.stringify({ t: Date.now() / 1000, ...row }) + "\n");
 const pause = (lo, hi) => new Promise((r) => setTimeout(r, lo + Math.random() * (hi - lo)));
@@ -31,7 +31,7 @@ const ACTIONS = [
   ["coin", () => document.querySelector("#slots i")?.click()],
   ["empty slot", () => document.querySelector("#slots i.used")?.click()],
   ["dotted coin", () => document.querySelector("#slots .ghost")?.click()],
-  ["preset", () => pick([...document.querySelectorAll("#presets .preset")])?.click()],
+  ["preset", () => { const a = [...document.querySelectorAll("#presets .preset")]; a[Math.floor(Math.random() * a.length)]?.click(); }],
   ["sound switch", () => document.getElementById("padMode")?.click()],
   ["requested lamp", () => document.querySelector(".brand .req")?.click()],
   ["sleeve", () => document.getElementById("glass")?.click()],
@@ -47,7 +47,7 @@ const ACTIONS = [
     const ev = (t, x) => w.dispatchEvent(new PointerEvent(t, { clientX: x, clientY: r.top + r.height / 2, bubbles: true, pointerType: "touch", buttons: 1 }));
     ev("pointerdown", r.left); for (let i = 0; i < 20; i++) ev("pointermove", i % 2 ? r.right : r.left); ev("pointerup", r.left); }],
   ["search", async () => { const q = document.getElementById("q"); if (!q || q.disabled || q.offsetParent === null) return;
-    q.value = pick(["abba", "queen", "september", "dancing", "hello"]); q.dispatchEvent(new Event("input", { bubbles: true })); }],
+    const w = ["abba", "queen", "september", "dancing", "hello"]; q.value = w[Math.floor(Math.random() * w.length)]; q.dispatchEvent(new Event("input", { bubbles: true })); }],
   ["pick + back", async () => { const b = document.querySelector("#results button:not([disabled])"); if (!b) return; b.click();
     await new Promise((r) => setTimeout(r, 600)); document.querySelector("#chosen .again")?.click(); }],
   ["rotate", null],   // done from outside: the phone turned sideways and back
