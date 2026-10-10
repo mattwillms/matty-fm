@@ -237,6 +237,7 @@
      Tap one: it flips in 3D, so the other side shows as it turns (each coin is a front and a back face) */
   .slots { display: flex; flex: none; perspective: 180px; }
   :root {   /* the quarter's faces and an empty slot: the picks, and the coin-op Send */
+           --rim: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23cfae5c'/%3E%3Cstop offset='.35' stop-color='%238f6a25'/%3E%3Cstop offset='.6' stop-color='%23b48c3e'/%3E%3Cstop offset='1' stop-color='%23503810'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='18' cy='18' r='16.2' fill='none' stroke='url(%23g)' stroke-width='3.2'/%3E%3Ccircle cx='18' cy='18' r='17.7' fill='none' stroke='%233a2a10' stroke-width='.5' opacity='.7'/%3E%3Ccircle cx='18' cy='18' r='14.6' fill='none' stroke='%232a1c08' stroke-width='.6'/%3E%3Cg stroke='%235a3f12' stroke-width='.35' stroke-linecap='round' opacity='.85'%3E%3Cpath d='M5 12l3 1.2M30 7l-2 2.6M33 22l-2.6-.6M24 33l-1-2.8M7 28l2.4-1.8M14 2.6l.6 2.4M20 33.6l2-.8M2.8 19l2.6.2M27.5 4.5l-1.4 1M31.6 27l-2.2-1'/%3E%3C/g%3E%3Cg stroke='%23fff3c8' stroke-width='.3' stroke-linecap='round' opacity='.6'%3E%3Cpath d='M9 5.5l1.8 1.4M3.6 15l2.4.6M25 2.8l.4 1.6M33 15.5l-1.8.4'/%3E%3C/g%3E%3C/svg%3E");   /* the scratched old-gold rim round a coin's hole */
            --heads: url("data:image/webp;base64,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"); --tails: url("data:image/webp;base64,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"); --empty: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E %3Cdefs%3E%3CradialGradient id='h' cx='50%25' cy='38%25' r='62%25'%3E%3Cstop offset='0' stop-color='%23120b07'/%3E%3Cstop offset='.8' stop-color='%231c120c'/%3E%3Cstop offset='1' stop-color='%232c1d14'/%3E%3C/radialGradient%3E%3C/defs%3E %3Ccircle cx='50' cy='50' r='48' fill='%235b3f2b'/%3E%3Ccircle cx='50' cy='51' r='45.5' fill='url(%23h)'/%3E %3Cpath d='M8 46A42 42 0 0 1 92 46' fill='none' stroke='%23000' stroke-opacity='.55' stroke-width='5'/%3E %3Cpath d='M10 58A41 41 0 0 0 90 58' fill='none' stroke='%238a6a4f' stroke-opacity='.45' stroke-width='1.6'/%3E %3C/svg%3E"); }
   .slots i { position: relative; width: 30px; height: 30px; cursor: pointer; z-index: 2; transform-style: preserve-3d;
              -webkit-tap-highlight-color: transparent; --face: var(--heads); --back: var(--tails); }
@@ -254,7 +255,10 @@
      hole with a scratched old-gold rim. The holes and rims sit on the row, still while a coin is in the air */
   .slots { gap: 8px; padding: 3px;
            background: var(--empty) 41px 3px / 30px 30px no-repeat, var(--empty) 79px 3px / 30px 30px no-repeat,
-                       url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23cfae5c'/%3E%3Cstop offset='.35' stop-color='%238f6a25'/%3E%3Cstop offset='.6' stop-color='%23b48c3e'/%3E%3Cstop offset='1' stop-color='%23503810'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='18' cy='18' r='16.2' fill='none' stroke='url(%23g)' stroke-width='3.2'/%3E%3Ccircle cx='18' cy='18' r='17.7' fill='none' stroke='%233a2a10' stroke-width='.5' opacity='.7'/%3E%3Ccircle cx='18' cy='18' r='14.6' fill='none' stroke='%232a1c08' stroke-width='.6'/%3E%3Cg stroke='%235a3f12' stroke-width='.35' stroke-linecap='round' opacity='.85'%3E%3Cpath d='M5 12l3 1.2M30 7l-2 2.6M33 22l-2.6-.6M24 33l-1-2.8M7 28l2.4-1.8M14 2.6l.6 2.4M20 33.6l2-.8M2.8 19l2.6.2M27.5 4.5l-1.4 1M31.6 27l-2.2-1'/%3E%3C/g%3E%3Cg stroke='%23fff3c8' stroke-width='.3' stroke-linecap='round' opacity='.6'%3E%3Cpath d='M9 5.5l1.8 1.4M3.6 15l2.4.6M25 2.8l.4 1.6M33 15.5l-1.8.4'/%3E%3C/g%3E%3C/svg%3E") 38px 0 / 36px 36px no-repeat, url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 36 36'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23cfae5c'/%3E%3Cstop offset='.35' stop-color='%238f6a25'/%3E%3Cstop offset='.6' stop-color='%23b48c3e'/%3E%3Cstop offset='1' stop-color='%23503810'/%3E%3C/linearGradient%3E%3C/defs%3E%3Ccircle cx='18' cy='18' r='16.2' fill='none' stroke='url(%23g)' stroke-width='3.2'/%3E%3Ccircle cx='18' cy='18' r='17.7' fill='none' stroke='%233a2a10' stroke-width='.5' opacity='.7'/%3E%3Ccircle cx='18' cy='18' r='14.6' fill='none' stroke='%232a1c08' stroke-width='.6'/%3E%3Cg stroke='%235a3f12' stroke-width='.35' stroke-linecap='round' opacity='.85'%3E%3Cpath d='M5 12l3 1.2M30 7l-2 2.6M33 22l-2.6-.6M24 33l-1-2.8M7 28l2.4-1.8M14 2.6l.6 2.4M20 33.6l2-.8M2.8 19l2.6.2M27.5 4.5l-1.4 1M31.6 27l-2.2-1'/%3E%3C/g%3E%3Cg stroke='%23fff3c8' stroke-width='.3' stroke-linecap='round' opacity='.6'%3E%3Cpath d='M9 5.5l1.8 1.4M3.6 15l2.4.6M25 2.8l.4 1.6M33 15.5l-1.8.4'/%3E%3C/g%3E%3C/svg%3E") 76px 0 / 36px 36px no-repeat; }
+                       var(--rim) 38px 0 / 36px 36px no-repeat, var(--rim) 76px 0 / 36px 36px no-repeat; }
+  /* a spare quarter (the golden one, or one on the house) gets a hole and rim of its own, like the others */
+  .slots.spare { background: var(--empty) 3px 3px / 30px 30px no-repeat, var(--empty) 41px 3px / 30px 30px no-repeat, var(--empty) 79px 3px / 30px 30px no-repeat,
+                             var(--rim) 0 0 / 36px 36px no-repeat, var(--rim) 38px 0 / 36px 36px no-repeat, var(--rim) 76px 0 / 36px 36px no-repeat; }
   .slots .ghost { width: 30px; height: 30px; border-radius: 50%; border: 1.5px dashed #c9a46c99; cursor: pointer;
                   -webkit-tap-highlight-color: transparent; box-sizing: border-box; }
   .tada { display: inline-block; animation: tada 1.1s ease-in-out; }
@@ -684,7 +688,8 @@
   .od-again { justify-self: center; }
 
   /* ---- scavenger hunt: medals in a case of round slots, like coins in a collector's board ---- */
-  #hunt { position: relative; overflow: hidden; }
+  #hunt { position: relative; }
+  #hunt.done h2, #hunt.done #huntSay { margin-right: 64px; }   /* clear of the ribbon */
   .medals { display: grid; grid-template-columns: repeat(3, 64px); justify-content: center; gap: 14px 22px; margin: 14px 0 4px; }
   .mslot { position: relative; width: 64px; height: 64px; border-radius: 50%; padding: 0;
            background: radial-gradient(circle at 50% 42%, #120a06 0 58%, #2a1a12 70%);
@@ -694,9 +699,15 @@
                   filter: drop-shadow(0 2px 2px #000c); }
   .mslot.new .mface { animation: medalIn .9s cubic-bezier(.2,1.4,.4,1) both; }
   @keyframes medalIn { 0% { transform: translateY(-40px) scale(1.6) rotate(-30deg); opacity: 0; } 60% { opacity: 1; } }
-  .hunt-ribbon { position: absolute; top: 18px; right: -42px; width: 160px; transform: rotate(35deg); text-align: center; pointer-events: none;
-                 background: linear-gradient(#e9b949, #b7811c); color: #2a1608; font: 800 .82rem/1 Fraunces, Georgia, serif; letter-spacing: .08em;
-                 padding: 7px 0; box-shadow: 0 2px 6px #000a, inset 0 1px 0 #fff5; text-transform: uppercase; }
+  /* the Completed ribbon: a gold band across the top right corner, its ends folding round the panel's edges */
+  .hunt-ribbon { position: absolute; top: -6px; right: -6px; width: 118px; height: 118px; overflow: hidden; pointer-events: none; z-index: 2; }
+  .hunt-ribbon span { position: absolute; top: 28px; right: -34px; width: 170px; transform: rotate(45deg); text-align: center;
+                      background: linear-gradient(#f2c860, #c8901f 55%, #a87418); color: #2a1608; font: 800 .74rem/1 Fraunces, Georgia, serif;
+                      letter-spacing: .1em; padding: 7px 0 6px; text-transform: uppercase; text-shadow: 0 1px 0 #ffe9a8;
+                      box-shadow: 0 3px 6px #000a, inset 0 1px 0 #fff6, inset 0 -1px 0 #0004; }
+  .hunt-ribbon::before, .hunt-ribbon::after { content: ""; position: absolute; border: 3px solid #6b4a0c; border-top-color: transparent; border-right-color: transparent; }
+  .hunt-ribbon::before { top: 0; left: 0; }      /* the band's end, folded back over the top edge */
+  .hunt-ribbon::after { bottom: 0; right: 0; }   /* and over the right edge */
   /* the medal up close: out of its slot, spinning, then hanging in the air slightly cocked and turning slowly; drag to turn it */
   .mview { position: fixed; inset: 0; z-index: 70; display: grid; place-items: center; touch-action: none;
            background: radial-gradient(circle at 50% 40%, #3d2518ee, #120a06f5 72%); animation: fade .3s ease-out both; }
@@ -714,13 +725,26 @@
   .mview-cap .why { color: var(--cream); }
   /* the golden quarter, in the dotted place, when the hunt is done; a silver one when the host gave a song */
   .slots .ghost.golden, .slots .ghost.coin { border: 0; background: var(--heads) center / 100% 100% no-repeat; filter: drop-shadow(0 1.5px 1px #000a); }
-  .slots .ghost.golden { background-image: var(--golden); filter: drop-shadow(0 1.5px 1px #000a) drop-shadow(0 0 4px #f0c04a88); }   /* the hen quarter */
+  .slots .ghost.golden { background-image: url(/golden-heads.webp); filter: drop-shadow(0 1.5px 1px #000a) drop-shadow(0 0 4px #f0c04a88); }   /* the hen quarter */
   .slots .ghost.gone { visibility: hidden; }
   /* Orrdle's sign starts tarnished; rubbing it brings the gold up */
   .plank-word { touch-action: pan-y; cursor: grab; }
   .plank-word::after { content: attr(data-text); position: absolute; left: 0; top: 0; opacity: var(--tarn, 1); pointer-events: none;
                        background: linear-gradient(100deg, #5b4a2a, #3e3a26 30%, #6a5530 55%, #2f2c1d 80%, #4d4128);
                        -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .plank-word::before { content: attr(data-text); position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; z-index: 1;
+                        background: linear-gradient(105deg, transparent 38%, #fffbe8 47%, #ffffff 50%, #fffbe8 53%, transparent 62%) 160% 0 / 300% 100% no-repeat;
+                        -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .plank-word.gleaming::before { animation: signGleam .9s ease-in-out; }   /* the anime glint across a lens, on gold letters */
+  @keyframes signGleam { 0% { opacity: 1; background-position: 160% 0; } 100% { opacity: 1; background-position: -60% 0; } }
+  .plank-word.shiny { filter: drop-shadow(0 1px 0 #fff3c2) drop-shadow(0 -1px 0 #5a3c0c) drop-shadow(0 3px 2px #000c) drop-shadow(0 0 6px #ffd76a66); }
+  .fx.spk { border-radius: 0; background: none; filter: drop-shadow(0 0 3px #fff) drop-shadow(0 0 7px #ffd76a); }
+  .fx.spk svg { display: block; width: 100%; height: 100%; overflow: visible; }
+  .m3d .gleam { position: absolute; inset: 0; border-radius: 50%; pointer-events: none; -webkit-backface-visibility: hidden; backface-visibility: hidden;
+                background: linear-gradient(115deg, transparent 40%, #ffffffcc 49%, #fff 50%, #ffffffcc 51%, transparent 60%) 170% 0 / 300% 100% no-repeat;
+                mix-blend-mode: screen; animation: coinGleam 3.2s ease-in-out infinite; }
+  .m3d .gleam.front { transform: translateZ(5.2px); } .m3d .gleam.back { transform: rotateY(180deg) translateZ(5.2px); animation-delay: 1.6s; }
+  @keyframes coinGleam { 0%, 55% { background-position: 170% 0; } 85%, 100% { background-position: -70% 0; } }
   .fx.glint { width: 14px; height: 14px; border-radius: 0; background: none; color: #fff7d6; font-size: 14px; line-height: 14px; text-align: center;
               text-shadow: 0 0 6px #ffd76a, 0 0 12px #ffb02e; }
   /* Orrdle: a starburst, like a sticker on a box of cereal */
@@ -2125,7 +2149,11 @@ function showLimits() {
                                 : "The line is long: <b>one song at a time</b> for now.")
     : st.locked ? (sg.active === 1 ? "<b>One to go.</b> You get two more quarters once your other song plays, or cancel it before it plays to get your quarter back."
                                    : "<b>Both quarters are in.</b> You get two more once they've played, or cancel one that hasn't played to get its quarter back.")
-    : sg.active === 1 ? "One picked. <b>Room for one more.</b>"
+    : sg.active >= 1 ? (() => {   // a spare quarter (golden, or on the house) is room for one more song too
+        const spare = (sg.extra?.golden ? 1 : 0) + (sg.extra?.coins || 0), room = Math.max(0, sg.max - sg.active) + spare;
+        const say = ["no", "one", "two", "three", "four", "five"][room] || String(room);
+        return `${sg.active === 1 ? "One" : "Two"} picked. <b>Room for ${say} more.</b>`;
+      })()
     : 'Spend a quarter on a song. You\'ll get more quarters later, and you can earn an extra one in the <a href="#hunt">scavenger hunt</a>.');
   if (!$("closed").hidden) say("songAllow", "");
   $("q").disabled = !$("closed").hidden || !st.can;
@@ -2622,7 +2650,7 @@ document.querySelector(".brand .req").addEventListener("click", () => {
 // the dotted third place: points at the scavenger hunt (the link does a tada; with no link showing, the panel does)
 document.querySelector("#slots .ghost").onclick = (e) => {
   const g = e.currentTarget;
-  if (g.classList.contains("golden")) { toast("Your golden quarter from the scavenger hunt: one more song."); return; }
+  if (g.classList.contains("golden")) { viewCoin(GOLDEN_COIN, g); return; }
   if (g.classList.contains("coin")) { toast("A quarter on the house: one more song."); return; }
   const a = document.querySelector('#songAllow a[href="#hunt"]'), t = a && a.offsetParent ? a : $("huntH");
   if (t === $("huntH")) $("hunt").scrollIntoView({ behavior: "smooth", block: "center" });
@@ -2645,7 +2673,7 @@ const ICONS = {
   needle: '<path d="M4 31a16 16 0 0 1 32 0" fill="none" stroke="INK" stroke-width="2.4"/><path d="M8 31v-3M12 22l2 2M20 15v3M28 22l-2 2M32 31v-3" stroke="INK" stroke-width="2"/><path d="M20 31L31 9" stroke="#e2621b" stroke-width="3" stroke-linecap="round"/><circle cx="20" cy="31" r="3" fill="INK"/>',
   static: '<path d="M13 4l7 8 7-8" fill="none" stroke="INK" stroke-width="2" stroke-linecap="round"/><rect x="4" y="12" width="32" height="23" rx="5" fill="#2a2a2a" stroke="INK" stroke-width="2"/><path d="M8 17h18M8 21h22M8 25h14M8 29h20" stroke="#cfd6db" stroke-width="1.6" stroke-dasharray="3 2"/>',
   colors: '<path d="M4 32a16 16 0 0 1 32 0" fill="none" stroke="#b2361f" stroke-width="4"/><path d="M9 32a11 11 0 0 1 22 0" fill="none" stroke="#e2621b" stroke-width="4"/><path d="M14 32a6 6 0 0 1 12 0" fill="none" stroke="#f0a92b" stroke-width="4"/>',
-  screws: '<circle cx="20" cy="20" r="15" fill="#d8dde1" stroke="INK" stroke-width="2"/><path d="M10 14l20 12" stroke="INK" stroke-width="3.4" stroke-linecap="round"/>',
+  screws: '<circle cx="20" cy="20" r="15" fill="#d8dde1" stroke="#3d4449" stroke-width="2"/><path d="M10 14l20 12" stroke="#3d4449" stroke-width="3.4" stroke-linecap="round"/><path d="M12 9a13 13 0 0 1 9-3" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".8"/>',
   gnat: '<ellipse cx="13" cy="15" rx="8" ry="5" fill="#ffffffaa" stroke="INK" stroke-width="1.4" transform="rotate(-25 13 15)"/><ellipse cx="27" cy="15" rx="8" ry="5" fill="#ffffffaa" stroke="INK" stroke-width="1.4" transform="rotate(25 27 15)"/><ellipse cx="20" cy="24" rx="4" ry="8" fill="INK"/><path d="M16 24l-6 4M16 28l-5 6M24 24l6 4M24 28l5 6" stroke="INK" stroke-width="1.4"/>',
   polish: '<path d="M18 3l4 13 13 4-13 4-4 13-4-13-13-4 13-4z" fill="#fff6cf" stroke="INK" stroke-width="1.6" stroke-linejoin="round"/><path d="M32 4l1.6 5 5 1.6-5 1.6-1.6 5-1.6-5-5-1.6 5-1.6z" fill="#fff6cf"/>',
 };
@@ -2661,55 +2689,38 @@ const MEDAL = {
   polish: { name: "Elbow Grease", metal: "gold", enamel: "#1d3b6e", field: "#132848", desc: "For a shine you could shave in.", why: "You rubbed the Orrdle sign until it gleamed." },
 };
 const MEDAL_IDS = Object.keys(MEDAL);
+// each icon's own bounds, so every one is centred and fills the field the same way
+const ICON_BOX = { eggs: "3 4 34 31", kaboom: "0 1 40 39", snap: "7 1 26 38", needle: "2 7 36 26", static: "3 3 34 33",
+                   colors: "2 14 36 19", screws: "4 4 32 32", gnat: "4 8 32 29", polish: "0 1 40 37" };
+const lightHex = (h) => { const n = parseInt(h.slice(1), 16); return ((n >> 16) * 299 + ((n >> 8) & 255) * 587 + (n & 255) * 114) / 1000 > 150; };
 const svgUrl = (svg) => `url("data:image/svg+xml,${encodeURIComponent(svg)}")`;
 function medalFront(id) {
-  const m = MEDAL[id], [a, b, c] = METALS[m.metal], ink = m.field === "#f3e3c3" || m.field === "#cdb591" ? "#3a2210" : "#f3e3c3";
+  const m = MEDAL[id], [a, b, c] = METALS[m.metal], ink = lightHex(m.field) ? "#3a2210" : "#f3e3c3";
+  const ring = lightHex(m.enamel) ? c : a;   // the band's lettering: dark on a light enamel, light on a dark one
   return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs>
     <radialGradient id="m" cx=".34" cy=".28" r=".85"><stop offset="0" stop-color="${a}"/><stop offset=".55" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></radialGradient>
-    <path id="t" d="M20 60a40 40 0 0 1 80 0"/></defs>
+    <path id="t" d="M23.5 74a38 38 0 1 1 73 0"/></defs>
     <circle cx="60" cy="60" r="59" fill="url(#m)"/>
     <circle cx="60" cy="60" r="56" fill="none" stroke="${c}" stroke-width="2.4" stroke-dasharray="1.2 1.9" opacity=".7"/>
     <circle cx="60" cy="60" r="49" fill="${m.enamel}" stroke="${c}" stroke-width="2.5"/>
-    <circle cx="60" cy="60" r="36" fill="${m.field}" stroke="${b}" stroke-width="2"/>
-    <text font-family="Georgia,serif" font-weight="700" font-size="8.6" letter-spacing="2.2" fill="${a}"><textPath href="#t" startOffset="50%" text-anchor="middle">ORRFM · HUNT</textPath></text>
-    <path d="M24 70l1.6 4 4.4.3-3.4 2.8 1.1 4.3-3.7-2.4-3.7 2.4 1.1-4.3-3.4-2.8 4.4-.3zM96 70l1.6 4 4.4.3-3.4 2.8 1.1 4.3-3.7-2.4-3.7 2.4 1.1-4.3-3.4-2.8 4.4-.3z" fill="${a}"/>
-    <g transform="translate(40 40)">${ICONS[id].replaceAll("INK", ink)}</g>
+    <circle cx="60" cy="60" r="33" fill="${m.field}" stroke="${b}" stroke-width="2"/>
+    <text font-family="Georgia,serif" font-weight="700" font-size="7.4" letter-spacing=".9" fill="${ring}"><textPath href="#t" startOffset="50%" text-anchor="middle">OrrFM Scavenger Hunt</textPath></text>
+    <path d="M60 99.5l1.5 3.1 3.4.4-2.5 2.3.7 3.4-3.1-1.7-3.1 1.7.7-3.4-2.5-2.3 3.4-.4z" fill="${ring}"/>
+    <svg x="40" y="40" width="40" height="40" viewBox="${ICON_BOX[id]}" overflow="visible">${ICONS[id].replaceAll("INK", ink)}</svg>
     <ellipse cx="44" cy="30" rx="26" ry="11" fill="#fff" opacity=".13" transform="rotate(-28 44 30)"/></svg>`);
 }
-function medalBack(id) {
-  const m = MEDAL[id], [a, b, c] = METALS[m.metal], words = m.name.toUpperCase().split(" ");
-  const lines = words.length > 1 ? [words.slice(0, Math.ceil(words.length / 2)).join(" "), words.slice(Math.ceil(words.length / 2)).join(" ")] : words;
-  const y0 = lines.length > 1 ? 56 : 64;
+function medalBack(id) {   // the back: the award's name and nothing else, wrapped to the face
+  const m = MEDAL[id], [a, b, c] = METALS[m.metal], words = m.name.split(" "), lines = [];
+  for (const w of words) { const l = lines[lines.length - 1]; if (l && (l + " " + w).length <= 9) lines[lines.length - 1] = l + " " + w; else lines.push(w); }
+  const fs = Math.min(21, 132 / Math.max(...lines.map((l) => l.length + 1.5))), lh = fs * 1.12, y0 = 60 - (lines.length - 1) * lh / 2 + fs * .34;
   return svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs>
     <radialGradient id="m" cx=".66" cy=".3" r=".85"><stop offset="0" stop-color="${a}"/><stop offset=".6" stop-color="${b}"/><stop offset="1" stop-color="${c}"/></radialGradient></defs>
     <circle cx="60" cy="60" r="59" fill="url(#m)"/>
     <circle cx="60" cy="60" r="56" fill="none" stroke="${c}" stroke-width="2.4" stroke-dasharray="1.2 1.9" opacity=".7"/>
     <circle cx="60" cy="60" r="49" fill="none" stroke="${c}" stroke-width="1.6"/>
-    <g font-family="Georgia,serif" text-anchor="middle" fill="${c}">
-      <text x="60" y="34" font-size="9" letter-spacing="2.4">ORRFM</text>
-      ${lines.map((l, i) => `<text x="60.6" y="${y0 + i * 15 + .7}" font-size="12.5" font-weight="700" fill="${a}" opacity=".8">${l}</text><text x="60" y="${y0 + i * 15}" font-size="12.5" font-weight="700">${l}</text>`).join("")}
-      <text x="60" y="88" font-size="6.8" letter-spacing="1.4">SCAVENGER HUNT</text></g>
-    <path d="M60 99l1.4 3 3.2.3-2.4 2 .8 3.1-3-1.7-3 1.7.8-3.1-2.4-2 3.2-.3z" fill="${c}"/></svg>`);
+    <g font-family="Georgia,serif" font-weight="700" text-anchor="middle" font-size="${fs.toFixed(1)}">
+      ${lines.map((l, i) => `<text x="60.7" y="${(y0 + i * lh + .8).toFixed(1)}" fill="${a}" opacity=".8">${l}</text><text x="60" y="${(y0 + i * lh).toFixed(1)}" fill="${c}">${l}</text>`).join("")}</g></svg>`);
 }
-// The golden quarter: struck for the hunt, a hen on its face where a president would be
-document.documentElement.style.setProperty("--golden", svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs>
-  <radialGradient id="g" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#fff3c4"/><stop offset=".45" stop-color="#e7b440"/><stop offset=".8" stop-color="#b17d1c"/><stop offset="1" stop-color="#7a520e"/></radialGradient>
-  <radialGradient id="f" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#f7d778"/><stop offset="1" stop-color="#c8922a"/></radialGradient>
-  <path id="top" d="M22 60a38 38 0 0 1 76 0"/><path id="bot" d="M18 60a42 42 0 0 0 84 0"/>
-  <g id="hen"><path d="M38 66c-6-9-3-23 10-26 0-6 5-10 10-7 2-4 7-3 7 1 4-1 5 3 3 5l5 3-5 1c1 12-2 22-12 27-7 3-16 2-18-4z"/>
-    <path d="M38 66c-11-3-17-14-13-27 3 8 6 13 10 15-3-8-2-15 2-21 1 9 3 15 7 19z"/>
-    <path d="M55 34c-1-4 1-6 3-5 0-3 3-4 4-1 2-2 5 0 3 3z"/><path d="M68 43c2 0 2 4 0 5-2-1-2-4 0-5z"/><path d="M50 74l-1 11M58 73l1 12M47 85h5M57 85h5" fill="none" stroke-width="2.4" stroke-linecap="round"/></g></defs>
-  <circle cx="60" cy="60" r="59" fill="url(#g)"/>
-  <circle cx="60" cy="60" r="56" fill="none" stroke="#7a520e" stroke-width="2.6" stroke-dasharray="1.2 1.9" opacity=".75"/>
-  <circle cx="60" cy="60" r="50" fill="url(#f)" stroke="#8f6114" stroke-width="1.4"/>
-  <g font-family="Georgia,serif" font-weight="700" fill="#7a520e" letter-spacing="2">
-    <text font-size="9"><textPath href="#top" startOffset="50%" text-anchor="middle">ORRFM</textPath></text>
-    <text font-size="7.6" letter-spacing="1.6"><textPath href="#bot" startOffset="50%" text-anchor="middle">GOLDEN QUARTER</textPath></text></g>
-  <use href="#hen" transform="translate(1.2 1.6)" fill="#7a520e" stroke="#7a520e" opacity=".75"/>
-  <use href="#hen" transform="translate(-.6 -.8)" fill="#fff6d0" stroke="#fff6d0" opacity=".85"/>
-  <use href="#hen" fill="#e2ad3a" stroke="#d29a2a"/>
-  <circle cx="60.5" cy="39" r="1.6" fill="#7a520e"/>
-  <ellipse cx="42" cy="30" rx="24" ry="9" fill="#fff" opacity=".18" transform="rotate(-30 42 30)"/></svg>`));
 let hunt = { medals: [], total: MEDAL_IDS.length, golden: "none", coins: 0 }, huntShown = "", huntPrev = null;
 function showHunt(h) {
   if (h) hunt = h;
@@ -2732,11 +2743,13 @@ function showHunt(h) {
   }));
   const done = got.size >= hunt.total;
   $("huntRibbon").hidden = !done;
+  $("hunt").classList.toggle("done", done);
   $("huntSay").textContent = done ? (hunt.golden === "used" ? "Every medal found, and the golden quarter spent. Well hunted."
                                                             : "Every medal found! Your golden quarter is up by the coins: spend it on one more song.")
     : "The radio hides a few surprises. Make them happen to earn medals, and find them all for a golden quarter: one more song.";
   const g = document.querySelector("#slots .ghost");
   g.className = "ghost" + (hunt.golden === "ready" ? " golden" : hunt.coins > 0 ? " coin" : hunt.golden === "used" ? " gone" : "");
+  $("slots").classList.toggle("spare", hunt.golden === "ready" || hunt.coins > 0);
   g.title = hunt.golden === "ready" ? "Your golden quarter" : hunt.coins > 0 ? "A quarter on the house" : "Earn another quarter";
 }
 // earned on this phone, waiting for the Worker (kept if a poll or the network fails)
@@ -2760,13 +2773,21 @@ async function earn(id) {
 }
 function flushMedals() { for (const id of pendingMedals()) earn(id); }
 // a medal up close: up out of its slot spinning, then hanging in the air cocked, turning slowly; drag to turn it
+const GOLDEN_COIN = { name: "Golden Quarter", desc: "Struck for finding every medal in the scavenger hunt.",
+  why: "Spend it on one more song: the DJ will make a fuss.", front: "url(/golden-heads.webp)", back: "url(/golden-tails.webp)", metal: "gold" };
 function viewMedal(id, slot, at) {
-  const m = MEDAL[id], view = el("div", "mview"), stage = el("div", "mview-stage"), coin = el("div", "m3d");
-  coin.style.setProperty("--f", medalFront(id)); coin.style.setProperty("--b", medalBack(id));
+  const m = MEDAL[id];
+  viewCoin({ name: m.name, desc: m.desc, why: m.why, at, front: medalFront(id), back: medalBack(id), metal: m.metal }, slot);
+}
+function viewCoin(m, slot) {
+  const at = m.at, view = el("div", "mview"), stage = el("div", "mview-stage"), coin = el("div", "m3d");
+  coin.style.setProperty("--f", m.front); coin.style.setProperty("--b", m.back);
   const [, mid, dark] = METALS[m.metal];
   coin.style.setProperty("--r1", mid); coin.style.setProperty("--r2", dark);
   for (let z = -4.5; z <= 4.5; z += 1.5) { const d = el("s"); d.style.setProperty("--z", `${z}px`); coin.append(d); }
+  coin.append(el("i", "gleam front"), el("i", "gleam back"));
   stage.append(coin);
+  const twinkle = setInterval(() => { if (!view.isConnected) return clearInterval(twinkle); sparkleAround(stage.getBoundingClientRect(), 2, .5); }, 650);
   const cap = el("div", "mview-cap"), when = at ? new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
   cap.append(el("h3", null, m.name), el("p", null, m.desc), el("p", "why", m.why + (when ? ` (${when})` : "")));
   const close = el("button", "sleeve-close"); close.type = "button"; close.setAttribute("aria-label", "Put it back");
@@ -2805,32 +2826,46 @@ function viewMedal(id, slot, at) {
   close.onclick = putBack;
   view.addEventListener("click", (e) => { if (e.target === view) putBack(); });
 }
-// the Orrdle sign: tarnished until it's rubbed; enough rubbing and it gleams (and that's a medal)
+// An anime sparkle: a four-point star with a glow and a long thin cross flare, popping in, turning, popping out.
+function sparkle(x, y, size = 16) {
+  const e = fxBit("spk", x - size / 2, y - size / 2, { width: size + "px", height: size + "px" });
+  e.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 0C21 14 26 19 40 20 26 21 21 26 20 40 19 26 14 21 0 20 14 19 19 14 20 0z" fill="#fff"/><path d="M20 -14V54M-14 20H54" stroke="#fff" stroke-width=".8" opacity=".7"/></svg>';
+  e.animate([{ transform: "scale(0) rotate(0)", opacity: 0 }, { transform: "scale(1.15) rotate(45deg)", opacity: 1, offset: .35 },
+             { transform: "scale(.2) rotate(110deg)", opacity: 0 }], { duration: 650 + Math.random() * 350, easing: "ease-out" }).onfinish = () => e.remove();
+}
+function sparkleAround(r, n, inset = .1) {   // n sparkles scattered over a rectangle (inset: how far in from the edges)
+  for (let k = 0; k < n; k++)
+    setTimeout(() => sparkle(r.left + r.width * (inset / 2 + Math.random() * (1 - inset)), r.top + r.height * (inset / 2 + Math.random() * (1 - inset)), 10 + Math.random() * 14), k * 90);
+}
+// the Orrdle sign: tarnished until it's rubbed; enough rubbing and it gleams (and that's a medal). Once shined it
+// stays shined: it catches the light now and then, and rubbing it again only makes it sparkle.
 (() => {
   const word = document.querySelector(".plank-word");
-  let tarn = 1, prev = null;
+  let tarn = 1, prev = null, lastSpark = 0;
   try { if (localStorage.getItem("mfm_polished")) tarn = 0; } catch {}
   word.style.setProperty("--tarn", tarn);
-  const glint = () => {
-    const r = word.getBoundingClientRect();
-    for (let n = 0; n < 9; n++) {
-      const g = fxBit("glint", r.left + Math.random() * r.width - 7, r.top + Math.random() * r.height - 7);
-      g.textContent = "✦";
-      g.animate([{ transform: "scale(0) rotate(0)", opacity: 0 }, { transform: "scale(1.3) rotate(90deg)", opacity: 1, offset: .4 },
-                 { transform: "scale(0) rotate(180deg)", opacity: 0 }], { duration: 700 + Math.random() * 500, delay: Math.random() * 500, fill: "backwards" })
-        .onfinish = () => g.remove();
-    }
-  };
+  word.classList.toggle("shiny", tarn <= 0);
+  const gleam = () => { word.classList.remove("gleaming"); void word.offsetWidth; word.classList.add("gleaming"); };
+  const shine = (n) => { gleam(); sparkleAround(word.getBoundingClientRect(), n, .05); };
+  setInterval(() => { if (tarn <= 0 && document.visibilityState === "visible" && word.getBoundingClientRect().top < innerHeight) shine(2); }, 7000);
   word.addEventListener("pointerdown", (e) => { prev = e.clientX; });
   word.addEventListener("pointermove", (e) => {
-    if (prev == null || tarn <= 0) return;
+    if (prev == null) return;
     if (e.pointerType === "mouse" && !e.buttons) { prev = null; return; }
-    tarn = Math.max(0, tarn - Math.abs(e.clientX - prev) / 1400); prev = e.clientX;
-    word.style.setProperty("--tarn", tarn.toFixed(3));
-    if (tarn <= 0) { glint(); earn("polish"); try { localStorage.setItem("mfm_polished", "1"); } catch {} }
+    const moved = Math.abs(e.clientX - prev); prev = e.clientX;
+    if (tarn > 0) {
+      tarn = Math.max(0, tarn - moved / 1400);
+      word.style.setProperty("--tarn", tarn.toFixed(3));
+      if (tarn <= 0) { word.classList.add("shiny"); shine(10); earn("polish"); try { localStorage.setItem("mfm_polished", "1"); } catch {} }
+    } else if (performance.now() - lastSpark > 140) {   // polished: rubbing throws sparkles, never dulls it
+      lastSpark = performance.now();
+      const r = word.getBoundingClientRect();
+      sparkle(Math.min(r.right, Math.max(r.left, e.clientX)), r.top + Math.random() * r.height, 12 + Math.random() * 12);
+      if (Math.random() < .25) gleam();
+    }
   });
   for (const ev of ["pointerup", "pointercancel", "pointerleave"]) word.addEventListener(ev, () => { prev = null; });
-  word.addEventListener("click", () => { if (tarn <= 0) glint(); });   // a polished sign still catches the light
+  word.addEventListener("click", () => { if (tarn <= 0) shine(4); });
 })();
 // the four screws all spinning inside ten seconds
 const screwSpins = new Map();
