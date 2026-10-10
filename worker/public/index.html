@@ -608,7 +608,8 @@
   .coinop.clunk .cp-mouth { box-shadow: inset 0 2px 3px #000, 0 0 0 1px #6f6b64, 0 0 10px #ffb35a; }
   .coinop.clunk .cp-slot { animation: clunk .22s; }
   @keyframes clunk { 30% { transform: translateY(1.5px); } 60% { transform: translateY(-.5px); } }
-  .coin-return { flex: none; display: grid; justify-items: center; gap: 3px; padding: 0; background: none; box-shadow: none; }
+  .coin-return { flex: none; height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: space-between;
+                 padding: 0; background: none; box-shadow: none; }   /* as tall as the slot bezel: button on its top line, the word on its bottom */
   .cr-btn { position: relative; width: 34px; height: 34px; border-radius: 50%;
             background: repeating-conic-gradient(#fbfaf6 0 4deg, #8d8983 4deg 8deg);   /* the knurled bezel ring */
             box-shadow: 0 2px 3px #000b, 0 0 0 1px #3c3a36; }
@@ -619,7 +620,7 @@
                    box-shadow: 0 2px 2px #000c, inset 0 -2px 3px #0007; transition: transform .06s, box-shadow .06s; }   /* the domed red cap */
   .coin-return:active .cr-btn::after { transform: translateY(1.5px) scale(.96); box-shadow: 0 0 1px #000c, inset 0 2px 3px #0008; }
   .cr-lbl { text-align: center; font: 800 .62rem/1 Jost, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #8e1f12;
-            text-shadow: 0 1px 0 #fff9; }   /* stamped, bold */
+            line-height: .75; text-shadow: 0 1px 0 #fff9; }   /* stamped, bold; no line spacing below, so the letters sit on the line */
   /* Orrdle: a dark walnut plank nailed up, the name in raised polished gold sitting on it, an old heart-and-arrow
      carved into the wood (cuts show the paler wood inside, shaded on their upper side), and a gold Play plate */
   .orrdle-plank { margin: 0 0 18px; }
