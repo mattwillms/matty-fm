@@ -2539,6 +2539,12 @@ $("q").addEventListener("input", () => {
 });
 function choose(t, free) {
   chosen = t; $("freeFields").hidden = !free; $("chosen").hidden = free; $("chosen").replaceChildren(...(free ? [] : [songRow(t)]));
+  if (!free) {   // a back arrow beside the song: back to the search, same as Return
+    const back = el("button", "again"); back.type = "button"; back.setAttribute("aria-label", "Back to the search");
+    back.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19 12H6M11 6l-6 6 6 6"/></svg>';
+    back.onclick = (e) => { e.stopPropagation(); closeForm(); };
+    const row = $("chosen").firstElementChild, side = el("div", "side"); side.append(back); row.append(side);
+  }
   $("find").hidden = true; $("form").hidden = false; $("formErr").textContent = "";
   $("form").scrollIntoView({ behavior: "smooth", block: "start" });
   if (!history.state?.form) history.pushState({ form: 1 }, "");   // Back closes the form, not the site
