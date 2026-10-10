@@ -64,3 +64,37 @@ no crash paths, no data loss.
   variable; six copies of the Claude call boilerplate; four copies of the voice pipeline.
 
 ## Remediation
+All fixed on 2026-10-10 (commits 352d5f8, 1c5665b, d9666a2 and the guest-page commit after them), deployed with
+`tools/hotfix.sh both`. Tests: Worker 173/173, studio 197/197; pyflakes clean; a 15-minute UI soak (3 browsers,
+809 taps) found nothing.
+
+### Worker
+Every finding fixed as listed. A phone id is minted only on page load (`/api/state?load=1`); settings are read
+once and kept until one changes; the admin poll no longer sends finished songs and jokes (tests read status from
+SQLite instead); export/import carry names, kicked and orrdle; `commands` has a `(type, created_at)` index and
+acked commands over an hour old are pruned; one `guard()` replaces the copied rate-limit blocks; addresses are no
+longer stored.
+
+### Guest page
+Every finding fixed, plus a text-size floor (now a rule in CLAUDE.md): reading text 17px, hints 16px or more,
+the radio's stamped labels 12px or more. The AM/PM tag moved off the hour card to beside the clock (5.4 → 12.8px);
+the About diagrams were redrawn so their labels are 16px. Toasts use the popover API to sit above dialogs (older
+browsers without it keep the old behaviour).
+
+### Admin page
+Every finding fixed as listed.
+
+### Studio, Pi, tools
+Fixed: the shared-lock stall, early command acks, the yt-dlp defaults and `voice_samples.py`, the `make_pads.py`
+guard, raw-take leaks (fallback path plus a sweep at start), late-delivery logging, `_tries`, lost thread errors,
+"None" in a back-announce, the repeated doubt check and Apple lookup (memoized per song), dead config, mix timing,
+an unused variable and import, the second-YouTube-key wiring.
+
+Not changed, on purpose:
+- **Zombie mpg123 processes on the Pi.** At most one per channel, reaped by the next poll; fixing it means
+  restarting the console, which cuts the music, for no audible gain.
+- **Old media never swept.** The disk has room for the night; deleting played songs would lose the cache that
+  makes repeats instant.
+- **Bumper speech analysis on every play** and **six copies of the Claude call / four of the voice pipeline.**
+  Working code, a few hundred ms per break; refactoring it the day before the party risks more than it saves.
+- `songs.pick` stays: the tests use it as the plain "best match" call.
