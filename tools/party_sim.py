@@ -78,6 +78,7 @@ class Guest:
 
     def new_phone(self):
         self.client = httpx.AsyncClient(base_url=self.base, timeout=20, headers={"user-agent": f"partysim/{self.persona}"})
+        self.state = {}   # a new phone loads the page afresh: its first poll is the page load (load=1)
 
     async def call(self, method, path, **kw):
         params = {"k": self.code, **(kw.pop("params", None) or {})}
