@@ -4,8 +4,8 @@ order of PRESETS in worker/public/index.html and PADS in admin.html. Each was ma
   ffmpeg -i IN -af "silenceremove=start_periods=1:start_threshold=-50dB,atrim=0:5,afade=t=out:st=4.4:d=0.6,loudnorm=I=-14:TP=-1.5" -ar 44100 -ac 2 -b:a 160k pad-N.mp3
 and copied to media/breaks/pad-N.mp3 (the speakers) and worker/public/pads/pad-N.mp3 (a phone in My phone mode).
 Three guests have their own sound in place of Applause (pad 5), by the name they go by:
-  pad-ava.mp3     YouTube II7ydAjEvRU 0:44-0:47 (fetched via Apify, not from home)   icon: pads/icon-ava.webp
-  pad-hadley.mp3  YouTube Iu01FngmE8E 3:27-3:44, the last 2.5 s faded               icon: pads/icon-hadley.webp
+  pad-ava.mp3     YouTube II7ydAjEvRU 0:44.5-0:47.5 (fetched via Apify, not from home)   icon: pads/icon-ava.webp
+  pad-hadley.mp3  YouTube Iu01FngmE8E 3:28-3:44, the last 2.5 s faded               icon: pads/icon-hadley.webp
   pad-marie.mp3   "you may be able to help solve a mystery" (Unsolved Mysteries), first 4 s   icon: a magnifying glass
 cut with ffmpeg -ss START -t LEN, then the same loudnorm; in media/breaks/ and worker/public/pads/.
 What follows is the original generator of five demo pads, kept for reference.

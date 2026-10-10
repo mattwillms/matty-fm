@@ -761,20 +761,21 @@
               clip-path: polygon(50% 0%, 59% 13%, 75% 6%, 76% 22%, 93% 25%, 86% 40%, 100% 50%, 86% 60%, 93% 75%, 76% 78%, 75% 94%, 59% 87%, 50% 100%, 41% 87%, 25% 94%, 24% 78%, 7% 75%, 14% 60%, 0% 50%, 14% 40%, 7% 25%, 24% 22%, 25% 6%, 41% 13%);
               filter: drop-shadow(0 2px 0 #0006); }
   .od-burst b { display: block; font-size: 1.05rem; }
-  /* the sound board's switch: a miniature slide switch, black housing, a pale plastic knob in its slot.
-     Speakers: the house PA (shared, timed). My phone: this phone only, as often as you like. */
-  .sb-row { display: flex; align-items: center; justify-content: flex-end; gap: 7px; margin-top: 10px; padding-right: 4px; }
-  .sb-lbl { font: 400 .5rem/1 Michroma, sans-serif; letter-spacing: .06em; text-transform: uppercase; color: #15130f;
-            -webkit-text-stroke: .2px #15130f; text-shadow: 0 1px 0 #ffffff70; }   /* printed on the aluminum, like REQUESTED */
-  .slide { position: relative; width: 42px; height: 17px; padding: 0; border-radius: 3px; cursor: pointer; -webkit-tap-highlight-color: transparent;
-           background: linear-gradient(#2c2b2a, #121111); box-shadow: 0 0 0 1px #000, 0 1px 0 1px #ffffff40, inset 0 1px 0 #ffffff26, 0 2px 3px #0009; }
-  .slide::before { content: ""; position: absolute; left: 5px; right: 5px; top: 5px; bottom: 5px; border-radius: 2px; background: #050505;
-                   box-shadow: inset 0 1px 2px #000; }   /* the slot */
-  .slide::after { content: ""; position: absolute; top: 2px; bottom: 2px; left: -3px; width: 4px; border-radius: 1px; background: #1a1918;
-                  box-shadow: 46px 0 0 #1a1918; }   /* the mounting tabs at each end */
-  .slide .knob { position: absolute; top: 3px; left: 5px; width: 15px; height: 11px; border-radius: 2px;
-                 background: linear-gradient(#f4f1e8, #c9c4b8); box-shadow: 0 1px 1px #000c, inset 0 -1px 0 #0003; transition: left .12s ease-out; }
-  .slide[aria-checked="true"] .knob { left: 22px; }
+  /* the sound board's switch: a toggle at the side of the buttons, up for the speakers, down for this phone only.
+     No labels: a toast says what it does when it's flipped. A black plate, a chrome bat lever on a pivot nut. */
+  .presets { grid-template-columns: repeat(4, minmax(0, 1fr)) 22px; }
+  .flip-sw { grid-column: 5; grid-row: 1 / span 2; position: relative; padding: 0; border-radius: 4px; cursor: pointer;
+             -webkit-tap-highlight-color: transparent; background: linear-gradient(90deg, #1c1b1a, #2b2a28 50%, #161514);
+             box-shadow: inset 0 1px 0 #ffffff1f, inset 0 -1px 0 #000, 0 2px 4px #000c; }
+  .flip-sw::before { content: ""; position: absolute; left: 50%; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 50%;
+                     background: radial-gradient(circle at 38% 32%, #f2f0ea, #9b978f 55%, #4b4843); box-shadow: 0 1px 2px #000c; }   /* the pivot nut */
+  .flip-sw .lever { position: absolute; left: 50%; width: 6px; margin-left: -3px; height: 26px; bottom: 50%; border-radius: 3px 3px 2px 2px;
+                    transform-origin: 50% 100%; transform: rotate(-4deg);
+                    background: linear-gradient(90deg, #6b6862, #f4f2ec 40%, #a9a59d 70%, #55524d); box-shadow: 0 2px 2px #000a;
+                    transition: transform .14s cubic-bezier(.3,1.6,.5,1); }
+  .flip-sw .lever::before { content: ""; position: absolute; left: -2px; top: -3px; width: 10px; height: 8px; border-radius: 50%;
+                            background: radial-gradient(circle at 40% 35%, #fff, #b3afa7 60%, #5d5a55); }   /* the rounded tip */
+  .flip-sw[aria-checked="true"] .lever { transform: rotate(184deg); }   /* thrown down: this phone only */
   .presets.local .preset { filter: none; }
   /* a guest's own button: their picture as a legend, drained to grey and inset like the emoji */
   .presets .preset .ico-img { width: 30px; height: 30px; border-radius: 50%; filter: grayscale(1) contrast(1.4) brightness(1.08)
@@ -863,9 +864,6 @@
         <div class="ticks"></div>
         <div class="needle" id="needle"></div>
       </div>
-      <div class="sb-row"><span class="sb-lbl" aria-hidden="true">Speakers</span>
-        <button class="slide" id="padMode" type="button" role="switch" aria-checked="false" aria-label="Play the sound buttons on my phone only"><span class="knob"></span></button>
-        <span class="sb-lbl" aria-hidden="true">My phone</span></div>
       <div class="presets" id="presets" role="group" aria-label="Sound buttons"></div>
       <div class="lcd msg-screen" aria-live="polite">
         <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
@@ -2283,7 +2281,7 @@ const PRESETS = [["🚨", "Siren"], ["🌮", "Bong"], ["💥", "Thud"], ["😏",
 let padUntil = 0, shareUntil = 0, padDown = -1, padTimer = null, padsOff = false;
 function showPresets() {
   const now = Date.now(), wait = padLocal ? 0 : padUntil - now, share = padLocal ? 0 : shareUntil - now;
-  [...$("presets").children].forEach((b, i) => {
+  [...$("presets").querySelectorAll(".preset")].forEach((b, i) => {
     b.classList.toggle("down", wait > 0 && i === padDown);
     b.setAttribute("aria-disabled", String(wait > 0 || share > 0 || padsOff));
   });
@@ -2298,7 +2296,7 @@ const CUSTOM = { ava: { img: "/pads/icon-ava.webp", label: "Ava's sound" }, hadl
 const CUSTOM_AT = 4;   // the Applause button
 const customFor = () => CUSTOM[myName().toLowerCase().replace(/ \d+$/, "")] ? myName().toLowerCase().replace(/ \d+$/, "") : "";
 function showCustomPad() {
-  const b = $("presets").children[CUSTOM_AT], who = customFor(), c = CUSTOM[who];
+  const b = $("presets").querySelectorAll(".preset")[CUSTOM_AT], who = customFor(), c = CUSTOM[who];
   if (!b) return;
   const ico = c?.img ? Object.assign(el("img", "ico ico-img"), { src: c.img, alt: "" }) : el("span", "ico", c?.ico || PRESETS[CUSTOM_AT][0]);
   b.replaceChildren(ico);
@@ -2317,15 +2315,16 @@ function playHere(n) {
 function showPadMode() {
   $("padMode").setAttribute("aria-checked", String(padLocal));
   $("presets").classList.toggle("local", padLocal);
-  [...$("presets").children].forEach((b, i) => b.setAttribute("aria-label", `Play ${PRESETS[i][1]} ${padLocal ? "on this phone" : "on the speakers"}`));
+  [...$("presets").querySelectorAll(".preset")].forEach((b, i) => b.setAttribute("aria-label", `Play ${PRESETS[i][1]} ${padLocal ? "on this phone" : "on the speakers"}`));
   showCustomPad();
   showPresets();
 }
-$("padMode").onclick = () => {
+function flipPadMode() {
   padLocal = !padLocal;
   try { localStorage.setItem("mfm_padlocal", padLocal ? "1" : "0"); } catch {}
   showPadMode();
-  toast(padLocal ? "Sound buttons: on your phone, as many as you like." : "Sound buttons: on the speakers.");
+  toast(padLocal ? "Switch down: the sound buttons play on your phone only, as often as you like."
+                 : "Switch up: the sound buttons play on the party speakers.");
 };
 $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
   const b = el("button", "preset"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl} on the speakers`);
@@ -2353,7 +2352,13 @@ $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
   };
   return b;
 }));
+{
+  const sw = el("button", "flip-sw"); sw.type = "button"; sw.id = "padMode"; sw.setAttribute("role", "switch");
+  sw.setAttribute("aria-label", "Sound buttons on my phone only"); sw.append(el("span", "lever"));
+  $("presets").append(sw);
+}
 window.customReady = true;
+$("padMode").onclick = flipPadMode;
 showPadMode();
 $("urgent").addEventListener("change", showLimits);
 $("anon").addEventListener("change", () => { if ($("anon").checked) $("urgent").checked = false; showLimits(); });

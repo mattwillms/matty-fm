@@ -898,7 +898,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "custom-1",
+      code: "custom-2",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -975,7 +975,9 @@ export class Party extends DurableObject<Env> {
         this.sql.exec("UPDATE jokes SET status='deleted', ended_at=? WHERE id=?", Date.now(), String(a.id));
         return { ok: true };
       case "guests": {   // every phone that opened the page this party, newest visit first
-        const list = this.all("SELECT * FROM devices ORDER BY last_at DESC LIMIT 300").map((d) => {
+        // a kicked phone drops off the list until it's seen again (a poll after the kick)
+        const list = this.all(`SELECT d.* FROM devices d LEFT JOIN kicked k ON k.device=d.device
+          WHERE k.at IS NULL OR d.last_at > k.at ORDER BY d.last_at DESC LIMIT 300`).map((d) => {
           const dev = String(d.device), n = (q: string) => Number(this.one(q, dev)?.n ?? 0);
           const reg = this.one("SELECT name FROM names WHERE device=?", dev)?.name;   // the name it goes by now (none after a kick)
           const names = reg ? [String(reg)] : [];
@@ -1014,6 +1016,7 @@ export class Party extends DurableObject<Env> {
         const had = this.one("SELECT name FROM names WHERE device=?", dev)?.name ?? null;
         this.sql.exec("DELETE FROM names WHERE device=?", dev);
         this.sql.exec("INSERT INTO kicked(device, at, name) VALUES(?,?,?) ON CONFLICT(device) DO UPDATE SET at=excluded.at, name=excluded.name", dev, Date.now(), had);
+        this.seenAt.delete(dev);   // its next poll is written at once, so it shows again as soon as it's back
         return { ok: true };
       }
       case "resetHunt":   // this phone's medals and golden quarter, from scratch

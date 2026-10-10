@@ -555,7 +555,10 @@ describe("names", () => {
     expect(await p.claimName("d2", "Mary  Ann")).toEqual({ ok: true, name: "Mary Ann" });
     await p.adminAction({ action: "kick", device: "d1" });
     const g = (await p.adminAction({ action: "guests" })) as { guests: { device: string; names: string[] }[] };
-    expect(g.guests.find((x) => x.device === "d1")?.names ?? []).toEqual([]);   // the kicked phone's name is gone
+    expect(g.guests.find((x) => x.device === "d1")).toBeUndefined();   // the kicked phone is off the list...
+    await new Promise((r) => setTimeout(r, 5)); await p.guestState("d1");
+    const g2 = (await p.adminAction({ action: "guests" })) as { guests: { device: string; names: string[] }[] };
+    expect(g2.guests.find((x) => x.device === "d1")?.names).toEqual([]);   // ...until it's back, unnamed
     expect(await p.claimName("d1", "AVA")).toEqual({ ok: true, name: "AVA 2" });   // back, same name: numbered
     expect(await p.claimName("d3", "Ava")).toEqual({ ok: true, name: "Ava" });     // the plain name was free again
     const r = await p.submit("d3", { ...T("SOS"), name: "Somebody" });          // sends something else: its own name wins
