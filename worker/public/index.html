@@ -321,7 +321,7 @@
      letters standing on the plate, not cut into it */
   .brand .maker { position: relative; font: 400 clamp(.82rem, 4.1vw, 1.05rem)/1 Asset, "Arial Black", sans-serif;   /* very wide: narrows on small phones so the lamp clears the screw */ letter-spacing: .01em;
                   color: #3e362a; filter: url(#engrave); }   /* the cut's floor: dark with the grime of years; its walls come from #engrave */
-  .brand .req { display: flex; align-items: center; gap: 8px; }
+  .brand .req { display: flex; align-items: center; gap: 8px; -webkit-tap-highlight-color: transparent; }
   /* the lamp, set in the panel like a real indicator: a polished chrome bezel in a hole (the hole's top
      edge in shade, its lower lip lit), a dark recess inside the ring, and a domed glass lens with the
      room's light reflected near its top. Off, the lens is dark green glass, not grey */
@@ -2488,6 +2488,11 @@ $("orrdleClose").onclick = () => {
   setTimeout(() => { d.classList.remove("closing"); d.close(); }, 240);
 };
 $("orrdleBox").addEventListener("close", () => document.documentElement.classList.remove("od-open"));
+// the REQUESTED lamp: a tap glides down to wherever a song is asked for (the name panel on a first visit)
+document.querySelector(".brand .req").addEventListener("click", () => {
+  const to = [$("who"), $("form"), $("find")].find((x) => x.offsetParent);
+  if (to) to.scrollIntoView({ behavior: "smooth", block: "start" });
+});
 // the dotted third place: points at the scavenger hunt (the link does a tada; with no link showing, the panel does)
 document.querySelector("#slots .ghost").onclick = () => {
   const a = document.querySelector('#songAllow a[href="#hunt"]'), t = a && a.offsetParent ? a : $("huntH");
