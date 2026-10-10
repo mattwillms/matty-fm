@@ -594,39 +594,45 @@
   .coin-send.returned .cq { animation: coinOut .4s ease-out; }
   @keyframes coinOut { from { transform: translateX(58px) rotateY(90deg); opacity: 0; } 50% { opacity: 1; } }
   .coin-send.busy .cs-do::after { content: "…"; }
-  /* Orrdle: a sideways log with the name carved in and gilded, an old heart-and-arrow carving, a brass Play button */
-  .orrdle-log { margin: 0 0 18px; }
-  .log { position: relative; height: 112px; border-radius: 56px; overflow: hidden;
-          background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='120'%3E%3Cfilter id='b' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006 .22' numOctaves='3' seed='9' stitchTiles='stitch'/%3E%3CfeDiffuseLighting surfaceScale='2.4' lighting-color='%23ffffff'%3E%3CfeDistantLight azimuth='270' elevation='50'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='300' height='120' filter='url(%23b)'/%3E%3C/svg%3E") 0 0 / 300px 100%, linear-gradient(#2a170c, #5a3820 16%, #8a5a32 38%, #946136 50%, #7a4e2c 64%, #4a2c17 84%, #22120a);
-          background-blend-mode: soft-light, normal; box-shadow: 0 10px 14px -6px #000d, 0 2px 0 #0006; }
-  /* the sawn end: growth rings round the heart of the tree, the bark its rim */
-  .log-end { position: absolute; left: 0; top: 0; bottom: 0; width: 56px; border-radius: 50%;
-              background: radial-gradient(ellipse at 46% 50%, #6a4322 0 4%, transparent 5%),
-                          repeating-radial-gradient(ellipse at 46% 50%, #d6aa6e 0 2.5px, #c2925a 2.5px 4px, #b17f4a 4px 6px),
-                          #c2925a;
-              box-shadow: inset 0 0 0 4px #3a2414, inset 0 0 0 6px #5a3a20, inset -6px 0 10px #0005; }
-  .log-word { position: absolute; left: 68px; top: 50%; transform: translateY(-54%);
-               font: 900 2.7rem/1 Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
-               letter-spacing: -.01em; color: #e3a93c; filter: url(#carve); }   /* gilded, cut into the wood */
-  .log-heart { position: absolute; right: 64px; top: 50%; width: 58px; height: 52px; transform: translateY(-50%) rotate(-6deg); overflow: visible; }
-  .log-heart .groove path { fill: none; stroke: #2a170c; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; }
-  .log-heart text { font: 700 13px Fraunces, Georgia, serif; fill: #2a170c; }
-  .log-heart { filter: drop-shadow(.6px .9px 0 #c79157aa); }   /* the lit lower lip of each cut */
-  .log-play { position: absolute; right: 14px; top: 50%; width: 46px; height: 46px; margin-top: -23px; padding: 0; border-radius: 50%;
-               display: grid; place-items: center; color: #2a1608;
-               background: radial-gradient(circle at 36% 30%, #fff1c4, #e0b155 38%, #a87320 72%, #6d4810);
-               box-shadow: 0 3px 0 #4a300c, 0 5px 8px #000b, inset 0 -2px 3px #0005; }
-  .log-play svg { width: 22px; height: 22px; fill: currentColor; margin-left: 3px; }
-  .log-play:active { transform: translateY(2px); box-shadow: 0 1px 0 #4a300c, 0 2px 4px #000b, inset 0 -1px 2px #0005; }
+  /* Orrdle: a dark walnut plank nailed up, the name in raised polished gold sitting on it, an old heart-and-arrow
+     carved into the wood (cuts show the paler wood inside, shaded on their upper side), and a gold Play plate */
+  .orrdle-plank { margin: 0 0 18px; }
+  .plank { position: relative; display: flex; align-items: center; gap: 10px; height: 104px; padding: 0 16px 0 22px; border-radius: 6px;
+            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='100'%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .32' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.1'/%3E%3C/filter%3E%3Crect width='400' height='100' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 400px 100%, linear-gradient(#3a2212, #2b180c 45%, #23130a);
+            box-shadow: inset 0 1px 0 #ffffff1f, inset 0 -2px 0 #0008, inset 2px 0 0 #ffffff0d, inset -2px 0 0 #0006,
+                        0 8px 14px -4px #000c; }
+  .nail { position: absolute; left: 8px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%;
+           background: radial-gradient(circle at 35% 35%, #cfcac0, #6d6962 60%, #2e2c29); box-shadow: 0 1px 1px #000c; }
+  .nail.r { left: auto; right: 8px; }
+  .plank-word { position: relative; font: 900 2.6rem/1 Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
+                 letter-spacing: -.01em; padding-bottom: 4px;
+                 background: linear-gradient(#fff6cf 0%, #f7d77a 22%, #d9a530 46%, #8f6114 54%, #c99227 68%, #f3d27a 88%, #b27f1e 100%);
+                 -webkit-background-clip: text; background-clip: text; color: transparent;
+                 filter: drop-shadow(0 1px 0 #fff3c2) drop-shadow(0 -1px 0 #5a3c0c) drop-shadow(0 3px 2px #000c); }   /* raised: lit top lip, a shadow on the wood */
+  .plank-heart { flex: none; width: 66px; height: 56px; margin-left: auto; transform: rotate(-4deg); }
+  .plank-heart use { fill: none; stroke-linecap: round; stroke-linejoin: round; }
+  .plank-heart .cut-shade { stroke: #0d0603; stroke-width: 3.6; transform: translate(-.5px, -.7px); }   /* the cut's upper wall, in shadow */
+  .plank-heart .cut-wood { stroke: #8d633b; stroke-width: 1.7; }   /* the paler wood the knife opened */
+  .plank-heart text { font: 800 12.5px Fraunces, Georgia, serif; stroke-width: .9; paint-order: stroke; }
+  .plank-heart .cut-shade text { fill: #0d0603; } .plank-heart .cut-wood text { fill: #8d633b; stroke: none; }
+  .plank-play { flex: none; height: 40px; padding: 0 16px; border-radius: 6px; font: 800 1rem/1 Fraunces, Georgia, serif; letter-spacing: .04em;
+                 color: #3a2306; text-shadow: 0 1px 0 #ffeaa8;
+                 background: linear-gradient(#fff3c4, #f0c860 30%, #c8901f 62%, #9a6a12);
+                 box-shadow: inset 0 1px 0 #fff8dc, inset 0 -2px 0 #6b4a0c, 0 3px 0 #3f2a07, 0 5px 8px #000b; }
+  .plank-play:active { transform: translateY(2px); box-shadow: inset 0 1px 0 #fff8dc, inset 0 -1px 0 #6b4a0c, 0 1px 0 #3f2a07, 0 2px 4px #000b; }
   .log-say { margin: 8px 4px 0; color: var(--cream-dim); font-size: .92rem; }
   /* the game: full screen like the record sleeve */
   dialog.orrdle-box { display: none; }
-  dialog.orrdle-box[open] { display: grid; align-content: start; justify-items: center; gap: 12px; padding: calc(18px + env(safe-area-inset-top)) 12px 16px; }
+  /* a column the height of the screen: board up top, keyboard (or the stats) at the bottom; it scrolls itself, never the page */
+  dialog.orrdle-box[open] { display: flex; flex-direction: column; align-items: center; gap: 12px; overflow-y: auto; overscroll-behavior: contain;
+                            padding: calc(18px + env(safe-area-inset-top)) 12px calc(14px + env(safe-area-inset-bottom)); }
+  html.od-open, html.od-open body { overflow: hidden; }
+  .od-keys, .od-stats { margin-top: auto; }
   .od-title { margin: 4px 0 0; font: 900 2.2rem/1 Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
                letter-spacing: .06em; color: var(--cream);
                text-shadow: .04em .04em 0 var(--cocoa), .07em .07em 0 var(--gold), .1em .1em 0 var(--cocoa), .13em .13em 0 var(--orange); }
   .od-sub { margin: -4px 0 0; color: var(--cream-dim); font-size: .9rem; text-align: center; }
-  .od-board { display: grid; grid-template-rows: repeat(6, 1fr); gap: 6px; width: min(300px, 76vw); }
+  .od-board { display: grid; grid-template-rows: repeat(6, 1fr); gap: 6px; width: min(300px, 76vw, calc((100dvh - 330px) * .8)); flex: none; }
   .od-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
   .od-row.shake { animation: odShake .4s; }
   @keyframes odShake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
@@ -642,6 +648,7 @@
   .od-k { flex: 1; max-width: 42px; height: 52px; padding: 0; border-radius: 6px; font: 700 1rem Jost, sans-serif; color: var(--cream);
            background: #5b3a26; box-shadow: 0 2px 0 #2a1a12; text-transform: uppercase; touch-action: manipulation; }
   .od-k.wide { max-width: 64px; flex: 1.5; font-size: .78rem; }
+  .od-k[data-k="Enter"] { background: #6f8f2e; }
   .od-k.ok { background: #6f8f2e; } .od-k.near { background: #d79a2b; color: #2a1608; } .od-k.no { background: #2f221a; color: #8f7b62; }
   .od-stats { display: grid; gap: 12px; width: min(340px, 100%); padding: 14px 16px; border-radius: 14px; background: var(--walnut);
                box-shadow: inset 0 1px 0 #ffffff12, 0 2px 6px #0007; }
@@ -653,6 +660,7 @@
   .od-bar i { display: block; min-width: 22px; padding: 1px 6px; border-radius: 3px; background: #3a2a20; color: var(--cream);
                font-style: normal; font-weight: 700; text-align: right; box-sizing: border-box; }
   .od-bar i.now { background: #6f8f2e; }
+  .od-bar i.zero { text-align: center; padding: 1px 0; }
   .od-again { justify-self: center; }
 </style>
 </head>
@@ -849,16 +857,19 @@
     <ul id="myJokes" class="jokes"></ul>
   </section>
 
-  <section class="orrdle-log" id="orrdle" aria-label="Orrdle, the family Wordle">
-    <div class="log">
-      <span class="log-end" aria-hidden="true"></span>
-      <span class="log-word" aria-hidden="true">Orrdle</span>
-      <svg class="log-heart" viewBox="0 0 64 58" aria-hidden="true">
-        <g class="groove"><path d="M32 52C16 40 6 31 6 19.5 6 11 12.5 5 20 5c5.5 0 9.6 3.3 12 7.6C34.4 8.3 38.5 5 44 5c7.5 0 14 6 14 14.5C58 31 48 40 32 52Z"/>
-          <path d="M2 44L60 10M60 10l-7.5 .4M60 10l-3.2 6.6M2 44l2.6-6M2 44l6.4-.8"/></g>
-        <text x="32" y="31" text-anchor="middle">M+M</text>
+  <section class="orrdle-plank" id="orrdle" aria-label="Orrdle, the family Wordle">
+    <div class="plank">
+      <span class="nail" aria-hidden="true"></span><span class="nail r" aria-hidden="true"></span>
+      <span class="plank-word" aria-hidden="true">Orrdle</span>
+      <svg class="plank-heart" viewBox="0 0 70 60" aria-hidden="true">
+        <defs><g id="hcut">
+          <path d="M35 53C19 41 9 32 9 20.5 9 12 15.5 6 23 6c5.5 0 9.6 3.3 12 7.6C37.4 9.3 41.5 6 47 6c7.5 0 14 6 14 14.5C61 32 51 41 35 53Z"/>
+          <path d="M6 9L64 51"/><path d="M64 51l-8.2-1.6M64 51l-2.4-7.9"/>
+          <path d="M6 9l1.2 5.2M6 9l5.2 1.2M10 11.9l1.2 5.2M10 11.9l5.2 1.2M14 14.8l1.2 5.2M14 14.8l5.2 1.2"/>
+          <text x="35" y="33" text-anchor="middle">M+M</text></g></defs>
+        <use href="#hcut" class="cut-shade"/><use href="#hcut" class="cut-wood"/>
       </svg>
-      <button class="log-play" id="orrdlePlay" type="button" aria-label="Play Orrdle"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6.5v11l9-5.5z"/></svg></button>
+      <button class="plank-play" id="orrdlePlay" type="button">Play</button>
     </div>
     <p class="log-say">A family Wordle. Guess the name in six tries.</p>
   </section>
@@ -2386,7 +2397,7 @@ function odShowStats(stats, wonIn) {
   }
   const top = Math.max(1, ...st.dist), dist = el("div", "od-dist");
   st.dist.forEach((n, i) => {
-    const row = el("div", "od-bar"), bar = el("i", i + 1 === wonIn ? "now" : "", String(n));
+    const row = el("div", "od-bar"), bar = el("i", (i + 1 === wonIn ? "now" : "") + (n ? "" : " zero"), String(n));
     bar.style.width = `${Math.max(8, 100 * n / top)}%`; row.append(el("span", null, String(i + 1)), el("div")); row.lastChild.append(bar); dist.append(row);
   });
   const again = el("button", "od-again", od && od.done ? "Play another" : "Keep playing"); again.type = "button";
@@ -2417,11 +2428,19 @@ async function odGuess(g) {
     const r = await api("/api/orrdle/guess", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ id: od.id, guess: g }), signal: AbortSignal.timeout(10000) });
     if (!r.ok) { odSay(r.error || "That didn't go through.", 1600); return; }
-    const row = od.rows.length;
+    const tiles = [...$("odBoard").children[od.rows.length].children], STEP = 260, FLIP = 420;
+    // a wave, left to right: each tile turns, takes its colour while edge-on, turns back; the row joins the
+    // board (and the keyboard colours) once the last one has landed
+    tiles.forEach((t, i) => {
+      t.animate([{ transform: "rotateX(0)" }, { transform: "rotateX(-90deg)" }, { transform: "rotateX(0)" }],
+        { duration: FLIP, delay: i * STEP, easing: "ease-in-out", fill: "backwards" });
+      setTimeout(() => { t.className = "od-t " + r.marks[i]; }, i * STEP + FLIP / 2);
+    });
+    await new Promise((res) => setTimeout(res, 4 * STEP + FLIP + 40));
     od.rows.push({ g, s: r.marks }); od.cur = "";
-    [...$("odBoard").children[row].children].forEach((t, i) => t.animate([{ transform: "rotateX(0)" }, { transform: "rotateX(-90deg)", offset: .5 }, { transform: "rotateX(0)" }],
-      { duration: 360, delay: i * 120 }));
-    setTimeout(odPaint, 180);   // the colours land as the tiles turn
+    odPaint();
+    if (r.won) tiles.forEach((t, i) => t.animate([{ transform: "translateY(0)" }, { transform: "translateY(-14px)", offset: .4 },
+      { transform: "translateY(2px)", offset: .7 }, { transform: "translateY(0)" }], { duration: 420, delay: i * 90, easing: "ease-out" }));
     if (r.over) odFinish(r);
   } catch { odSay("Couldn't reach the DJ booth. Try again.", 1600); }
   finally { od.busy = false; }
@@ -2446,13 +2465,15 @@ addEventListener("keydown", (e) => {
 });
 $("odMine").onclick = () => odShowStats(od && od.stats, 0);
 $("orrdlePlay").onclick = () => {
-  const d = $("orrdleBox"); d.classList.remove("closing"); d.showModal();
+  const d = $("orrdleBox"); d.classList.remove("closing"); d.showModal(); d.scrollTop = 0;
+  document.documentElement.classList.add("od-open");   // the page behind stays put
   if (!od || od.done) odStart(); else { odBuild(); odPaint(); }   // an unfinished game picks up where it was
 };
 $("orrdleClose").onclick = () => {
   const d = $("orrdleBox"); d.classList.add("closing");
   setTimeout(() => { d.classList.remove("closing"); d.close(); }, 240);
 };
+$("orrdleBox").addEventListener("close", () => document.documentElement.classList.remove("od-open"));
 // the scavenger hunt link in the request panel glides down to it
 document.addEventListener("click", (e) => {
   const a = e.target.closest && e.target.closest('a[href="#hunt"]');
