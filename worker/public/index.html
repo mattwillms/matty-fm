@@ -577,13 +577,12 @@
      placard window (Insert coin and its arrow on cream, the price on a red band), the quarter waiting beside it, a
      recessed slot in a raised bezel, and the round COIN RETURN button: Back. Tap the quarter (or the placard) and
      it rolls into the slot and is gone; if the request doesn't go, it rolls back out. */
-  .coinop { position: relative; display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 9px 12px; border-radius: 8px;
-            background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='70'%3E%3Cg stroke='%23fff' stroke-opacity='.4' stroke-width='.5' stroke-linecap='round'%3E%3Cpath d='M8 12l40 4M70 8l52-2M130 20l44 6M20 50l36-3M90 58l40 2M150 46l50-6M60 30l20 1M180 14l30 5'/%3E%3C/g%3E%3Cg stroke='%23000' stroke-opacity='.28' stroke-width='.5' stroke-linecap='round'%3E%3Cpath d='M30 22l30 2M110 40l36-4M40 62l24-1M170 60l28-3M140 10l16 2'/%3E%3C/g%3E%3Cg fill='%237a4a1e'%3E%3Ccircle cx='14' cy='60' r='2' opacity='.4'/%3E%3Ccircle cx='17' cy='63' r='1' opacity='.35'/%3E%3Ccircle cx='204' cy='9' r='1.6' opacity='.35'/%3E%3C/g%3E%3C/svg%3E") 0 0 / 100% 100%,
+  .coinop { position: relative; display: flex; align-items: center; gap: 10px; margin-top: 16px; padding: 10px 14px; border-radius: 8px;
+            background: radial-gradient(circle at 35% 35%, #f2f0ea 0, #9b978f 1.6px, #3a3833 3px, transparent 3.4px) 3px 3px / 8px 8px no-repeat, radial-gradient(circle at 35% 35%, #f2f0ea 0, #9b978f 1.6px, #3a3833 3px, transparent 3.4px) calc(100% - 3px) 3px / 8px 8px no-repeat,
+                        radial-gradient(circle at 35% 35%, #f2f0ea 0, #9b978f 1.6px, #3a3833 3px, transparent 3.4px) 3px calc(100% - 3px) / 8px 8px no-repeat, radial-gradient(circle at 35% 35%, #f2f0ea 0, #9b978f 1.6px, #3a3833 3px, transparent 3.4px) calc(100% - 3px) calc(100% - 3px) / 8px 8px no-repeat,
+                        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='90'%3E%3Cfilter id='b' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0025 0.85' numOctaves='4' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  2.6 0 0 0 -1.35'/%3E%3C/filter%3E%3Cfilter id='d' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0033 0.935' numOctaves='3' seed='16'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  2.4 0 0 0 -1.3'/%3E%3C/filter%3E%3Cg%3E%3Crect x='-400' y='-90' width='1200' height='270' filter='url(%23b)' opacity='0.55'/%3E%3Crect x='-400' y='-90' width='1200' height='270' filter='url(%23d)' opacity='0.35'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat,
                         linear-gradient(#f2f0ea, #c9c5bd 30%, #e9e6df 52%, #a9a59d 78%, #d6d2ca);
             box-shadow: inset 0 1px 0 #fff, inset 0 -2px 2px #0006, 0 0 0 1px #3a3833, 0 3px 6px #000b; }
-  .coinop::before, .coinop::after { content: ""; position: absolute; top: 50%; width: 6px; height: 6px; margin-top: -3px; border-radius: 50%;
-                                    background: radial-gradient(circle at 35% 35%, #f2f0ea, #7d7a73 60%, #3a3833); box-shadow: 0 1px 1px #0008; }
-  .coinop::before { left: 4px; } .coinop::after { right: 4px; }   /* two screws */
   .coinop button { -webkit-tap-highlight-color: transparent; }
   .coinop button:disabled { opacity: 1; cursor: default; }   /* a machine doesn't grey out while it takes your coin */
   .coin-send { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0; background: none; box-shadow: none; }
@@ -595,23 +594,27 @@
   .cp-bot { display: block; padding: 4px 4px 5px; background: #d2391f; color: #f6ead0; text-align: center; font: 700 .66rem/1 Jost, sans-serif; letter-spacing: .06em; }
   .cp-card > span { transform: skewX(8deg); }
   .cp-track { flex: 1; display: flex; justify-content: flex-start; align-items: center; min-width: 46px; }
-  .cq { flex: none; width: 40px; height: 40px; border-radius: 50%; background: var(--heads) center / 100% 100% no-repeat;
-        filter: drop-shadow(0 2px 2px #000a); }
-  .cq.golden { background-image: url(/golden-heads.webp); }   /* the golden quarter is the one going in */
-  .cp-slot { position: relative; z-index: 2; flex: none; display: grid; place-items: center; width: 48px; height: 52px; border-radius: 6px;
+  .cq { position: relative; z-index: 3; flex: none; width: 40px; height: 40px; }
+  .cq i { position: absolute; inset: 0; border-radius: 50%; background: var(--heads) center / 100% 100% no-repeat; filter: drop-shadow(0 2px 2px #000a); }
+  .cq.golden i { background-image: url(/golden-heads.webp); }   /* the golden quarter is the one going in */
+  .cp-slot { position: relative; z-index: 2; flex: none; display: grid; place-items: center; width: 48px; height: 56px; border-radius: 6px;
              background: linear-gradient(135deg, #fbfaf7, #b7b3ab 45%, #e9e6df 60%, #85817a);
              box-shadow: 0 2px 3px #0009, inset 0 1px 0 #fff, inset 0 -1px 1px #0006; }   /* a raised chrome bezel: the coin goes behind it */
-  .cp-mouth { width: 8px; height: 38px; border-radius: 3px; background: linear-gradient(90deg, #000, #1e1b18 50%, #000);
+  .cp-mouth { width: 8px; height: 44px; border-radius: 3px; background: linear-gradient(90deg, #000, #1e1b18 50%, #000);
               box-shadow: inset 0 2px 3px #000, 0 0 0 1px #6f6b64, 0 1px 0 1px #fff8; transition: box-shadow .2s; }
   .coinop.clunk .cp-mouth { box-shadow: inset 0 2px 3px #000, 0 0 0 1px #6f6b64, 0 0 10px #ffb35a; }
   .coinop.clunk .cp-slot { animation: clunk .22s; }
   @keyframes clunk { 30% { transform: translateY(1.5px); } 60% { transform: translateY(-.5px); } }
   .coin-return { flex: none; display: grid; justify-items: center; gap: 3px; padding: 0; background: none; box-shadow: none; }
-  .cr-btn { width: 30px; height: 30px; border-radius: 50%;
-            background: radial-gradient(circle at 50% 50%, #9b2a1b 0 38%, transparent 40%),
-                        radial-gradient(circle at 38% 30%, #fbfaf6, #bdb9b1 45%, #6f6c66 80%, #3c3a36);
-            box-shadow: 0 2px 0 #2c2a27, 0 3px 4px #000a, inset 0 -1px 2px #0006; transition: transform .06s, box-shadow .06s; }
-  .coin-return:active .cr-btn { transform: translateY(2px); box-shadow: 0 0 0 #2c2a27, 0 1px 2px #000a, inset 0 1px 3px #0008; }
+  .cr-btn { position: relative; width: 34px; height: 34px; border-radius: 50%;
+            background: repeating-conic-gradient(#fbfaf6 0 4deg, #8d8983 4deg 8deg);   /* the knurled bezel ring */
+            box-shadow: 0 2px 3px #000b, 0 0 0 1px #3c3a36; }
+  .cr-btn::before { content: ""; position: absolute; inset: 3px; border-radius: 50%;
+                    background: radial-gradient(circle at 50% 40%, #1a1714 0 60%, #3c3a36 75%, #c9c5bd 92%); box-shadow: inset 0 2px 3px #000; }   /* the recess */
+  .cr-btn::after { content: ""; position: absolute; inset: 7px; border-radius: 50%;
+                   background: radial-gradient(circle at 36% 30%, #ffd2c8 0, #e0503a 18%, #a8261a 55%, #5e120a 100%);
+                   box-shadow: 0 2px 2px #000c, inset 0 -2px 3px #0007; transition: transform .06s, box-shadow .06s; }   /* the domed red cap */
+  .coin-return:active .cr-btn::after { transform: translateY(1.5px) scale(.96); box-shadow: 0 0 1px #000c, inset 0 2px 3px #0008; }
   .cr-lbl { width: 52px; text-align: center; font: 700 .44rem/1.15 Michroma, sans-serif; text-transform: uppercase; color: #8e1f12; text-shadow: 0 1px 0 #fff8; }
   /* Orrdle: a dark walnut plank nailed up, the name in raised polished gold sitting on it, an old heart-and-arrow
      carved into the wood (cuts show the paler wood inside, shaded on their upper side), and a gold Play plate */
@@ -771,8 +774,7 @@
   /* heavy brushed gold: brushing on an angle (two streak patterns that don't line up, so it isn't ruled), a diagonal
      sheen, one thin bright rim inside a dark edge */
   .toggle-sw .plate { position: absolute; inset: 0; border-radius: var(--glass-r);
-                      background: repeating-linear-gradient(112deg, #fff2 0 .6px, #0000 .6px 2.3px, #0000001a 2.3px 2.9px, #0000 2.9px 4.1px),
-                                  repeating-linear-gradient(108deg, #ffffff10 0 1.1px, #0000 1.1px 6.7px, #00000014 6.7px 7.4px, #0000 7.4px 11px),
+                      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='160'%3E%3Cfilter id='b' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.9' numOctaves='4' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  2.6 0 0 0 -1.35'/%3E%3C/filter%3E%3Cfilter id='d' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0052 0.990' numOctaves='3' seed='12'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  2.4 0 0 0 -1.3'/%3E%3C/filter%3E%3Cg transform='rotate(-24 40 80)'%3E%3Crect x='-80' y='-160' width='240' height='480' filter='url(%23b)' opacity='0.6'/%3E%3Crect x='-80' y='-160' width='240' height='480' filter='url(%23d)' opacity='0.55'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat,
                                   linear-gradient(118deg, #8a5d16 0%, #d7a43b 18%, #f7df92 34%, #cf9a32 52%, #edc86a 70%, #a8761f 88%, #7a5212 100%);
                       box-shadow: 0 0 0 1px #3d2805, inset 0 0 0 1px #fbe7a866, 0 3px 5px #000b; }
   .toggle-sw .tab { position: absolute; left: 6px; right: 6px; height: 14px; border-radius: 2px; display: grid; place-items: center; }
@@ -962,7 +964,7 @@
       <button class="coin-send" id="send" type="button">
         <span class="cp-card" aria-hidden="true"><span class="cp-top"><span id="cpSay">Insert coin</span><svg viewBox="0 0 40 14"><path d="M0 5h28V0l12 7-12 7V9H0z"/></svg></span>
           <span class="cp-bot" id="cpPrice">25¢ · one song</span></span>
-        <span class="cp-track" aria-hidden="true"><span class="cq"></span></span></button>
+        <span class="cp-track" aria-hidden="true"><span class="cq"><i></i></span></span></button>
       <span class="cp-slot" aria-hidden="true"><span class="cp-mouth"></span></span>
       <button class="coin-return" id="cancel" type="button"><span class="cr-btn" aria-hidden="true"></span><span class="cr-lbl" aria-hidden="true">Coin return</span></button>
     </div>
@@ -2557,32 +2559,40 @@ function typeIn(q) {
 $("cancel").onclick = closeForm;
 // The quarter rolls into the slot: across, turning as a rolling coin does, and in behind the bezel; then it's gone.
 // Then the request is sent. If it doesn't go through, it rolls back out the way it went in.
-const cq = document.querySelector(".cq");
-function rollPath() {
-  const c = cq.getBoundingClientRect(), sl = document.querySelector(".cp-slot").getBoundingClientRect();
-  const dx = sl.left + sl.width / 2 - (c.left + c.width / 2), turn = (dx / (c.width / 2)) * 180 / Math.PI;
-  return [{ transform: "translateX(0) rotate(0)" }, { transform: `translateX(${dx}px) rotate(${turn}deg)` }];
+const cq = document.querySelector(".cq"), cqFace = cq.querySelector("i");
+// roll the coin to x (from where it rests): it turns as it goes, and whatever has reached the slit is in it
+function rollTo(dx, ms, back = false) {
+  const c = cq.getBoundingClientRect(), slit = document.querySelector(".cp-mouth").getBoundingClientRect();
+  const sx = slit.left + slit.width / 2 - c.left, r = c.width / 2, t0 = performance.now();
+  return new Promise((done) => {
+    const step = (now) => {
+      const k = Math.min(1, (now - t0) / ms), e = back ? 1 - (1 - k) ** 2 : k * k * (3 - 2 * k), x = back ? dx * (1 - e) : dx * e;
+      cq.style.transform = `translateX(${x.toFixed(1)}px)`;
+      cq.style.clipPath = `inset(-4px ${Math.max(0, c.width - (sx - x)).toFixed(1)}px -4px -4px)`;   // in the slit: out of sight
+      cqFace.style.transform = `rotate(${(x / r * 180 / Math.PI).toFixed(1)}deg)`;
+      if (k < 1) requestAnimationFrame(step); else done();
+    };
+    requestAnimationFrame(step);
+  });
 }
+function coinHome() { cq.style.transform = cq.style.clipPath = cqFace.style.transform = ""; }
 async function coinSend(work) {
   const b = $("send");
   if (b.disabled) return;
   b.disabled = true;
   cq.classList.toggle("golden", songState().spare === "golden");   // the golden quarter is the one spent
-  const path = rollPath(), roll = cq.animate(path, { duration: 650, easing: "cubic-bezier(.45,.05,.7,1)", fill: "forwards" });
+  const c = cq.getBoundingClientRect(), slit = document.querySelector(".cp-mouth").getBoundingClientRect();
+  const dx = slit.left + slit.width / 2 - c.left;   // far enough that the whole coin has gone in
   $("cpSay").textContent = "Sending…";
-  await roll.finished;
-  cq.style.visibility = "hidden";   // in the slot, and gone
+  await rollTo(dx, 650);
   const op = document.querySelector(".coinop");
   op.classList.remove("clunk"); void op.offsetWidth; op.classList.add("clunk");
   let ok = false;
   try { ok = Boolean(await work()); }
   finally {
     b.disabled = false; $("cpSay").textContent = "Insert coin";
-    if (ok) setTimeout(() => { roll.cancel(); cq.style.visibility = ""; op.classList.remove("clunk"); }, 400);   // the panel has closed by then
-    else {
-      roll.cancel(); cq.style.visibility = "";
-      cq.animate(path, { duration: 600, direction: "reverse", easing: "cubic-bezier(.3,0,.55,.95)" });
-    }
+    if (ok) setTimeout(() => { coinHome(); op.classList.remove("clunk"); }, 400);   // the panel has closed by then
+    else { await rollTo(dx, 600, true); coinHome(); }   // back out of the slot
   }
 }
 $("send").setAttribute("aria-label", "Send to the DJ");
