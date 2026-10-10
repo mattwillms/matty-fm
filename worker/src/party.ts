@@ -100,7 +100,7 @@ export class Party extends DurableObject<Env> {
                                 ["jokes", "kind TEXT DEFAULT 'joke'"], ["jokes", "urgent INTEGER DEFAULT 0"],
                                 ["jokes", "source TEXT DEFAULT 'guest'"],
                                 ["items", "ended_at INTEGER"], ["items", "skipped INTEGER DEFAULT 0"], ["jokes", "ended_at INTEGER"],
-                                ["jokes", "anon INTEGER DEFAULT 0"]]) {
+                                ["jokes", "anon INTEGER DEFAULT 0"], ["orrdle", "tries TEXT DEFAULT '[]'"]]) {
       try {
         this.sql.exec(`ALTER TABLE ${table} ADD COLUMN ${col}`);
       } catch {
@@ -363,8 +363,8 @@ export class Party extends DurableObject<Env> {
     return { ok: true };
   }
 
-  /** A new Orrdle game: a name from the list this phone hasn't had yet (any, once it's had them all). The server
-   *  keeps the clock, so the fastest win is fair. */
+  /** A new Orrdle game: a name from the list this phone hasn't had yet (any, once it's had them all). The answer
+   *  stays here: the server scores each guess and keeps the clock, so a win and its time can't be made up. */
   async orrdleStart(device: string, name: unknown) {
     if (this.one("SELECT 1 AS m FROM muted WHERE device=?", device)) return { ok: false, error: "Games are paused for this phone." };
     const had = new Set(this.all("SELECT word FROM orrdle WHERE device=?", device).map((r) => String(r.word)));
@@ -373,16 +373,25 @@ export class Party extends DurableObject<Env> {
     const word = pool[Math.floor(Math.random() * pool.length)];
     const id = "o" + this.newId().slice(1);
     this.sql.exec("INSERT INTO orrdle(id, device, name, word, started) VALUES(?,?,?,?,?)", id, device, clean(name, 40) || "a guest", word, Date.now());
-    return { ok: true, id, word, stats: this.orrdleMine(device) };
+    return { ok: true, id, stats: this.orrdleMine(device) };
   }
 
-  /** A game over: won in so many guesses, or not. Only this phone's own unfinished game counts. */
-  async orrdleEnd(device: string, g: { id?: unknown; won?: unknown; guesses?: unknown }) {
-    const n = Number(g?.guesses);
-    if (!Number.isInteger(n) || n < 1 || n > 6) return { ok: false, error: "That game didn't add up." };
-    this.sql.exec("UPDATE orrdle SET ended=?, won=?, guesses=? WHERE id=? AND device=? AND ended IS NULL",
-      Date.now(), g?.won === true ? 1 : 0, n, String(g?.id ?? ""), device);
-    return { ok: true, stats: this.orrdleMine(device) };
+  /** One guess at this phone's unfinished game: scored as Wordle does (repeats: greens first, then golds while that
+   *  letter is left over). The sixth miss or a hit ends it; the answer is only told then. */
+  async orrdleGuess(device: string, g: { id?: unknown; guess?: unknown }) {
+    const guess = String(g?.guess ?? "").toUpperCase();
+    if (!/^[A-Z]{5}$/.test(guess)) return { ok: false, error: "Five letters" };
+    const game = this.one("SELECT * FROM orrdle WHERE id=? AND device=? AND ended IS NULL", String(g?.id ?? ""), device);
+    if (!game) return { ok: false, error: "That game is over. Start another!" };
+    const word = String(game.word), tries: string[] = JSON.parse(String(game.tries ?? "[]"));
+    tries.push(guess);
+    const marks = Array<string>(5).fill("no"), left: Record<string, number> = {};
+    for (let i = 0; i < 5; i++) if (guess[i] === word[i]) marks[i] = "ok"; else left[word[i]] = (left[word[i]] ?? 0) + 1;
+    for (let i = 0; i < 5; i++) if (marks[i] !== "ok" && left[guess[i]]) { marks[i] = "near"; left[guess[i]]--; }
+    const won = guess === word, over = won || tries.length >= 6;
+    this.sql.exec("UPDATE orrdle SET tries=?, ended=?, won=?, guesses=? WHERE id=?", JSON.stringify(tries),
+      over ? Date.now() : null, over ? (won ? 1 : 0) : null, over ? tries.length : null, String(game.id));
+    return { ok: true, marks, over, won, ...(over ? { word, stats: this.orrdleMine(device) } : {}) };
   }
 
   /** A guest's own Orrdle record, as Wordle shows it: played, won, streak, best time, guesses per win. */
@@ -801,7 +810,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "orrdle-1",
+      code: "orrdle-2",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -1025,6 +1034,16 @@ export class Party extends DurableObject<Env> {
     this.sql.exec("UPDATE jokes SET name='', text='', script=NULL, ip=NULL, device=''");
     this.sql.exec("UPDATE airlog SET text=''");
     this.sql.exec("UPDATE orrdle SET name='', device=''");
+    // the archive keeps the numbers, not who: Orrdle's best and most-wins names go
+    for (const p of this.all("SELECT id, stats FROM parties")) {
+      const st = JSON.parse(String(p.stats));
+      const o = st?.orrdle;
+      if (o) {
+        for (const k of ["fastest", "fewest"]) if (o[k]) o[k].name = "a guest";
+        if (Array.isArray(o.top)) o.top = o.top.map((x: { name: string }) => ({ ...x, name: "a guest" }));
+      }
+      this.sql.exec("UPDATE parties SET stats=? WHERE id=?", JSON.stringify(st), p.id);
+    }
     this.sql.exec("DELETE FROM settings WHERE key='health'");
   }
 }

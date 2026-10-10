@@ -2344,8 +2344,8 @@ function schedule(ms) {
   pollTimer = setInterval(() => { if (document.visibilityState === "visible") refresh(); }, ms);
 }
 schedule(15000);
-// ---- Orrdle: the family Wordle. The Worker deals a name (one this phone hasn't had), keeps the clock and the record;
-// the guessing happens here, like Wordle: green right place, gold elsewhere in the name, dark not in it.
+// ---- Orrdle: the family Wordle. The Worker deals a name (one this phone hasn't had) and keeps it: each guess goes
+// there to be scored (green right place, gold elsewhere in the name, dark not in it), so a win can't be made up.
 const OD_KEYS = ["QWERTYUIOP", "ASDFGHJKL", "+ZXCVBNM-"];
 let od = null;   // { id, word, rows: [], cur: "", done, stats }
 function odBuild() {
@@ -2361,12 +2361,6 @@ function odBuild() {
     }
     return r;
   }));
-}
-function odScore(guess, word) {   // Wordle's rule for repeats: greens first, then golds while that letter is left over
-  const res = Array(5).fill("no"), left = {};
-  for (let i = 0; i < 5; i++) if (guess[i] === word[i]) res[i] = "ok"; else left[word[i]] = (left[word[i]] || 0) + 1;
-  for (let i = 0; i < 5; i++) if (res[i] !== "ok" && left[guess[i]]) { res[i] = "near"; left[guess[i]]--; }
-  return res;
 }
 function odPaint() {
   const rows = [...$("odBoard").children];
@@ -2402,41 +2396,45 @@ function odShowStats(stats, wonIn) {
 }
 async function odStart() {
   odBuild(); $("odStats").hidden = true; $("odKeys").hidden = false; odSay("Dealing a name…");
-  od = { id: null, word: "", rows: [], cur: "", done: false, stats: null };
+  od = { id: null, rows: [], cur: "", done: false, busy: false, stats: null };
   odPaint();
   try {
     const r = await api("/api/orrdle/start", { method: "POST", headers: { "content-type": "application/json" },
       body: JSON.stringify({ name: myName() }), signal: AbortSignal.timeout(10000) });
     if (!r.ok) { odSay(r.error || "Couldn't start a game."); return; }
-    Object.assign(od, { id: r.id, word: r.word, stats: r.stats }); odSay("");
+    Object.assign(od, { id: r.id, stats: r.stats }); odSay("");
   } catch { odSay("Couldn't reach the DJ booth. Try again in a moment."); }
 }
-async function odFinish(won) {
-  od.done = true;
+function odFinish(r) {
+  od.done = true; od.stats = r.stats || od.stats;
   const n = od.rows.length;
-  odSay(won ? ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Great!", "Phew!"][n - 1] : `It was ${od.word}.`);
-  let stats = od.stats;
+  odSay(r.won ? ["Genius!", "Magnificent!", "Impressive!", "Splendid!", "Great!", "Phew!"][n - 1] : `It was ${r.word}.`);
+  setTimeout(() => odShowStats(od.stats, r.won ? n : 0), 1200);
+}
+async function odGuess(g) {
+  od.busy = true;
   try {
-    const r = await api("/api/orrdle/end", { method: "POST", headers: { "content-type": "application/json" },
-      body: JSON.stringify({ id: od.id, won, guesses: n }), signal: AbortSignal.timeout(10000) });
-    if (r.ok) stats = r.stats;
-  } catch {}
-  setTimeout(() => odShowStats(stats, won ? n : 0), 1200);
+    const r = await api("/api/orrdle/guess", { method: "POST", headers: { "content-type": "application/json" },
+      body: JSON.stringify({ id: od.id, guess: g }), signal: AbortSignal.timeout(10000) });
+    if (!r.ok) { odSay(r.error || "That didn't go through.", 1600); return; }
+    const row = od.rows.length;
+    od.rows.push({ g, s: r.marks }); od.cur = "";
+    [...$("odBoard").children[row].children].forEach((t, i) => t.animate([{ transform: "rotateX(0)" }, { transform: "rotateX(-90deg)", offset: .5 }, { transform: "rotateX(0)" }],
+      { duration: 360, delay: i * 120 }));
+    setTimeout(odPaint, 180);   // the colours land as the tiles turn
+    if (r.over) odFinish(r);
+  } catch { odSay("Couldn't reach the DJ booth. Try again.", 1600); }
+  finally { od.busy = false; }
 }
 function odKey(k) {
-  if (!od || od.done || !od.word) return;
+  if (!od || od.done || !od.id || od.busy) return;
   if (k === "Backspace") od.cur = od.cur.slice(0, -1);
   else if (k === "Enter") {
     if (od.cur.length < 5) {
       const row = $("odBoard").children[od.rows.length]; row.classList.remove("shake"); void row.offsetWidth; row.classList.add("shake");
       odSay("Five letters", 1200); return;
     }
-    const g = od.cur, s = odScore(g, od.word), r = od.rows.length;
-    od.rows.push({ g, s }); od.cur = "";
-    [...$("odBoard").children[r].children].forEach((t, i) => t.animate([{ transform: "rotateX(0)" }, { transform: "rotateX(-90deg)", offset: .5 }, { transform: "rotateX(0)" }],
-      { duration: 360, delay: i * 120 }));
-    setTimeout(odPaint, 180);   // the colours land as the tiles turn
-    if (g === od.word) odFinish(true); else if (od.rows.length === 6) odFinish(false);
+    odGuess(od.cur);
     return;
   } else if (/^[A-Z]$/.test(k) && od.cur.length < 5) od.cur += k;
   odPaint();

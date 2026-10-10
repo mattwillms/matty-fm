@@ -444,22 +444,50 @@ describe("party clock", () => {
 });
 
 describe("orrdle", () => {
-  it("deals a name the phone hasn't had, times the game on the server, and keeps each guest's record", async () => {
+  const answer = (p: P, id: string) => runInDurableObject(p, async (_i: Party, st) =>
+    String(st.storage.sql.exec("SELECT word FROM orrdle WHERE id=?", id).one().word));
+  it("the server keeps the answer, scores each guess, and keeps each guest's record", async () => {
     const p = stub("orrdle-1");
     const seen = new Set<string>();
     for (let i = 0; i < 3; i++) {
       const g = await p.orrdleStart("d1", "Ann");
-      expect(g.word).toMatch(/^[A-Z]{5}$/);
-      expect(seen.has(g.word!)).toBe(false);   // a fresh name each time
-      seen.add(g.word!);
-      await p.orrdleEnd("d1", { id: g.id, won: i < 2, guesses: i + 2 });
+      expect(g).not.toHaveProperty("word");   // never sent to the phone before the game is over
+      const word = await answer(p, g.id!);
+      expect(seen.has(word)).toBe(false);
+      seen.add(word);
+      const wrong = word === "AAAAA" ? "BBBBB" : "AAAAA";
+      if (i < 2) {
+        for (let k = 0; k < i + 1; k++) await p.orrdleGuess("d1", { id: g.id, guess: wrong });
+        expect(await p.orrdleGuess("d1", { id: g.id, guess: word.toLowerCase() })).toMatchObject({ ok: true, over: true, won: true, marks: ["ok", "ok", "ok", "ok", "ok"] });
+      } else {
+        for (let k = 0; k < 5; k++) expect((await p.orrdleGuess("d1", { id: g.id, guess: wrong })).over).toBe(false);
+        expect(await p.orrdleGuess("d1", { id: g.id, guess: wrong })).toMatchObject({ over: true, won: false, word });
+      }
     }
     const g = await p.orrdleStart("d1", "Ann");
     expect(g.stats).toMatchObject({ played: 3, wins: 2, streak: 0, dist: [0, 1, 1, 0, 0, 0] });
-    expect((await p.orrdleEnd("d2", { id: g.id, won: true, guesses: 1 })).stats!.played).toBe(0);   // not your game
-    expect((await p.orrdleEnd("d1", { id: g.id, won: true, guesses: 9 })).ok).toBe(false);
-    await p.orrdleEnd("d1", { id: g.id, won: true, guesses: 1 });
+    expect((await p.orrdleGuess("d2", { id: g.id, guess: "LUCAS" })).ok).toBe(false);   // not your game
+    expect((await p.orrdleGuess("d1", { id: g.id, guess: "LUC" })).ok).toBe(false);
+    await p.orrdleGuess("d1", { id: g.id, guess: await answer(p, g.id!) });
     const { stats } = (await p.adminAction({ action: "stats" })) as { stats: { orrdle: { plays: number; wins: number; players: number; fewest: { name: string; guesses: number } } } };
     expect(stats.orrdle).toMatchObject({ plays: 4, wins: 3, players: 1, fewest: { name: "Ann", guesses: 1 } });
+  });
+
+  it("scores repeats like Wordle", async () => {
+    const p = stub("orrdle-2");
+    const g = await p.orrdleStart("d1", "Ann");
+    await sql(p, "UPDATE orrdle SET word='SARAH' WHERE id=?", g.id!);
+    expect((await p.orrdleGuess("d1", { id: g.id, guess: "AARON" })).marks).toEqual(["near", "ok", "ok", "no", "no"]);   // first A: the other A of SARAH; second A and R: right place
+  });
+
+  it("the privacy wipe takes Orrdle names out of the archive too", async () => {
+    const p = stub("orrdle-3");
+    await p.adminAction({ action: "partyStart" });
+    const g = await p.orrdleStart("d1", "Ann");
+    await p.orrdleGuess("d1", { id: g.id, guess: await answer(p, g.id!) });
+    await p.adminAction({ action: "partyEnd", title: "Night" });
+    await runInDurableObject(p, async (i: Party) => { await i.alarm(); });
+    const { parties } = (await p.adminAction({ action: "archive" })) as { parties: { stats: { orrdle: { fastest: { name: string }; top: { name: string }[] } } }[] };
+    expect(JSON.stringify(parties)).not.toContain("Ann");
   });
 });
