@@ -581,11 +581,12 @@
             background: radial-gradient(circle at 35% 35%, #f2f0ea 0, #9b978f 1.6px, #3a3833 3px, transparent 3.4px) 3px 3px / 8px 8px no-repeat, radial-gradient(circle at 35% 35%, #f2f0ea 0, #9b978f 1.6px, #3a3833 3px, transparent 3.4px) calc(100% - 3px) 3px / 8px 8px no-repeat,
                         radial-gradient(circle at 35% 35%, #f2f0ea 0, #9b978f 1.6px, #3a3833 3px, transparent 3.4px) 3px calc(100% - 3px) / 8px 8px no-repeat, radial-gradient(circle at 35% 35%, #f2f0ea 0, #9b978f 1.6px, #3a3833 3px, transparent 3.4px) calc(100% - 3px) calc(100% - 3px) / 8px 8px no-repeat,
                         url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='90'%3E%3Cfilter id='b' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0025 0.85' numOctaves='4' seed='9'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  2.6 0 0 0 -1.35'/%3E%3C/filter%3E%3Cfilter id='d' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0033 0.935' numOctaves='3' seed='16'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  2.4 0 0 0 -1.3'/%3E%3C/filter%3E%3Cg%3E%3Crect x='-400' y='-90' width='1200' height='270' filter='url(%23b)' opacity='0.55'/%3E%3Crect x='-400' y='-90' width='1200' height='270' filter='url(%23d)' opacity='0.35'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat,
+                        url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='120'%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035 .05' numOctaves='4' seed='21'/%3E%3CfeColorMatrix values='0 0 0 0 .22  0 0 0 0 .16  0 0 0 0 .08  0 0 0 -2.6 1.5'/%3E%3C/filter%3E%3Cfilter id='s' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .15  0 0 0 0 .11  0 0 0 0 .05  0 0 0 -3 1.9'/%3E%3C/filter%3E%3Crect width='300' height='120' filter='url(%23g)' opacity='.55'/%3E%3Crect width='300' height='120' filter='url(%23s)' opacity='.5'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
                         linear-gradient(#f2f0ea, #c9c5bd 30%, #e9e6df 52%, #a9a59d 78%, #d6d2ca);
-            box-shadow: inset 0 1px 0 #fff, inset 0 -2px 2px #0006, 0 0 0 1px #3a3833, 0 3px 6px #000b; }
+            box-shadow: inset 0 1px 0 #fff, inset 0 -2px 2px #0006, inset 0 0 6px #3a2a0e88, inset 0 0 14px #2a1e0a44, 0 0 0 1px #3a3833, 0 3px 6px #000b; }
   .coinop button { -webkit-tap-highlight-color: transparent; }
   .coinop button:disabled { opacity: 1; cursor: default; }   /* a machine doesn't grey out while it takes your coin */
-  .coin-send { flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0; background: none; box-shadow: none; }
+  .coin-send { position: relative; z-index: 3; flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px; padding: 0; background: none; box-shadow: none; }
   .cp-card { flex: none; width: 92px; border-radius: 4px; overflow: hidden; transform: skewX(-8deg);
              box-shadow: 0 0 0 2px #8f8b84, 0 0 0 3px #f6f4ef, inset 0 2px 3px #0005; }   /* the window, set in a chrome frame */
   .cp-top { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 4px 4px 3px; background: #f1e8d2;
@@ -615,7 +616,8 @@
                    background: radial-gradient(circle at 36% 30%, #ffd2c8 0, #e0503a 18%, #a8261a 55%, #5e120a 100%);
                    box-shadow: 0 2px 2px #000c, inset 0 -2px 3px #0007; transition: transform .06s, box-shadow .06s; }   /* the domed red cap */
   .coin-return:active .cr-btn::after { transform: translateY(1.5px) scale(.96); box-shadow: 0 0 1px #000c, inset 0 2px 3px #0008; }
-  .cr-lbl { width: 52px; text-align: center; font: 700 .44rem/1.15 Michroma, sans-serif; text-transform: uppercase; color: #8e1f12; text-shadow: 0 1px 0 #fff8; }
+  .cr-lbl { text-align: center; font: 800 .62rem/1 Jost, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: #8e1f12;
+            text-shadow: 0 1px 0 #fff9; }   /* stamped, bold */
   /* Orrdle: a dark walnut plank nailed up, the name in raised polished gold sitting on it, an old heart-and-arrow
      carved into the wood (cuts show the paler wood inside, shaded on their upper side), and a gold Play plate */
   .orrdle-plank { margin: 0 0 18px; }
@@ -775,8 +777,9 @@
      sheen, one thin bright rim inside a dark edge */
   .toggle-sw .plate { position: absolute; inset: 0; border-radius: var(--glass-r);
                       background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='160'%3E%3Cfilter id='b' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.004 0.9' numOctaves='4' seed='5'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  2.6 0 0 0 -1.35'/%3E%3C/filter%3E%3Cfilter id='d' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.0052 0.990' numOctaves='3' seed='12'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  2.4 0 0 0 -1.3'/%3E%3C/filter%3E%3Cg transform='rotate(-24 40 80)'%3E%3Crect x='-80' y='-160' width='240' height='480' filter='url(%23b)' opacity='0.6'/%3E%3Crect x='-80' y='-160' width='240' height='480' filter='url(%23d)' opacity='0.55'/%3E%3C/g%3E%3C/svg%3E") center / 100% 100% no-repeat,
+                                  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='120'%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035 .05' numOctaves='4' seed='21'/%3E%3CfeColorMatrix values='0 0 0 0 .22  0 0 0 0 .16  0 0 0 0 .08  0 0 0 -2.6 1.5'/%3E%3C/filter%3E%3Cfilter id='s' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' seed='4'/%3E%3CfeColorMatrix values='0 0 0 0 .15  0 0 0 0 .11  0 0 0 0 .05  0 0 0 -3 1.9'/%3E%3C/filter%3E%3Crect width='300' height='120' filter='url(%23g)' opacity='.55'/%3E%3Crect width='300' height='120' filter='url(%23s)' opacity='.5'/%3E%3C/svg%3E") center / 100% 100% no-repeat,
                                   linear-gradient(118deg, #8a5d16 0%, #d7a43b 18%, #f7df92 34%, #cf9a32 52%, #edc86a 70%, #a8761f 88%, #7a5212 100%);
-                      box-shadow: 0 0 0 1px #3d2805, inset 0 0 0 1px #fbe7a866, 0 3px 5px #000b; }
+                      box-shadow: 0 0 0 1px #3d2805, inset 0 0 0 1px #fbe7a855, inset 0 0 6px #3a2a0e88, inset 0 0 14px #2a1e0a44, 0 3px 5px #000b; }
   .toggle-sw .tab { position: absolute; left: 6px; right: 6px; height: 14px; border-radius: 2px; display: grid; place-items: center; }
   .toggle-sw .tab svg { width: 11px; height: 11px; fill: #fff; }
   .toggle-sw .tab.up { top: 4px; background: #b3261a; box-shadow: inset 0 1px 1px #0006; }
@@ -966,7 +969,7 @@
           <span class="cp-bot" id="cpPrice">25¢ · one song</span></span>
         <span class="cp-track" aria-hidden="true"><span class="cq"><i></i></span></span></button>
       <span class="cp-slot" aria-hidden="true"><span class="cp-mouth"></span></span>
-      <button class="coin-return" id="cancel" type="button"><span class="cr-btn" aria-hidden="true"></span><span class="cr-lbl" aria-hidden="true">Coin return</span></button>
+      <button class="coin-return" id="cancel" type="button"><span class="cr-btn" aria-hidden="true"></span><span class="cr-lbl" aria-hidden="true">Return</span></button>
     </div>
     <p id="formErr" class="hint" style="color:var(--bad)"></p>
   </section>
@@ -2578,7 +2581,7 @@ function rollTo(dx, ms, back = false) {
     requestAnimationFrame(step);
   });
 }
-function coinHome() { cq.style.transform = cq.style.clipPath = cqFace.style.transform = ""; }
+function coinHome() { cq.style.transform = cq.style.clipPath = cqFace.style.transform = cq.style.visibility = ""; }
 async function coinSend(work) {
   const b = $("send");
   if (b.disabled) return;
@@ -2588,6 +2591,7 @@ async function coinSend(work) {
   const dx = slit.left + slit.width / 2 - c.left;   // far enough that the whole coin has gone in
   $("cpSay").textContent = "Sending…";
   await rollTo(dx, 650);
+  cq.style.visibility = "hidden";   // all the way in: not even its shadow is left in the slit
   const op = document.querySelector(".coinop");
   op.classList.remove("clunk"); void op.offsetWidth; op.classList.add("clunk");
   let ok = false;
@@ -2595,7 +2599,7 @@ async function coinSend(work) {
   finally {
     b.disabled = false; $("cpSay").textContent = "Insert coin";
     if (ok) setTimeout(() => { coinHome(); op.classList.remove("clunk"); }, 400);   // the panel has closed by then
-    else { await rollTo(dx, 600, true); coinHome(); }   // back out of the slot
+    else { cq.style.visibility = ""; await rollTo(dx, 600, true); coinHome(); }   // back out of the slot
   }
 }
 $("send").setAttribute("aria-label", "Send to the DJ");
