@@ -582,7 +582,14 @@ export class Party extends DurableObject<Env> {
   /** A medal earned: the page saw the animation happen. Once each; the last one brings the golden quarter. */
   async earnMedal(device: string, medal: unknown) {
     if (!MEDALS.includes(medal as (typeof MEDALS)[number])) return { ok: false, error: "No such medal." };
-    this.sql.exec("INSERT OR IGNORE INTO medals(device, medal, at) VALUES(?,?,?)", device, String(medal), Date.now());
+    // the page says a medal was earned (a tap can't be checked from here), so a script could claim them all at once:
+    // one a phone every 10 s, and the last only once the hunt has taken 2 minutes (the page retries what's refused)
+    const now = Date.now(), times = this.all("SELECT medal, at FROM medals WHERE device=? ORDER BY at", device);
+    if (!times.some((m) => m.medal === medal)) {
+      if (times.length && now - Number(times[times.length - 1].at) < 10_000) return { ok: false, error: "slow", hunt: this.hunt(device) };
+      if (times.length === MEDALS.length - 1 && now - Number(times[0].at) < 120_000) return { ok: false, error: "slow", hunt: this.hunt(device) };
+    }
+    this.sql.exec("INSERT OR IGNORE INTO medals(device, medal, at) VALUES(?,?,?)", device, String(medal), now);
     // the first guest to find them all is announced on air (once a party): the station's own news, read at the next break
     const total = Number(this.one("SELECT COUNT(*) AS n FROM medals WHERE device=?", device)?.n ?? 0);
     if (total >= MEDALS.length && !this.setting("huntFirst", "")) {
@@ -908,7 +915,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "hunt-first",
+      code: "hunt-pace",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),

@@ -2544,13 +2544,12 @@ $("q").addEventListener("input", () => {
     }));
   }, 400);
 });
-let searchY = null;   // where the page was when a song was picked: Back returns there, the results as they were
+// Back from a picked song: the search panel comes to the top, as the request panel did, its results still there
 function backToSearch() {
   $("form").hidden = true; $("find").hidden = false;
-  if (searchY != null) { const y = searchY; searchY = null; requestAnimationFrame(() => scrollTo({ top: y, behavior: "instant" })); }
+  requestAnimationFrame(() => $("find").scrollIntoView({ behavior: "smooth", block: "start" }));
 }
 function choose(t, free) {
-  searchY = scrollY;
   chosen = t; $("freeFields").hidden = !free; $("chosen").hidden = free; $("chosen").replaceChildren(...(free ? [] : [songRow(t)]));
   if (!free) {   // a back arrow beside the song: back to the search, same as Return
     const back = el("button", "again"); back.type = "button"; back.setAttribute("aria-label", "Back to the search");

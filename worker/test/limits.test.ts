@@ -8,6 +8,8 @@ import type { Party } from "../src/party";
 const stub = (name: string) => env.PARTY.get(env.PARTY.idFromName(name));
 type P = ReturnType<typeof stub>;
 const T = (title: string) => ({ track: { title, artist: "ABBA", album: "", durationMs: 200000, explicit: false, artwork: "", source: "itunes" as const }, name: "Ann" });
+// medals come one a phone every 10 s, the last after 2 minutes: tests age the earlier ones to earn the next
+const earnAll = async (p: P, d: string, list: string[]) => { for (const m of list) { await sql(p, "UPDATE medals SET at=at-130000 WHERE device=?", d); await p.earnMedal(d, m); } };
 const sql = (p: P, q: string, ...b: SqlStorageValue[]) =>
   runInDurableObject(p, async (_i: Party, s) => { s.storage.sql.exec(q, ...b); });
 const played = (p: P, id: string) => sql(p, "UPDATE items SET status='played', ended_at=? WHERE id=?", Date.now(), id);
@@ -497,12 +499,13 @@ describe("scavenger hunt", () => {
   it("medals once each; all of them bring a golden quarter for one more song; cancelling it gives it back", async () => {
     const p = stub("hunt-1");
     expect((await p.earnMedal("d1", "nope")).ok).toBe(false);
-    for (const m of ALL.slice(0, 8)) await p.earnMedal("d1", m);
+    await earnAll(p, "d1", ALL.slice(0, 8));
     await p.earnMedal("d1", "eggs");   // twice: still one
     expect((await p.guestState("d1")).hunt).toMatchObject({ total: 9, golden: "none" });
     expect((await p.guestState("d1")).hunt.medals).toHaveLength(8);
     await p.submit("d1", T("Waterloo")); await p.submit("d1", T("SOS"));
     expect((await p.submit("d1", T("Fernando"))).ok).toBe(false);   // locked, no golden yet
+    await sql(p, "UPDATE medals SET at=at-130000 WHERE device='d1'");
     expect((await p.earnMedal("d1", "polish")).hunt.golden).toBe("ready");
     const g = await p.submit("d1", T("Fernando"));                  // the golden quarter
     expect(g.ok).toBe(true);
@@ -536,7 +539,7 @@ describe("kick and the golden quarter on air", () => {
     expect(s.limits.songs).toMatchObject({ active: 0, locked: false });
     expect((await p.adminState()).items.find((i: { id: string }) => i.id === a.id)?.status ?? "deleted").not.toBe("pending");
     expect((await p.guestState("d2")).mine).toHaveLength(1);
-    for (const m of ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"]) await p.earnMedal("d3", m);
+    await earnAll(p, "d3", ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"]);
     await p.submit("d3", T("Fernando")); await p.submit("d3", T("Chiquitita"));
     await p.submit("d3", T("Dancing Queen"));
     const jobs = (await p.beat({ ...beat, want: 10 })).jobs as { title: string; requesters: { golden?: boolean }[] }[];
@@ -601,11 +604,24 @@ describe("first to finish the hunt", () => {
     const p = stub("hunt-first-1");
     const ALL = ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"];
     await p.claimName("d1", "Ava"); await p.claimName("d2", "Bo");
-    for (const m of ALL) await p.earnMedal("d1", m);
-    for (const m of ALL) await p.earnMedal("d2", m);
+    await earnAll(p, "d1", ALL);
+    await earnAll(p, "d2", ALL);
     const msgs = (await p.adminState()).jokes.filter((j: { source: string }) => j.source === "host");
     expect(msgs).toHaveLength(1);
     expect(msgs[0]).toMatchObject({ kind: "announcement", urgent: false });
     expect(msgs[0].text).toMatch(/Ava is the first tonight to find every medal/);
+  });
+});
+
+describe("medal pace", () => {
+  it("refuses medals faster than one per 10 s, and a finish inside 2 minutes", async () => {
+    const p = stub("pace-1");
+    expect((await p.earnMedal("d1", "eggs")).ok).toBe(true);
+    expect((await p.earnMedal("d1", "kaboom")).ok).toBe(false);   // 10 s haven't passed
+    await sql(p, "UPDATE medals SET at=at-11000");
+    expect((await p.earnMedal("d1", "kaboom")).ok).toBe(true);
+    for (const m of ["snap", "needle", "static", "colors", "screws", "gnat"]) { await sql(p, "UPDATE medals SET at=at-11000"); await p.earnMedal("d1", m); }
+    await sql(p, "UPDATE medals SET at=at-11000");
+    expect((await p.earnMedal("d1", "polish")).ok).toBe(false);   // all nine in under 2 minutes: not yet
   });
 });
