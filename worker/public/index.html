@@ -814,6 +814,12 @@
   .about h3 { margin: 28px 0 10px; font: 800 1.35rem/1.15 Fraunces, Georgia, serif; color: var(--gold); }
   .about p, .about li { font: 400 1.02rem/1.55 Jost, sans-serif; color: var(--cream-dim); }
   .about .ab-flow { display: block; width: 100%; max-width: 360px; margin: 6px auto 14px; }
+  .about .ab-tiers { list-style: none; padding: 0; margin: 4px 0 16px; display: grid; gap: 8px; }
+  .about .ab-tiers li { display: grid; grid-template-columns: 32px 1fr; column-gap: 12px; padding: 12px 14px; border-radius: 10px;
+                        background: #4a2e1e; border-left: 3px solid #f0a92b; }
+  .about .ab-tiers .n { grid-row: span 2; align-self: center; text-align: center; font: 800 1.6rem/1 Fraunces, Georgia, serif; color: var(--gold); }
+  .about .ab-tiers strong { color: var(--cream); font-weight: 700; }
+  .about .ab-tiers span { line-height: 1.45; }
   .about .ab-parts { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
   .about .ab-parts li { position: relative; padding-left: 20px; }
   .about .ab-parts li::before { content: ""; position: absolute; left: 3px; top: .62em; width: 7px; height: 7px; border-radius: 50%;
@@ -1060,9 +1066,9 @@
       <img class="ab-sig" src="/matty-sig.webp" alt="matty">
       <p class="ab-lede">OrrFM is a radio station made for one night: the Orr family reunion.</p>
       <h3>Who made it</h3>
-      <p>Matt Williams (matty) builds websites and software. He works from two Arch Linux towers he built himself, kept identical by one
-        set of config files, and he builds alongside an AI pair programmer: Claude, in Claude Code. OrrFM came together over a few
-        days and nights before the reunion.</p>
+      <p>Matt Williams (matty) builds websites and software. He works on two Arch Linux computers he built himself, set up exactly
+        alike. He builds with an AI partner: Claude, made by Anthropic, working in a tool called Claude Code.</p>
+      <p>OrrFM came together over a few days and nights before the reunion.</p>
       <h3>How a request travels</h3>
       <svg class="ab-flow" viewBox="0 0 320 508" role="img" aria-label="How a request travels: your phone, the queue in the cloud, the studio at home, the console by the speakers, the party">
   <defs><marker id="ar" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#f0a92b"/></marker></defs>
@@ -1090,7 +1096,13 @@
     <rect x="70" y="460" width="180" height="44" rx="10" fill="#e2621b"/>
     <text x="160" y="488" fill="#241208" font-size="17" font-weight="800">The party speakers</text>
   </g></svg>
-      <p>Your phone talks to a small program in Cloudflare's cloud that keeps the line fair. A PC at home finds and downloads each song, has Claude write what the DJ says about it, and records that in an ElevenLabs voice. A Raspberry Pi wired to the speakers mixes it all live: SomaFM's 70s station between requests, the next song fading in under the DJ, and the sound buttons on top.</p>
+      <p>When you pick a song, your phone sends it to a small program in Cloudflare's cloud. That program keeps the line fair:
+        it decides whose turn is next and how many songs each phone gets.</p>
+      <p>A PC at Matt's home does the heavy lifting. It finds and downloads the song, asks Claude to write what the DJ will say,
+        and has ElevenLabs read those words aloud in the DJ's voice.</p>
+      <p>A Raspberry Pi, a computer the size of a deck of cards, is wired to the speakers and mixes everything live. Between
+        requests it plays SomaFM's 70s station. When your song comes up, the music fades down, the DJ talks, and your song rises
+        in under the voice. The sound buttons play over the top.</p>
       <h3>How it was built</h3>
       <svg class="ab-flow" viewBox="0 0 320 250" role="img" aria-label="The build loop: Matt asks, Claude builds and tests, a check in real browsers, a security review, a quiet deploy, Matt looks and asks again">
   <defs><marker id="ar2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0 0L10 5 0 10z" fill="#6fe3c8"/></marker></defs>
@@ -1104,24 +1116,37 @@
     <g stroke="#6fe3c8" stroke-width="1.6" fill="none" marker-end="url(#ar2)">
       <path d="M217 32q30 6 42 30"/><path d="M272 102v46"/><path d="M252 188q-6 22-34 30"/><path d="M103 218q-30-6-40-28"/><path d="M48 150v-46"/><path d="M62 64q14-24 40-32"/></g>
   </g></svg>
-      <p>Matt directs; Claude builds. Most requests arrived with a screenshot and a line of text: "this looks
-        floating, not engraved", "the coin goes behind the slot", or a photo of a real 1970s jukebox coin plate. Claude writes the code,
-        then checks its own work: a few hundred automated tests, screenshots in real browsers at phone size, and a security review of
-        every change before it goes live. Fixes reach the party without interrupting anyone: open pages update themselves at a quiet moment.</p>
-      <p>Bigger pieces follow a set routine: talk the idea through first, write a short spec, plan the steps, and write each test
-        before the code it tests. Before the party, a simulated party ran for three hours: eighteen fake guests, some careful,
-        some button-mashing, some baffled, to find what breaks first.</p>
-      <h3>The notebook</h3>
-      <p>Matt keeps a notes vault called mathom (a hobbit's word for a thing kept because it might be useful someday). Every lesson
-        learned the hard way goes in it: why something failed, what fixed it, what to check before building the next one. Claude reads
-        it before starting work and adds to it when a session teaches something, so a mistake made once isn't made again on the next
-        project. This build added one, from the listening tap: a way to hear the party's live mix from another room, wired so
-        that if the tap ever fails, the party's own sound carries on untouched.</p>
-      <p>The notes follow one rule Matt holds to: every piece of knowledge has exactly one home, chosen by who needs it, not by what
-        it's about. How to work with Matt goes in the instructions every session reads. How to run one project goes in that project's
-        own notes. What someone picking up the code would need goes in its docs. And what's still worth knowing if the project were
-        deleted, the lessons that carry to the next one, goes in mathom. Four tiers, one copy of each fact, links everywhere else,
-        so nothing drifts out of date in a second place.</p>
+      <p>Matt directs and Claude builds. Most requests arrived with a screenshot and a line of text: "this looks floating, not
+        engraved", "the coin goes behind the slot", or a photo of a real 1970s jukebox coin plate.</p>
+      <p>Claude writes the code, then checks its own work three ways: a few hundred automated tests, screenshots in real web
+        browsers at phone size, and a security review of every change before it goes live.</p>
+      <p>Fixes reach the party without interrupting anyone. An open page updates itself at a quiet moment: while the phone is
+        locked, or after it has sat untouched for a minute and a half.</p>
+      <p>Bigger pieces follow a set routine: talk the idea through, write a short plan, then write each test before the code it
+        checks.</p>
+      <p>Before the night, OrrFM sat through practice parties. The biggest ran for four hours: 31 pretend guests (careful ones,
+        button-mashers and baffled ones) plus three real web browsers tapping every button, all to find what breaks first.</p>
+      <h3>The notebook: mathom and the four tiers</h3>
+      <p>Matt keeps a notebook of hard-won lessons called mathom. The word comes from the hobbits: a mathom is something kept
+        because it might come in useful someday. Each lesson says what went wrong, why it went wrong, and what to check before
+        building the next thing.</p>
+      <p>Claude reads mathom before it starts work, and adds to it when a session teaches something new. A mistake made once
+        isn't made again on the next project. This build added a few lessons, among them how to listen to the party's live mix
+        from another room without ever putting the party's own sound at risk.</p>
+      <p>Everything Matt writes down follows one rule: each piece of knowledge has exactly one home. The home is chosen by who
+        needs it, not by what it's about. There are four homes, called tiers:</p>
+      <ol class="ab-tiers">
+        <li><b class="n">0</b><strong>How to work with Matt</strong><span>Read by Claude at the start of every session, on every
+          project: how Matt likes to work and the rules he holds to.</span></li>
+        <li><b class="n">1</b><strong>How to run this project</strong><span>Read every time Claude works on this one project: how to
+          start it, test it, and what never to touch.</span></li>
+        <li><b class="n">2</b><strong>For whoever picks up the code</strong><span>Notes that travel with the project, for someone
+          copying it: why it was built this way.</span></li>
+        <li><b class="n">3</b><strong>mathom: lessons that outlive the project</strong><span>Anything still worth knowing if this
+          project were deleted tomorrow.</span></li>
+      </ol>
+      <p>Each fact is written once, and everywhere else links to it. A fact copied into two places eventually goes out of date in
+        one of them, and then nobody knows which copy to trust.</p>
       <h3>The parts</h3>
       <ul class="ab-parts"><li>Cloudflare Workers and Durable Objects</li><li>Python on a home PC</li><li>A Raspberry Pi and a USB sound card</li>
         <li>Claude (the DJ's words) and ElevenLabs (the DJ's voice)</li><li>SomaFM's Seventies station, between requests</li><li>YouTube and Apify for the songs, LRCLIB for the lyrics</li></ul>
