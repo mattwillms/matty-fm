@@ -764,27 +764,25 @@
   /* the sound board's switch: a toggle at the side of the buttons, up for the speakers, down for this phone only.
      No labels: a toast says what it does when it's flipped. A black plate, a chrome bat lever on a pivot nut. */
   .presets { grid-template-columns: repeat(4, minmax(0, 1fr)); flex: 1; min-width: 0; margin-top: 0; }
-  .sb-wrap { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
-  /* a panel toggle switch on the aluminum, as on old gear: a chrome plate with a red tab (speaker) above and a black
-     tab (phone) below, a hex nut, and a chrome bat lever thrown up or down */
-  .toggle-sw { position: relative; flex: none; width: 30px; height: 74px; padding: 0; background: none; box-shadow: none; cursor: pointer;
+  .sb-wrap { display: flex; align-items: stretch; gap: 8px; margin-top: 10px; }
+  /* the sound board's switch, on the aluminum beside the buttons: a chrome plate as tall as the button opening, its
+     right edge on the same line as the screens above; a red tab (speaker) at the top, a black tab (phone) at the
+     bottom, and between them a slot with a plastic slider knob, pushed up or down */
+  .toggle-sw { position: relative; flex: none; width: 38px; padding: 0; background: none; box-shadow: none; cursor: pointer;
                -webkit-tap-highlight-color: transparent; }
-  .toggle-sw .plate { position: absolute; left: 3px; right: 3px; top: 0; bottom: 0; border-radius: 4px;
+  .toggle-sw .plate { position: absolute; inset: 0; border-radius: var(--glass-r);
                       background: linear-gradient(90deg, #8d8a84, #f2f0ea 35%, #b9b5ad 65%, #75726c); box-shadow: 0 1px 2px #000a, inset 0 1px 0 #fff9; }
-  .toggle-sw .tab { position: absolute; left: 5px; right: 5px; height: 17px; border-radius: 2px; display: grid; place-items: center; }
-  .toggle-sw .tab svg { width: 13px; height: 13px; fill: #fff; }
-  .toggle-sw .tab.up { top: 3px; background: #b3261a; box-shadow: inset 0 1px 1px #0006; }
-  .toggle-sw .tab.dn { bottom: 3px; background: #141414; box-shadow: inset 0 1px 1px #000; }
-  .toggle-sw .nut { position: absolute; left: 50%; top: 50%; width: 18px; height: 18px; margin: -9px 0 0 -9px;
-                    clip-path: polygon(25% 3%, 75% 3%, 100% 50%, 75% 97%, 25% 97%, 0 50%);
-                    background: linear-gradient(135deg, #f5f3ee, #a8a49c 50%, #6a6761); }
-  .toggle-sw .nut::after { content: ""; position: absolute; inset: 4px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, #e9e6df, #7a766f 70%, #3d3a36); }
-  .toggle-sw .lever { position: absolute; left: 50%; bottom: 50%; width: 6px; height: 24px; margin-left: -3px; border-radius: 3px 3px 2px 2px;
-                      transform-origin: 50% 100%; transform: rotate(-6deg); transition: transform .14s cubic-bezier(.3,1.6,.5,1);
-                      background: linear-gradient(90deg, #5e5b56, #f4f2ec 40%, #aaa69e 70%, #4e4b47); box-shadow: 1px 2px 2px #0009; }
-  .toggle-sw .lever::before { content: ""; position: absolute; left: -2px; top: -4px; width: 10px; height: 9px; border-radius: 50%;
-                              background: radial-gradient(circle at 40% 35%, #fff, #b3afa7 60%, #5d5a55); }
-  .toggle-sw[aria-checked="true"] .lever { transform: rotate(186deg); }   /* thrown down: this phone only */
+  .toggle-sw .tab { position: absolute; left: 6px; right: 6px; height: 14px; border-radius: 2px; display: grid; place-items: center; }
+  .toggle-sw .tab svg { width: 11px; height: 11px; fill: #fff; }
+  .toggle-sw .tab.up { top: 4px; background: #b3261a; box-shadow: inset 0 1px 1px #0006; }
+  .toggle-sw .tab.dn { bottom: 4px; background: #141414; box-shadow: inset 0 1px 1px #000; }
+  .toggle-sw .slot { position: absolute; left: 50%; top: 21px; bottom: 21px; width: 8px; margin-left: -4px; border-radius: 3px;
+                     background: linear-gradient(90deg, #000, #1c1a18 50%, #000); box-shadow: inset 0 1px 3px #000, 0 1px 0 #fff8; }
+  .toggle-sw .knob { position: absolute; left: 50%; top: 20px; width: 18px; height: 12px; margin-left: -9px; border-radius: 3px;
+                     background: repeating-linear-gradient(#0000 0 3px, #0002 3px 4px) 0 3px / 100% calc(100% - 6px) no-repeat,
+                                 linear-gradient(#f4f1e8, #d3cec2 55%, #b7b1a4);
+                     box-shadow: 0 2px 2px #000a, inset 0 1px 0 #fff, inset 0 -1px 0 #0003; transition: top .14s ease-out; }   /* ridged pale plastic */
+  .toggle-sw[aria-checked="true"] .knob { top: calc(100% - 32px); }   /* pushed down: this phone only */
   .presets.local .preset { filter: none; }
   /* a guest's own button: their picture as a legend, drained to grey and inset like the emoji */
   .presets .preset .ico-img { width: 24px; height: 24px; border-radius: 50%; filter: grayscale(1) contrast(1.4) brightness(1.08)
@@ -880,7 +878,7 @@
           <span class="plate"></span>
           <span class="tab up" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg></span>
           <span class="tab dn" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M16 1H8a2.5 2.5 0 0 0-2.5 2.5v17A2.5 2.5 0 0 0 8 23h8a2.5 2.5 0 0 0 2.5-2.5v-17A2.5 2.5 0 0 0 16 1zm-4 20.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3zM16.5 17h-9V4h9v13z"/></svg></span>
-          <span class="nut" aria-hidden="true"></span><span class="lever" aria-hidden="true"></span></button></div>
+          <span class="slot" aria-hidden="true"></span><span class="knob" aria-hidden="true"></span></button></div>
       <div class="lcd msg-screen" aria-live="polite">
         <div class="lcd-line msg"><span class="track" id="lcdMsg"><span>Got a song in your head? Request it below.</span></span></div>
       </div>
