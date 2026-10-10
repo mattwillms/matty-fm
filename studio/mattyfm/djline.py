@@ -167,6 +167,8 @@ and every jab is about something real in the line: the song, the artist, the sta
 stage directions, no quotation marks.
 - Name who requested it (up to three names, then "and friends") and paraphrase \
 their message in a few words, if there is one.
+- A requester who paid with the golden quarter earned it by finding every medal in the radio's \
+scavenger hunt: make a little ceremony of it (one short phrase: a golden quarter, a champion's pick).
 - The requester is the sender: the song comes from them ("From Marie...", "Marie \
 sends this one..."). Never say it goes out to, is for, or is dedicated to the \
 requester; if their message names who it's for, it goes out to that person.
@@ -258,7 +260,8 @@ def template(item: dict, ok: bool = True) -> DJLine:
 def _request_block(item: dict) -> str:
     lines = [f"song: {_safe(item['title'])} by {_safe(item['artist'])}"]
     for r in item.get("requesters", []):
-        lines.append(f"requested by: {_safe(r['name'])}")
+        lines.append(f"requested by: {_safe(r['name'])}" + (" (paid with the golden quarter: the prize for finding every medal"
+                                                           " in the radio's scavenger hunt)" if r.get("golden") else ""))
         if r.get("message"):
             lines.append(f"their message: {_safe(r['message'])}")
     return "<request>\n" + "\n".join(lines) + "\n</request>"

@@ -93,6 +93,7 @@ export class Party extends DurableObject<Env> {
       CREATE TABLE IF NOT EXISTS medals(device TEXT NOT NULL, medal TEXT NOT NULL, at INTEGER NOT NULL, PRIMARY KEY(device, medal));
       CREATE TABLE IF NOT EXISTS bonus(device TEXT PRIMARY KEY, coins INTEGER NOT NULL DEFAULT 0, golden_used INTEGER NOT NULL DEFAULT 0);
       CREATE TABLE IF NOT EXISTS devices(device TEXT PRIMARY KEY, first_at INTEGER NOT NULL, last_at INTEGER NOT NULL);
+      CREATE TABLE IF NOT EXISTS kicked(device TEXT PRIMARY KEY, at INTEGER NOT NULL);
       CREATE TABLE IF NOT EXISTS orrdle(id TEXT PRIMARY KEY, device TEXT NOT NULL, name TEXT NOT NULL, word TEXT NOT NULL,
         started INTEGER NOT NULL, ended INTEGER, won INTEGER, guesses INTEGER);
       CREATE TABLE IF NOT EXISTS parties(id INTEGER PRIMARY KEY AUTOINCREMENT, title TEXT NOT NULL, start INTEGER NOT NULL,
@@ -197,7 +198,7 @@ export class Party extends DurableObject<Env> {
       ORDER BY CASE status WHEN 'queued' THEN 0 ELSE 1 END, rank`);
   }
   private requesters(id: string): Row[] {
-    return this.all("SELECT device,name,message FROM requesters WHERE item_id=? ORDER BY id", id);
+    return this.all("SELECT device,name,message,paid FROM requesters WHERE item_id=? ORDER BY id", id);
   }
   private pub(i: Row) {
     const names = [...new Set(this.requesters(String(i.id)).map((r) => displayText(String(r.name), "a guest")))];
@@ -213,7 +214,8 @@ export class Party extends DurableObject<Env> {
       id: String(i.id), songKey: String(i.song_key), title: String(i.title), artist: String(i.artist),
       album: String(i.album ?? ""), durationMs: i.duration_ms == null ? null : Number(i.duration_ms),
       freeText: Boolean(i.free_text),
-      requesters: this.requesters(String(i.id)).map((r) => ({ name: String(r.name), message: String(r.message) })),
+      // golden: bought with the scavenger hunt's golden quarter (the DJ makes something of it)
+      requesters: this.requesters(String(i.id)).map((r) => ({ name: String(r.name), message: String(r.message), ...(r.paid === "golden" ? { golden: true } : {}) })),
     };
   }
 
@@ -614,6 +616,7 @@ export class Party extends DurableObject<Env> {
       nowPlaying: np,
       waitS: est.newS,   // a request sent now: roughly when it starts, in seconds from now
       hunt: this.hunt(device),
+      kicked: Number(this.one("SELECT at FROM kicked WHERE device=?", device)?.at ?? 0) || null,   // the host sent this phone back to the start
       upNext: this.lineup(waiting.slice(0, 6).map((i) => this.pub(i))),
       waitingCount: waiting.length,
       mine: mine.map((i) => ({ ...this.pub(i), status: String(i.status), skipped: Boolean(i.skipped),
@@ -852,7 +855,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "hunt-2",
+      code: "hunt-3",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -956,6 +959,20 @@ export class Party extends DurableObject<Env> {
       case "takeCoin":
         this.sql.exec("UPDATE bonus SET coins=coins-1 WHERE device=? AND coins>0", a.device ?? "");
         return { ok: true };
+      case "kick": {   // this phone starts over: its waiting songs and messages go, its picks are fresh, and the page forgets its name
+        const dev = String(a.device ?? "");
+        if (!dev) return { ok: false, error: "no such phone" };
+        const solo = `SELECT item_id FROM requesters GROUP BY item_id HAVING COUNT(*)=1 AND MAX(device)=?`;
+        const inConsole = this.one(`SELECT 1 AS q FROM items WHERE status='queued' AND id IN (${solo})`, dev);
+        this.sql.exec(`UPDATE items SET status='deleted', ended_at=? WHERE status IN ('pending','preparing','ready','queued','held') AND id IN (${solo})`, Date.now(), dev);
+        if (inConsole) this.command("clear");
+        this.sql.exec(`DELETE FROM requesters WHERE device=? AND item_id IN (SELECT id FROM items WHERE status IN ${WAITING})`, dev);   // shared songs: just their name off
+        this.sql.exec("UPDATE jokes SET status='deleted', ended_at=? WHERE device=? AND status IN ('pending','preparing','ready')", Date.now(), dev);
+        this.sql.exec("DELETE FROM song_locks WHERE device=?", dev);
+        this.sql.exec("INSERT INTO song_release(device, at) VALUES(?,?) ON CONFLICT(device) DO UPDATE SET at=excluded.at", dev, Date.now());
+        this.sql.exec("INSERT INTO kicked(device, at) VALUES(?,?) ON CONFLICT(device) DO UPDATE SET at=excluded.at", dev, Date.now());
+        return { ok: true };
+      }
       case "resetHunt":   // this phone's medals and golden quarter, from scratch
         this.sql.exec("DELETE FROM medals WHERE device=?", a.device ?? "");
         this.sql.exec("UPDATE bonus SET golden_used=0 WHERE device=?", a.device ?? "");
@@ -1000,7 +1017,7 @@ export class Party extends DurableObject<Env> {
         this.seenAt.clear();
         const onAir = this.one("SELECT id FROM items WHERE status='playing' LIMIT 1");
         const held = this.one("SELECT 1 AS q FROM items WHERE status='queued' LIMIT 1");
-        for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands", "orrdle", "medals", "bonus", "devices"])
+        for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands", "orrdle", "medals", "bonus", "devices", "kicked"])
           this.sql.exec(`DELETE FROM ${t}`);
         if (onAir) this.command("skip", String(onAir.id));   // the console drops the old party's song and pushed item
         if (held) this.command("clear");

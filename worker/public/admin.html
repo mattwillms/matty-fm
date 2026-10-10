@@ -384,7 +384,7 @@ async function call(path, body) {
   if (fromLink) { try { localStorage.setItem("mfm_t", token); } catch {} }   // a typo in the link never replaces a good token
   return r.json();
 }
-const DONE = { giveCoin: "Quarter given", takeCoin: "Quarter taken back", resetHunt: "Hunt reset", partyStart: "Party clock started", partyEnd: "Party clock stopped",  announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
+const DONE = { kick: "Kicked: that phone starts over", giveCoin: "Quarter given", takeCoin: "Quarter taken back", resetHunt: "Hunt reset", partyStart: "Party clock started", partyEnd: "Party clock stopped",  announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
   mute: "Phone muted", unmute: "Phone unmuted", release: "Released: they can pick two more", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
@@ -845,6 +845,11 @@ async function loadGuests() {
     if (g.locked) acts.append(act2("Fresh picks", { action: "release", device: g.device }, "sm ghost"));
     if (g.medals) acts.append(act2("Reset hunt", { action: "resetHunt", device: g.device }, "sm ghost"));
     acts.append(g.muted ? act2("Unmute", { action: "unmute", device: g.device }, "sm ghost") : act2("Mute", { action: "mute", device: g.device }, "sm danger"));
+    const kick = btn("sm danger", "Kick", async (e) => {
+      if (!confirm(`Kick ${g.names[0] || "this phone"}? Their waiting songs and messages go, and the phone asks for a name again.`)) return;
+      await act({ action: "kick", device: g.device }, e); loadGuests();
+    });
+    acts.append(kick);
     row.append(top, stats, acts);
     return row;
   }) : [el("div", "empty", "No phones yet.")]));

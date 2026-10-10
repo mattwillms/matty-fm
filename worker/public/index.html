@@ -351,7 +351,7 @@
   .presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; margin-top: 12px; padding: 6px 6px 8px;
              border-radius: var(--glass-r);   /* the circuit board behind the buttons, mostly in their shadow */
              background: linear-gradient(#00000010, #00000030 60%, #00000099), url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='64' height='48'%3E%3Crect width='64' height='48' fill='%2313281a'/%3E%3Cg fill='none' stroke='%23b9893a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round' opacity='.75'%3E%3Cpath d='M0 10h14l6 6h18'/%3E%3Cpath d='M38 16l6-6h20'/%3E%3Cpath d='M8 48V34l6-6h10'/%3E%3Cpath d='M24 28h16l6 6v14'/%3E%3Cpath d='M52 0v8'/%3E%3Cpath d='M56 48V30l-6-6h-8'/%3E%3Cpath d='M30 0v6l-4 4'/%3E%3Cpath d='M0 40h4'/%3E%3C/g%3E%3Cg fill='%23c79a45' opacity='.85'%3E%3Ccircle cx='38' cy='16' r='2.4'/%3E%3Ccircle cx='24' cy='28' r='2.4'/%3E%3Ccircle cx='42' cy='24' r='2.4'/%3E%3Ccircle cx='26' cy='10' r='2'/%3E%3Ccircle cx='4' cy='40' r='2'/%3E%3Ccircle cx='52' cy='8' r='2'/%3E%3C/g%3E%3Cg fill='%230b170f'%3E%3Ccircle cx='38' cy='16' r='.9'/%3E%3Ccircle cx='24' cy='28' r='.9'/%3E%3Ccircle cx='42' cy='24' r='.9'/%3E%3C/g%3E%3Crect x='10' y='18' width='8' height='4' rx='1' fill='%232a2a28' opacity='.9'/%3E%3C/svg%3E") 0 0 / 64px 48px;
-             box-shadow: inset 0 3px 7px #000e, inset 0 -1px 2px #0008, 0 1px 0 #fff8; }
+             box-shadow: inset 0 2px 0 #000c, inset 0 9px 10px -3px #000e, inset 0 -1px 2px #0008, 0 1px 0 #fff8; }   /* the faceplate's edge over it, and its shadow */
   .presets .preset { aspect-ratio: 1.2; padding: 0; border-radius: 5px; color: #fff; font-size: 1.3rem; line-height: 1;
                      display: grid; place-items: center; cursor: pointer; filter: none;
                      background: var(--grain) 0 0 / 96px 96px, linear-gradient(#2b2a29, #1f1e1d 45%, #171615 80%, #111010);
@@ -714,7 +714,7 @@
   .mview-cap .why { color: var(--cream); }
   /* the golden quarter, in the dotted place, when the hunt is done; a silver one when the host gave a song */
   .slots .ghost.golden, .slots .ghost.coin { border: 0; background: var(--heads) center / 100% 100% no-repeat; filter: drop-shadow(0 1.5px 1px #000a); }
-  .slots .ghost.golden { filter: sepia(.9) saturate(1.7) hue-rotate(8deg) brightness(1.2) drop-shadow(0 0 4px #f0c04a99); }
+  .slots .ghost.golden { background-image: var(--golden); filter: drop-shadow(0 1.5px 1px #000a) drop-shadow(0 0 4px #f0c04a88); }   /* the hen quarter */
   .slots .ghost.gone { visibility: hidden; }
   /* Orrdle's sign starts tarnished; rubbing it brings the gold up */
   .plank-word { touch-action: pan-y; cursor: grab; }
@@ -2284,6 +2284,15 @@ async function refresh() {
     showLimits();
     showEta(s);
     if (s.hunt) showHunt(s.hunt);
+    // the host sent this phone back to the start: it forgets its name and asks again (once per kick)
+    if (s.kicked) {
+      let seen = 0; try { seen = Number(localStorage.getItem("mfm_kick_seen") || 0); } catch {}
+      if (s.kicked > seen) {
+        try { localStorage.setItem("mfm_kick_seen", String(s.kicked)); localStorage.removeItem("mfm_name"); } catch {}
+        nameHere = ""; showName(); scrollTo({ top: 0, behavior: "smooth" });
+        toast("The host reset this phone. Who's listening?");
+      }
+    }
     flushMedals();   // after "closed" is set: picks, the search box, the Send button (never mid-send)
     showNow(offAir ? null : s.nowPlaying);
     $("nextBox").hidden = !s.upNext.length || offAir;
@@ -2682,6 +2691,25 @@ function medalBack(id) {
       <text x="60" y="88" font-size="6.8" letter-spacing="1.4">SCAVENGER HUNT</text></g>
     <path d="M60 99l1.4 3 3.2.3-2.4 2 .8 3.1-3-1.7-3 1.7.8-3.1-2.4-2 3.2-.3z" fill="${c}"/></svg>`);
 }
+// The golden quarter: struck for the hunt, a hen on its face where a president would be
+document.documentElement.style.setProperty("--golden", svgUrl(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120"><defs>
+  <radialGradient id="g" cx=".35" cy=".3" r=".85"><stop offset="0" stop-color="#fff3c4"/><stop offset=".45" stop-color="#e7b440"/><stop offset=".8" stop-color="#b17d1c"/><stop offset="1" stop-color="#7a520e"/></radialGradient>
+  <radialGradient id="f" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#f7d778"/><stop offset="1" stop-color="#c8922a"/></radialGradient>
+  <path id="top" d="M22 60a38 38 0 0 1 76 0"/><path id="bot" d="M18 60a42 42 0 0 0 84 0"/>
+  <g id="hen"><path d="M38 66c-6-9-3-23 10-26 0-6 5-10 10-7 2-4 7-3 7 1 4-1 5 3 3 5l5 3-5 1c1 12-2 22-12 27-7 3-16 2-18-4z"/>
+    <path d="M38 66c-11-3-17-14-13-27 3 8 6 13 10 15-3-8-2-15 2-21 1 9 3 15 7 19z"/>
+    <path d="M55 34c-1-4 1-6 3-5 0-3 3-4 4-1 2-2 5 0 3 3z"/><path d="M68 43c2 0 2 4 0 5-2-1-2-4 0-5z"/><path d="M50 74l-1 11M58 73l1 12M47 85h5M57 85h5" fill="none" stroke-width="2.4" stroke-linecap="round"/></g></defs>
+  <circle cx="60" cy="60" r="59" fill="url(#g)"/>
+  <circle cx="60" cy="60" r="56" fill="none" stroke="#7a520e" stroke-width="2.6" stroke-dasharray="1.2 1.9" opacity=".75"/>
+  <circle cx="60" cy="60" r="50" fill="url(#f)" stroke="#8f6114" stroke-width="1.4"/>
+  <g font-family="Georgia,serif" font-weight="700" fill="#7a520e" letter-spacing="2">
+    <text font-size="9"><textPath href="#top" startOffset="50%" text-anchor="middle">ORRFM</textPath></text>
+    <text font-size="7.6" letter-spacing="1.6"><textPath href="#bot" startOffset="50%" text-anchor="middle">GOLDEN QUARTER</textPath></text></g>
+  <use href="#hen" transform="translate(1.2 1.6)" fill="#7a520e" stroke="#7a520e" opacity=".75"/>
+  <use href="#hen" transform="translate(-.6 -.8)" fill="#fff6d0" stroke="#fff6d0" opacity=".85"/>
+  <use href="#hen" fill="#e2ad3a" stroke="#d29a2a"/>
+  <circle cx="60.5" cy="39" r="1.6" fill="#7a520e"/>
+  <ellipse cx="42" cy="30" rx="24" ry="9" fill="#fff" opacity=".18" transform="rotate(-30 42 30)"/></svg>`));
 let hunt = { medals: [], total: MEDAL_IDS.length, golden: "none", coins: 0 }, huntShown = "", huntPrev = null;
 function showHunt(h) {
   if (h) hunt = h;

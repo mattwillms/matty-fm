@@ -523,3 +523,24 @@ describe("scavenger hunt", () => {
     expect((await p.submit("d1", T("Chiquitita"))).ok).toBe(false);
   });
 });
+
+describe("kick and the golden quarter on air", () => {
+  it("a kick clears the phone's waiting songs and messages and tells its page; the golden pick reaches the DJ", async () => {
+    const p = stub("kick-1");
+    const a = await p.submit("d1", T("Waterloo"));
+    await p.submit("d2", T("SOS")); await p.submit("d1", T("SOS"));   // shared: d1's name comes off, the song stays
+    await p.submitJoke("d1", { name: "Ann", text: "Why did the chicken cross the road? Worms." });
+    await p.adminAction({ action: "kick", device: "d1" });
+    const s = await p.guestState("d1");
+    expect(s.kicked).toBeGreaterThan(0);
+    expect(s.limits.songs).toMatchObject({ active: 0, locked: false });
+    expect((await p.adminState()).items.find((i: { id: string }) => i.id === a.id)?.status ?? "deleted").not.toBe("pending");
+    expect((await p.guestState("d2")).mine).toHaveLength(1);
+    for (const m of ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"]) await p.earnMedal("d3", m);
+    await p.submit("d3", T("Fernando")); await p.submit("d3", T("Chiquitita"));
+    await p.submit("d3", T("Dancing Queen"));
+    const jobs = (await p.beat({ ...beat, want: 10 })).jobs as { title: string; requesters: { golden?: boolean }[] }[];
+    expect(jobs.find((j) => j.title === "Dancing Queen")!.requesters[0].golden).toBe(true);
+    expect(jobs.find((j) => j.title === "Fernando")!.requesters[0].golden).toBeUndefined();
+  });
+});
