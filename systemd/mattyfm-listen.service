@@ -1,0 +1,11 @@
+[Unit]
+Description=MattyFM monitor: the party mix in a browser tab on this PC (http://127.0.0.1:8045)
+After=network-online.target
+
+[Service]
+ExecStart=/usr/bin/python3 %h/dev/mattyfm/tools/listen.py --no-open
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

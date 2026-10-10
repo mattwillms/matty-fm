@@ -9,9 +9,9 @@ Version 0.1.0 (semver = big.small.bug).
 - Studio: `cd studio && ../.venv/bin/python -m mattyfm`
 - Worker: `cd worker && npx wrangler dev` / `npx wrangler deploy`
 - Tests: `.venv/bin/pytest studio/tests -q` · `cd worker && npx vitest run`
-- Units: `systemctl --user {start,status} mattyfm-icecast mattyfm-station mattyfm-studio`
+- Units: `systemctl --user {start,status} mattyfm-studio mattyfm-files mattyfm-listen`
 
-- Listen on this PC: `python3 tools/listen.py` (opens a page with Play; needs `TAP=1` on the Pi and the mattyfm-tap unit)
+- Listen on this PC: http://127.0.0.1:8045 (the `mattyfm-listen` user unit runs `tools/listen.py`; needs `TAP=1` on the Pi and its mattyfm-tap unit)
 - Pi receiver: `scp -r pi mattyfm: && ssh mattyfm 'sudo bash pi/setup.sh http://192.168.86.44:8040/radio'`; logs `ssh mattyfm journalctl -u mattyfm-pi -f`
 
 ## Rules
