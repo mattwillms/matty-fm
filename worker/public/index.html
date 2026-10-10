@@ -755,17 +755,17 @@
   .fx.glint { width: 14px; height: 14px; border-radius: 0; background: none; color: #fff7d6; font-size: 14px; line-height: 14px; text-align: center;
               text-shadow: 0 0 6px #ffd76a, 0 0 12px #ffb02e; }
   /* Orrdle: a starburst, like a sticker on a box of cereal */
-  /* Orrdle: a starburst beside the title, like the sticker on a cereal box: a darker burst behind as its edge,
+  /* Orrdle: a starburst on the title's right corner, tilted right, like the sticker on a cereal box: a darker burst behind as its edge,
      a shaded yellow face, a shadow on the page */
-  .od-burst { position: absolute; top: calc(2px + env(safe-area-inset-top)); left: calc(50% - 136px); width: 60px; height: 60px; z-index: 2;
-              pointer-events: none; transform: rotate(-14deg); filter: drop-shadow(0 3px 3px #000a); }
+  .od-burst { position: absolute; top: calc(2px + env(safe-area-inset-top)); left: calc(50% + 78px); width: 48px; height: 48px; z-index: 2;
+              pointer-events: none; transform: rotate(14deg); filter: drop-shadow(0 3px 3px #000a); }
   .od-burst i, .od-burst em { position: absolute; inset: 0; clip-path: polygon(50% 0%, 59% 13%, 75% 6%, 76% 22%, 93% 25%, 86% 40%, 100% 50%, 86% 60%, 93% 75%, 76% 78%, 75% 94%, 59% 87%, 50% 100%, 41% 87%, 25% 94%, 24% 78%, 7% 75%, 14% 60%, 0% 50%, 14% 40%, 7% 25%, 24% 22%, 25% 6%, 41% 13%); }
   .od-burst i { background: #b2361f; transform: translate(2px, 3px); }   /* the burst's edge, seen below its face */
   .od-burst em { background: radial-gradient(circle at 40% 32%, #fff4a8, #ffd23f 42%, #f0a92b 85%); }
   .od-burst span { position: absolute; inset: 0; display: grid; place-content: center; text-align: center;
-                   color: #b2361f; font: 900 .5rem/1 Fraunces, Georgia, serif; text-transform: uppercase; letter-spacing: .02em;
+                   color: #b2361f; font: 900 .4rem/1 Fraunces, Georgia, serif; text-transform: uppercase; letter-spacing: .02em;
                    text-shadow: 0 1px 0 #fff6c9; }
-  .od-burst b { display: block; font-size: .64rem; margin-top: 1px; }
+  .od-burst b { display: block; font-size: .51rem; margin-top: 1px; }
   /* the sound board's switch: a toggle at the side of the buttons, up for the speakers, down for this phone only.
      No labels: a toast says what it does when it's flipped. A black plate, a chrome bat lever on a pivot nut. */
   .presets { grid-template-columns: repeat(4, minmax(0, 1fr)); flex: 1; min-width: 0; margin-top: 0; }
