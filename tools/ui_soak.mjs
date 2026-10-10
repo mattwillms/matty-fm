@@ -76,7 +76,8 @@ const CHECK = () => {
 };
 
 async function bot(n, engine) {
-  const browser = await engine.launch();
+  // muted: a headless browser still plays through this PC's speakers (the "My phone" pads)
+  const browser = await engine.launch(engine === chromium ? { args: ["--mute-audio"] } : { firefoxUserPrefs: { "media.volume_scale": "0.0" } });
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, hasTouch: true, isMobile: engine === chromium });
   const page = await ctx.newPage();
   const who = `bot${n}-${engine === chromium ? "chromium" : "firefox"}`;
