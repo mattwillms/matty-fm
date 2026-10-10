@@ -583,6 +583,16 @@ export class Party extends DurableObject<Env> {
   async earnMedal(device: string, medal: unknown) {
     if (!MEDALS.includes(medal as (typeof MEDALS)[number])) return { ok: false, error: "No such medal." };
     this.sql.exec("INSERT OR IGNORE INTO medals(device, medal, at) VALUES(?,?,?)", device, String(medal), Date.now());
+    // the first guest to find them all is announced on air (once a party): the station's own news, read at the next break
+    const total = Number(this.one("SELECT COUNT(*) AS n FROM medals WHERE device=?", device)?.n ?? 0);
+    if (total >= MEDALS.length && !this.setting("huntFirst", "")) {
+      const who = String(this.one("SELECT name FROM names WHERE device=?", device)?.name ?? "").replace(/ \d+$/, "") || "One of you";
+      this.set("huntFirst", device);
+      const id = "j" + this.newId().slice(1);
+      this.sql.exec(`INSERT INTO jokes(id,device,name,text,status,created_at,kind,urgent,source)
+        VALUES(?, 'host', 'the host', ?, 'pending', ?, 'announcement', 0, 'host')`, id,
+        `Stop the presses: ${who} is the first tonight to find every medal in the OrrFM scavenger hunt, and wins the golden quarter. A round of applause for our champion!`, Date.now());
+    }
     return { ok: true, hunt: this.hunt(device) };
   }
 
@@ -898,7 +908,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "custom-2",
+      code: "hunt-first",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -1061,6 +1071,7 @@ export class Party extends DurableObject<Env> {
         return { ok: true };
       case "reset": {   // a fresh party: every song, guest, message and limit goes; settings and the id counter stay
         this.seenAt.clear();
+        this.sql.exec("DELETE FROM settings WHERE key='huntFirst'");   // the scavenger hunt's first finisher is announced again
         const onAir = this.one("SELECT id FROM items WHERE status='playing' LIMIT 1");
         const held = this.one("SELECT 1 AS q FROM items WHERE status='queued' LIMIT 1");
         for (const t of ["items", "requesters", "muted", "song_locks", "song_release", "pad_presses", "airlog", "jokes", "commands", "orrdle", "medals", "bonus", "devices", "kicked", "names"])

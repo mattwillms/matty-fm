@@ -595,3 +595,17 @@ describe("custom sounds", () => {
     expect(cmds).toEqual(["pad5-ava", "pad5", "pad5-hadley", "pad2"]);
   });
 });
+
+describe("first to finish the hunt", () => {
+  it("is announced once, by the name they go by", async () => {
+    const p = stub("hunt-first-1");
+    const ALL = ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"];
+    await p.claimName("d1", "Ava"); await p.claimName("d2", "Bo");
+    for (const m of ALL) await p.earnMedal("d1", m);
+    for (const m of ALL) await p.earnMedal("d2", m);
+    const msgs = (await p.adminState()).jokes.filter((j: { source: string }) => j.source === "host");
+    expect(msgs).toHaveLength(1);
+    expect(msgs[0]).toMatchObject({ kind: "announcement", urgent: false });
+    expect(msgs[0].text).toMatch(/Ava is the first tonight to find every medal/);
+  });
+});
