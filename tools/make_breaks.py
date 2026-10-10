@@ -91,6 +91,9 @@ def main() -> None:
         seconds = mix.duration(dest)
         index.append({"file": dest.name, "kind": kind, "seconds": round(seconds, 2), "text": line, "pausesStretched": True})
         print(f"{name}: {seconds:.1f}s via {engine} — {line}")
+    # the sung jingles (tools/jingles/, the host's picks) aren't made here: keep them in the rotation
+    if (out / "index.json").exists():
+        index += [e for e in json.loads((out / "index.json").read_text()) if e.get("jingle")]
     (out / "index.json").write_text(json.dumps(index, indent=1))
     for f in work.iterdir():
         f.unlink()
