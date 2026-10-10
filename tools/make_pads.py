@@ -1,4 +1,11 @@
-"""Make the admin page's five sound pads: media/breaks/pad-1.mp3 … pad-5.mp3.
+"""The sound board's eight pads are now clips chosen by the host (2026-10-10, from myinstants.com, saved by hand:
+the site blocks scripts): siren, applause, yaaay, rizz, Taco Bell bong, thud (vine boom), faaah, bark fart, in the
+order of PRESETS in worker/public/index.html and PADS in admin.html. Each was made with
+  ffmpeg -i IN -af "silenceremove=start_periods=1:start_threshold=-50dB,atrim=0:5,afade=t=out:st=4.4:d=0.6,loudnorm=I=-14:TP=-1.5" -ar 44100 -ac 2 -b:a 160k pad-N.mp3
+and copied to media/breaks/pad-N.mp3 (the speakers) and worker/public/pads/pad-N.mp3 (a phone in My phone mode).
+What follows is the original generator of five demo pads, kept for reference.
+
+Make the admin page's five sound pads: media/breaks/pad-1.mp3 … pad-5.mp3.
 
 Demo sounds from ElevenLabs sound generation. To use your own, drop an mp3 in as
 pad-N.mp3 (same loudness: ffmpeg … -af loudnorm=I=-14:TP=-1.5) and rename the pad
