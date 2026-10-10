@@ -776,6 +776,9 @@
                  background: linear-gradient(#f4f1e8, #c9c4b8); box-shadow: 0 1px 1px #000c, inset 0 -1px 0 #0003; transition: left .12s ease-out; }
   .slide[aria-checked="true"] .knob { left: 22px; }
   .presets.local .preset { filter: none; }
+  /* a guest's own button: their picture as a legend, drained to grey and inset like the emoji */
+  .presets .preset .ico-img { width: 30px; height: 30px; border-radius: 50%; filter: grayscale(1) contrast(1.4) brightness(1.08)
+                              drop-shadow(0 -1.3px 0 #000e) drop-shadow(0 1.3px 0 #ffffff60); }
 </style>
 </head>
 <body>
@@ -2069,6 +2072,7 @@ let nameHere = "";   // the fallback when the browser won't store it (some priva
 function myName() { try { return (localStorage.getItem("mfm_name") || nameHere).trim(); } catch { return nameHere; } }
 function showName() {
   const n = myName();
+  if (window.customReady) showCustomPad();   // a name change can bring (or take away) a guest's own sound (once the buttons exist)
   document.body.classList.toggle("noname", !n);
   document.querySelectorAll(".myName").forEach((b) => b.textContent = n);
 }
@@ -2288,10 +2292,24 @@ function showPresets() {
   const next = Math.max(wait, share);
   if (next > 0) padTimer = setTimeout(showPresets, next + 50);   // pops back up when the wait is over
 }
+// Ava, Hadley and Marie (by the name they go by: "ava 2" counts) have their own sound in place of Applause
+const CUSTOM = { ava: { img: "/pads/icon-ava.webp", label: "Ava's sound" }, hadley: { img: "/pads/icon-hadley.webp", label: "Hadley's sound" },
+                 marie: { ico: "🔍", label: "Mystery" } };
+const CUSTOM_AT = 4;   // the Applause button
+const customFor = () => CUSTOM[myName().toLowerCase().replace(/ \d+$/, "")] ? myName().toLowerCase().replace(/ \d+$/, "") : "";
+function showCustomPad() {
+  const b = $("presets").children[CUSTOM_AT], who = customFor(), c = CUSTOM[who];
+  if (!b) return;
+  const ico = c?.img ? Object.assign(el("img", "ico ico-img"), { src: c.img, alt: "" }) : el("span", "ico", c?.ico || PRESETS[CUSTOM_AT][0]);
+  b.replaceChildren(ico);
+  b.dataset.who = who;
+  b.setAttribute("aria-label", `Play ${c ? c.label : PRESETS[CUSTOM_AT][1]} ${padLocal ? "on this phone" : "on the speakers"}`);
+}
 let padLocal = false;
 try { padLocal = localStorage.getItem("mfm_padlocal") === "1"; } catch {}
 const padSounds = new Map();   // pad number -> its loaded clip (played on this phone in "My phone" mode)
 function playHere(n) {
+  if (n === CUSTOM_AT + 1 && customFor()) n = customFor();   // their own sound
   if (!padSounds.has(n)) padSounds.set(n, new Audio(`/pads/pad-${n}.mp3`));
   const a = padSounds.get(n).cloneNode();   // a fresh copy each press, so quick presses overlap
   a.play().catch(() => {});
@@ -2300,6 +2318,7 @@ function showPadMode() {
   $("padMode").setAttribute("aria-checked", String(padLocal));
   $("presets").classList.toggle("local", padLocal);
   [...$("presets").children].forEach((b, i) => b.setAttribute("aria-label", `Play ${PRESETS[i][1]} ${padLocal ? "on this phone" : "on the speakers"}`));
+  showCustomPad();
   showPresets();
 }
 $("padMode").onclick = () => {
@@ -2334,6 +2353,7 @@ $("presets").replaceChildren(...PRESETS.map(([ico, lbl], i) => {
   };
   return b;
 }));
+window.customReady = true;
 showPadMode();
 $("urgent").addEventListener("change", showLimits);
 $("anon").addEventListener("change", () => { if ($("anon").checked) $("urgent").checked = false; showLimits(); });

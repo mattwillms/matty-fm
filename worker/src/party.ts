@@ -22,6 +22,8 @@ const ORRDLE_WORDS = ["LUCAS", "SETHY", "MARIE", "MATTY", "JULIE", "JULIA", "JAM
   "GRIFF", "SARAH", "RYLEE", "TYLER", "JEFFY", "LYDIA", "FLORA", "REBEL", "DAWGS", "CAJUN"];
 // The scavenger hunt: a medal for each hidden animation a guest makes happen. All of them: a golden quarter.
 export const MEDALS = ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"] as const;
+// Three guests have a sound of their own in place of Applause (pad 5), by the name they go by ("Ava 2" counts)
+const CUSTOM_PAD = 5, CUSTOM_SOUNDS = ["ava", "hadley", "marie"];
 const TALK_S = 15;            // the DJ's intro and the crossfade, per song: for the wait estimate
 const JOKE_S = 25;            // a joke or announcement read between songs
 const PREP_S = 90;            // a song nobody's waiting behind still has to be found and downloaded
@@ -163,7 +165,7 @@ export class Party extends DurableObject<Env> {
       padGapS: Number(this.setting("padGapS", "20")),   // the guests' preset buttons, house-wide (0: off)
     };
   }
-  private command(type: "skip" | "clear" | "break" | "replay" | `pad${number}`, target: string | null = null): void {
+  private command(type: "skip" | "clear" | "break" | "replay" | `pad${string}`, target: string | null = null): void {
     this.sql.exec("INSERT INTO commands(type,created_at,target) VALUES(?,?,?)", type, Date.now(), target);
   }
   /** A skip names the song it was meant for: by the time the studio sees it, that song may be gone. */
@@ -492,7 +494,8 @@ export class Party extends DurableObject<Env> {
     const now = Date.now();
     this.sql.exec("INSERT INTO pad_presses(device, pad, at) VALUES(?,?,?)", device, n, now);
     this.sql.exec("DELETE FROM pad_presses WHERE at<?", now - PAD_EVERY_MS);   // only the last minute matters
-    this.command(`pad${n}`);
+    const who = String(this.one("SELECT name FROM names WHERE device=?", device)?.name ?? "").toLowerCase().replace(/ \d+$/, "");
+    this.command(n === CUSTOM_PAD && CUSTOM_SOUNDS.includes(who) ? `pad${n}-${who}` : `pad${n}`);
     return { ok: true };
   }
 
@@ -895,7 +898,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "pads-8",
+      code: "custom-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),

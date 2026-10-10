@@ -580,3 +580,15 @@ describe("names, coming back", () => {
     expect(await p.claimName("d3", "Ann", true)).toEqual({ ok: true, name: "Ann 3" });
   });
 });
+
+describe("custom sounds", () => {
+  it("Ava, Hadley and Marie's Applause button plays their own sound (any case, numbered names too)", async () => {
+    const p = stub("custom-1");
+    await p.adminAction({ action: "settings", settings: { freePlay: true } });
+    await p.claimName("d1", "ava"); await p.claimName("d2", "Bob"); await p.claimName("d3", "Hadley");
+    await p.guestPad("d1", 5); await p.guestPad("d2", 5); await p.guestPad("d3", 5); await p.guestPad("d1", 2);
+    const cmds = await runInDurableObject(p, async (_i: Party, s) =>
+      s.storage.sql.exec("SELECT type FROM commands WHERE type LIKE 'pad%' ORDER BY id").toArray().map((r) => String(r.type)));
+    expect(cmds).toEqual(["pad5-ava", "pad5", "pad5-hadley", "pad2"]);
+  });
+});
