@@ -613,15 +613,12 @@
             background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='100'%3E%3Cfilter id='g' x='0' y='0' width='1' height='1'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.004 .32' numOctaves='4' seed='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 -1.6 1.1'/%3E%3C/filter%3E%3Crect width='400' height='100' filter='url(%23g)'/%3E%3C/svg%3E") 0 0 / 400px 100%, linear-gradient(#3a2212, #2b180c 45%, #23130a);
             box-shadow: inset 0 1px 0 #ffffff1f, inset 0 -2px 0 #0008, inset 2px 0 0 #ffffff0d, inset -2px 0 0 #0006,
                         0 8px 14px -4px #000c; }
-  .nail { position: absolute; left: 8px; top: 50%; width: 7px; height: 7px; margin-top: -3.5px; border-radius: 50%;
-           background: radial-gradient(circle at 35% 35%, #cfcac0, #6d6962 60%, #2e2c29); box-shadow: 0 1px 1px #000c; }
-  .nail.r { left: auto; right: 8px; }
   .plank-word { position: relative; font: 900 2.6rem/1 Fraunces, Georgia, serif; font-variation-settings: "SOFT" 100, "WONK" 1, "opsz" 144;
                  letter-spacing: -.01em; padding-bottom: 4px;
                  background: linear-gradient(#fff6cf 0%, #f7d77a 22%, #d9a530 46%, #8f6114 54%, #c99227 68%, #f3d27a 88%, #b27f1e 100%);
                  -webkit-background-clip: text; background-clip: text; color: transparent;
                  filter: drop-shadow(0 1px 0 #fff3c2) drop-shadow(0 -1px 0 #5a3c0c) drop-shadow(0 3px 2px #000c); }   /* raised: lit top lip, a shadow on the wood */
-  .plank-heart { flex: none; width: 66px; height: 56px; margin-left: auto; transform: rotate(-4deg); }
+  .plank-heart { flex: none; width: 66px; height: 56px; margin-left: auto; transform: rotate(-4deg); overflow: visible; }
   .plank-heart use { fill: none; stroke-linecap: round; stroke-linejoin: round; }
   .plank-heart .cut-shade { stroke: #0d0603; stroke-width: 3.6; transform: translate(-.5px, -.7px); }   /* the cut's upper wall, in shadow */
   .plank-heart .cut-wood { stroke: #8d633b; stroke-width: 1.7; }   /* the paler wood the knife opened */
@@ -871,13 +868,13 @@
 
   <section class="orrdle-plank" id="orrdle" aria-label="Orrdle, the family Wordle">
     <div class="plank">
-      <span class="nail" aria-hidden="true"></span><span class="nail r" aria-hidden="true"></span>
       <span class="plank-word" aria-hidden="true">Orrdle</span>
       <svg class="plank-heart" viewBox="0 0 70 60" aria-hidden="true">
         <defs><g id="hcut">
           <path d="M35 53C19 41 9 32 9 20.5 9 12 15.5 6 23 6c5.5 0 9.6 3.3 12 7.6C37.4 9.3 41.5 6 47 6c7.5 0 14 6 14 14.5C61 32 51 41 35 53Z"/>
-          <path d="M6 9L64 51"/><path d="M64 51l-8.2-1.6M64 51l-2.4-7.9"/>
-          <path d="M6 9l1.2 5.2M6 9l5.2 1.2M10 11.9l1.2 5.2M10 11.9l5.2 1.2M14 14.8l1.2 5.2M14 14.8l5.2 1.2"/>
+          <!-- the arrow passes behind the heart: only its fletched tail (top left) and its head (bottom right) show -->
+          <path d="M0 4.7L10.8 12.5M49.6 41.1L66 52.4"/><path d="M66 52.4l-3.4-6.1M66 52.4l-6.9-1.3"/>
+          <path d="M3 6.9l-1.6-4.7M3 6.9l-5-.1M5.6 8.8l-1.6-4.7M5.6 8.8l-5-.1M8.2 10.6l-1.6-4.7M8.2 10.6l-5-.1"/>
           <text x="35" y="33" text-anchor="middle">M+M</text></g></defs>
         <use href="#hcut" class="cut-shade"/><use href="#hcut" class="cut-wood"/>
       </svg>
