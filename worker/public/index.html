@@ -2791,7 +2791,7 @@ function viewCoin(m, slot) {
   for (let z = -4.5; z <= 4.5; z += 1.5) { const d = el("s"); d.style.setProperty("--z", `${z}px`); coin.append(d); }
   coin.append(el("i", "gleam front"), el("i", "gleam back"));
   stage.append(coin);
-  const twinkle = setInterval(() => { if (!view.isConnected) return clearInterval(twinkle); sparkleAround(stage.getBoundingClientRect(), 2, .5); }, 650);
+  const twinkle = setInterval(() => { if (!view.isConnected || view.classList.contains("closing")) return clearInterval(twinkle); sparkleAround(stage, 2, .5, view); }, 650);
   const cap = el("div", "mview-cap"), when = at ? new Date(at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) : "";
   cap.append(el("h3", null, m.name), el("p", null, m.desc), el("p", "why", m.why + (when ? ` (${when})` : "")));
   const close = el("button", "sleeve-close"); close.type = "button"; close.setAttribute("aria-label", "Put it back");
@@ -2826,20 +2826,33 @@ function viewCoin(m, slot) {
   });
   const letGo = () => { drag = null; coin.style.cursor = ""; vel = Math.max(-900, Math.min(900, vel)); };
   stage.addEventListener("pointerup", letGo); stage.addEventListener("pointercancel", letGo);
-  const putBack = () => { if (closing) return; closing = { t: performance.now(), to: Math.round(angle / 360) * 360 }; view.classList.add("closing"); };
+  const putBack = () => {
+    if (closing) return;
+    closing = { t: performance.now(), to: Math.round(angle / 360) * 360 }; view.classList.add("closing");
+    clearInterval(twinkle); view.querySelectorAll(".spk").forEach((x) => x.remove());   // no sparkle outlives the view
+  };
   close.onclick = putBack;
   view.addEventListener("click", (e) => { if (e.target === view) putBack(); });
 }
 // An anime sparkle: a four-point star with a glow and a long thin cross flare, popping in, turning, popping out.
-function sparkle(x, y, size = 16) {
-  const e = fxBit("spk", x - size / 2, y - size / 2, { width: size + "px", height: size + "px" });
+// host: where it lives (it goes when that goes, and scrolls with it); x and y are screen coordinates
+function sparkle(x, y, size = 16, host = document.body) {
+  if (!host.isConnected) return;
+  const h = host === document.body ? { left: 0, top: 0 } : host.getBoundingClientRect();
+  const e = el("i", "fx spk");
+  Object.assign(e.style, { left: x - h.left - size / 2 + "px", top: y - h.top - size / 2 + "px", width: size + "px", height: size + "px" });
+  if (host !== document.body) e.style.position = "absolute";
+  host.append(e);
   e.innerHTML = '<svg viewBox="0 0 40 40" aria-hidden="true"><path d="M20 0C21 14 26 19 40 20 26 21 21 26 20 40 19 26 14 21 0 20 14 19 19 14 20 0z" fill="#fff"/><path d="M20 -14V54M-14 20H54" stroke="#fff" stroke-width=".8" opacity=".7"/></svg>';
   e.animate([{ transform: "scale(0) rotate(0)", opacity: 0 }, { transform: "scale(1.15) rotate(45deg)", opacity: 1, offset: .35 },
              { transform: "scale(.2) rotate(110deg)", opacity: 0 }], { duration: 650 + Math.random() * 350, easing: "ease-out" }).onfinish = () => e.remove();
 }
-function sparkleAround(r, n, inset = .1) {   // n sparkles scattered over a rectangle (inset: how far in from the edges)
+function sparkleAround(target, n, inset = .1, host = document.body) {   // n sparkles scattered over an element's box
   for (let k = 0; k < n; k++)
-    setTimeout(() => sparkle(r.left + r.width * (inset / 2 + Math.random() * (1 - inset)), r.top + r.height * (inset / 2 + Math.random() * (1 - inset)), 10 + Math.random() * 14), k * 90);
+    setTimeout(() => {   // measured as each one appears, so a scroll in between doesn't leave it behind
+      const r = target.getBoundingClientRect();
+      sparkle(r.left + r.width * (inset / 2 + Math.random() * (1 - inset)), r.top + r.height * (inset / 2 + Math.random() * (1 - inset)), 10 + Math.random() * 14, host);
+    }, k * 90);
 }
 // the Orrdle sign: tarnished until it's rubbed; enough rubbing and it gleams (and that's a medal). Once shined it
 // stays shined: it catches the light now and then, and rubbing it again only makes it sparkle.
@@ -2850,7 +2863,8 @@ function sparkleAround(r, n, inset = .1) {   // n sparkles scattered over a rect
   word.style.setProperty("--tarn", tarn);
   word.classList.toggle("shiny", tarn <= 0);
   const gleam = () => { word.classList.remove("gleaming"); void word.offsetWidth; word.classList.add("gleaming"); };
-  const shine = (n) => { gleam(); sparkleAround(word.getBoundingClientRect(), n, .05); };
+  const plank = word.closest(".plank");
+  const shine = (n) => { gleam(); sparkleAround(word, n, .05, plank); };
   setInterval(() => { if (tarn <= 0 && document.visibilityState === "visible" && word.getBoundingClientRect().top < innerHeight) shine(2); }, 7000);
   word.addEventListener("pointerdown", (e) => { prev = e.clientX; });
   word.addEventListener("pointermove", (e) => {
@@ -2864,7 +2878,7 @@ function sparkleAround(r, n, inset = .1) {   // n sparkles scattered over a rect
     } else if (performance.now() - lastSpark > 140) {   // polished: rubbing throws sparkles, never dulls it
       lastSpark = performance.now();
       const r = word.getBoundingClientRect();
-      sparkle(Math.min(r.right, Math.max(r.left, e.clientX)), r.top + Math.random() * r.height, 12 + Math.random() * 12);
+      sparkle(Math.min(r.right, Math.max(r.left, e.clientX)), r.top + Math.random() * r.height, 12 + Math.random() * 12, plank);
       if (Math.random() < .25) gleam();
     }
   });
