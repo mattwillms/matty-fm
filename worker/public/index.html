@@ -811,7 +811,7 @@
   .presets .preset .ico-img { width: 24px; height: 24px; border-radius: 50%; filter: grayscale(1) contrast(1.4) brightness(1.08)
                               drop-shadow(0 -1.3px 0 #000e) drop-shadow(0 1.3px 0 #ffffff60); }
   /* the signature at the foot of the page, and the story behind it */
-  .made-by { display: grid; place-items: center; margin: 8px 0 26px; }
+  .made-by { display: grid; place-items: center; margin: 0 0 -22px; }   /* 18px below, as above: the page's own 40px bottom padding, less 22 */
   .made-by button { display: grid; justify-items: center; gap: 2px; padding: 8px 18px; background: none; box-shadow: none; color: var(--cream-dim); }
   .made-by span { font: 500 .78rem/1 Jost, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
   .made-by img { width: 120px; height: auto; filter: drop-shadow(0 1px 0 #000a) drop-shadow(0 0 8px #f0a92b44); }
@@ -822,7 +822,11 @@
   .about h3 { margin: 28px 0 10px; font: 800 1.35rem/1.15 Fraunces, Georgia, serif; color: var(--gold); }
   .about p, .about li { font: 400 1.02rem/1.55 Jost, sans-serif; color: var(--cream-dim); }
   .about .ab-flow { display: block; width: 100%; max-width: 360px; margin: 6px auto 14px; }
-  .about .ab-parts { padding-left: 1.1em; margin: 0; }
+  .about .ab-parts { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+  .about .ab-parts li { position: relative; padding-left: 20px; }
+  .about .ab-parts li::before { content: ""; position: absolute; left: 3px; top: .62em; width: 7px; height: 7px; border-radius: 50%;
+                                background: var(--gold); box-shadow: 0 0 6px #f0a92b88; }   /* gold bullets */
+  .about .ab-love { margin: 40px 0 0; text-align: center; font: 800 1.6rem/1.2 Fraunces, Georgia, serif; color: var(--cream); }
 </style>
 </head>
 <body>
@@ -1114,10 +1118,17 @@
       <p>Matt keeps a notes vault called mathom (a hobbit's word for a thing kept because it might be useful someday). Every lesson
         learned the hard way goes in it: why something failed, what fixed it, what to check before building the next one. Claude reads
         it before starting work and adds to it when a session teaches something, so a mistake made once isn't made again on the next
-        project. This build added one: how to listen in on the Pi's live mix without ever being able to silence the party.</p>
+        project. This build added one, from the listening tap: a way to hear the party's live mix from another room, wired so
+        that if the tap ever fails, the party's own sound carries on untouched.</p>
+      <p>The notes follow one rule Matt holds to: every piece of knowledge has exactly one home, chosen by who needs it, not by what
+        it's about. How to work with Matt goes in the instructions every session reads. How to run one project goes in that project's
+        own notes. What someone picking up the code would need goes in its docs. And what's still worth knowing if the project were
+        deleted, the lessons that carry to the next one, goes in mathom. Four tiers, one copy of each fact, links everywhere else,
+        so nothing drifts out of date in a second place.</p>
       <h3>The parts</h3>
       <ul class="ab-parts"><li>Cloudflare Workers and Durable Objects</li><li>Python on a home PC</li><li>A Raspberry Pi and a USB sound card</li>
         <li>Claude (the DJ's words) and ElevenLabs (the DJ's voice)</li><li>SomaFM's Seventies station, between requests</li><li>YouTube and Apify for the songs, LRCLIB for the lyrics</li></ul>
+      <p class="ab-love">I love you <span aria-hidden="true">💖</span></p>
     </article>
   </dialog>
 
