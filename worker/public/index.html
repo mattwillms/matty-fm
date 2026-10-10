@@ -2275,7 +2275,7 @@ function showEta(s) {
 // The preset buttons: the host's five sound pads. One press a minute per phone (the pressed one latches
 // down), and the whole house shares them: after anyone's press they all dim for the gap (admin: 5-60 s).
 // Free play: no limit. The host can switch them off.
-const PRESETS = [["🚨", "Siren"], ["👏", "Applause"], ["🎉", "Yaaay"], ["😏", "Rizz"], ["🌮", "Bong"], ["💥", "Thud"], ["😱", "Faaah"], ["💨", "Bark fart"]];
+const PRESETS = [["🚨", "Siren"], ["🌮", "Bong"], ["💥", "Thud"], ["😏", "Rizz"], ["👏", "Applause"], ["🎉", "Yaaay"], ["😱", "Faaah"], ["💨", "Bark fart"]];
 let padUntil = 0, shareUntil = 0, padDown = -1, padTimer = null, padsOff = false;
 function showPresets() {
   const now = Date.now(), wait = padLocal ? 0 : padUntil - now, share = padLocal ? 0 : shareUntil - now;

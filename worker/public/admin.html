@@ -471,7 +471,7 @@ function renderNow() {
 }
 
 // Five pads, each tied to a sound on the studio (media/breaks/pad-N.mp3), played on the PA.
-const PADS = [["🚨", "Siren"], ["👏", "Applause"], ["🎉", "Yaaay"], ["😏", "Rizz"], ["🌮", "Bong"], ["💥", "Thud"], ["😱", "Faaah"], ["💨", "Bark fart"]];
+const PADS = [["🚨", "Siren"], ["🌮", "Bong"], ["💥", "Thud"], ["😏", "Rizz"], ["👏", "Applause"], ["🎉", "Yaaay"], ["😱", "Faaah"], ["💨", "Bark fart"]];
 $("pads").replaceChildren(...PADS.map(([ico, lbl], i) => {
   const b = el("button", "pad"); b.type = "button"; b.setAttribute("aria-label", `Play ${lbl}`);
   b.append(el("span", "ico", ico), el("span", "lbl", lbl));
