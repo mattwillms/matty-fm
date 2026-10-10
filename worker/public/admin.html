@@ -386,7 +386,7 @@ async function call(path, body) {
   if (fromLink && !call.saved) { call.saved = true; try { localStorage.setItem("mfm_t", token); } catch {} }   // once, after the link's token works
   return r.json();
 }
-const DONE = { approve: "In the line", dropJokes: "Jokes dropped", reset: "Party wiped", kick: "Kicked: that phone starts over", giveCoin: "Quarter given", takeCoin: "Quarter taken back", resetHunt: "Hunt reset", partyStart: "Party clock started", partyEnd: "Party ended and archived",  announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
+const DONE = { approve: "In the line", dropJokes: "Jokes dropped", reset: "Party wiped", kick: "Kicked: that phone starts over", freePlay: "Free play changed for that phone", giveCoin: "Quarter given", takeCoin: "Quarter taken back", resetHunt: "Hunt reset", partyStart: "Party clock started", partyEnd: "Party ended and archived",  announce: "Announcement sent: the DJ reads it as soon as it's recorded", deleteJoke: "Removed", replay: "Replaying the DJ read", skip: "Skipped", delete: "Deleted", move: "Moved", resend: "Back in line", add: "Added to the queue",
   mute: "Phone muted", unmute: "Phone unmuted", release: "Released: they can pick two more", settings: "Updated", break: "Bumper coming up" };
 function act(body, ev) {
   const btn = ev && ev.currentTarget instanceof HTMLButtonElement ? ev.currentTarget : null;
@@ -836,6 +836,7 @@ async function loadGuests() {
     top.append(el("span", "gname", g.names.join(", ") || "No name yet"), el("span", "gseen", ago(g.lastAt)));
     const tags = el("span", "gtags");
     if (g.muted) tags.append(el("span", "gtag bad", "Muted"));
+    if (g.freePlay) tags.append(el("span", "gtag gold", "Free play"));
     if (g.locked) tags.append(el("span", "gtag", "Waiting on songs"));
     if (g.coins) tags.append(el("span", "gtag gold", `+${g.coins} quarter${g.coins > 1 ? "s" : ""}`));
     if (g.golden === "ready") tags.append(el("span", "gtag gold", "Golden quarter"));
@@ -844,6 +845,8 @@ async function loadGuests() {
     const stats = el("div", "gstats", [`${g.requests} request${g.requests === 1 ? "" : "s"}`, `${g.played} played`, g.waiting ? `${g.waiting} waiting` : "",
       g.messages ? `${g.messages} message${g.messages === 1 ? "" : "s"}` : "", g.orrdle ? `${g.orrdle} Orrdle` : "", `${g.medals}/${r.medals} medals`].filter(Boolean).join(" · "));
     const acts = el("div", "gacts"), act2 = (label, body, cls = "sm") => btn(cls, label, async (e) => { await act(body, e); loadGuests(); });
+    acts.append(g.freePlay ? act2("End free play", { action: "freePlay", device: g.device, on: false }, "sm ghost")
+      : act2("Free play", { action: "freePlay", device: g.device, on: true }));   // no limits for just this phone
     acts.append(act2("Give a quarter", { action: "giveCoin", device: g.device }));
     if (g.coins) acts.append(act2("Take one back", { action: "takeCoin", device: g.device }, "sm ghost"));
     if (g.locked) acts.append(act2("Fresh picks", { action: "release", device: g.device }, "sm ghost"));

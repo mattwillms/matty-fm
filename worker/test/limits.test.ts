@@ -642,3 +642,27 @@ describe("medal pace", () => {
     expect(last.retryIn).toBeGreaterThan(90_000);
   });
 });
+
+describe("free play for one phone", () => {
+  it("the host can lift one phone's limits without lifting everyone's", async () => {
+    const p = stub("free-one-1");
+    for (const t of ["A1", "A2"]) expect((await p.submit("d1", T(t))).ok).toBe(true);
+    for (const t of ["B1", "B2"]) expect((await p.submit("d2", T(t))).ok).toBe(true);
+    expect((await p.submit("d1", T("A3"))).ok).toBe(false);   // both quarters in
+    expect((await p.adminAction({ action: "freePlay", device: "d1", on: true })).ok).toBe(true);
+    expect((await p.guestState("d1")).limits.freePlay).toBe(true);
+    expect((await p.guestState("d2")).limits.freePlay).toBe(false);
+    for (const t of ["A3", "A4", "A5"]) expect((await p.submit("d1", T(t))).ok).toBe(true);
+    expect((await p.submit("d2", T("B3"))).ok).toBe(false);   // everyone else still has two
+    const g = (await p.adminAction({ action: "guests" })) as { guests: { device: string; freePlay: boolean }[] };
+    expect(g.guests.find((x) => x.device === "d1")?.freePlay).toBe(true);
+    expect(g.guests.find((x) => x.device === "d2")?.freePlay).toBe(false);
+    // its jokes never expire, like free play for everyone
+    await p.submitJoke("d1", { name: "Ray", text: "Why did the chicken cross the road? Worms." });
+    await sql(p, "UPDATE jokes SET created_at=created_at-50*60000");
+    await p.beat(beat);
+    expect((await p.guestState("d1")).myJokes[0].status).toBe("pending");
+    await p.adminAction({ action: "freePlay", device: "d1", on: false });
+    expect((await p.submit("d1", T("A6"))).ok).toBe(false);
+  });
+});
