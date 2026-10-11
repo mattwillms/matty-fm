@@ -380,9 +380,8 @@ export class Party extends DurableObject<Env> {
     this.sql.exec(`UPDATE jokes SET status=?, file=?, seconds=?, script=?, lease_until=0, ended_at=? WHERE id=? AND status IN ('preparing','pending')`,
       status, status === "ready" ? String(r.file ?? "") : null, Number.isFinite(secs) ? secs : null, clean(r.script ?? "", 1000),
       status === "ready" ? null : Date.now(), String(r.id));
-    // an "urgent announcement" the DJ found to be a joke: it waits its turn in the joke line (free play: it cuts in)
-    if (r.isJoke === true && !this.free(String(this.one("SELECT device FROM jokes WHERE id=?", String(r.id))?.device ?? "")))
-      this.sql.exec("UPDATE jokes SET kind='joke', urgent=0 WHERE id=? AND source='guest' AND urgent=1", String(r.id));
+    // an urgent stays urgent even when the DJ hears a shout-out ("Coco, get over here!" is one, and it can't wait):
+    // the one-an-hour and one-per-10-minutes limits already keep urgent rare (party 2026-10-11)
     return { ok: true };
   }
 
@@ -929,7 +928,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "free-one-1",
+      code: "urgent-stays-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),

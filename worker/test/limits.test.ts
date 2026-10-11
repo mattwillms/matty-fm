@@ -397,16 +397,16 @@ describe("party test fixes", () => {
     expect((await p.guestState("d1")).myJokes[0].status).toBe("pending");
   });
 
-  it("an urgent that's really a joke joins the joke line; the host can drop every joke", async () => {
+  it("an urgent stays urgent even when the DJ calls it a joke; the host can drop every joke", async () => {
     const p = stub("demote-1");
     const u = await p.submitJoke("d1", { name: "Pop", text: "URGENT knock knock who is there banana", kind: "announcement", urgent: true });
     await p.beat({ ...beat, wantJokes: 1 });
     await p.jokeResult({ id: u.id!, status: "ready", file: "u.mp3", seconds: 5, script: "x", isJoke: true });
-    expect((await p.beat(beat)).nextJoke).toMatchObject({ id: u.id, urgent: false, kind: "joke" });
+    expect((await p.beat(beat)).nextJoke).toMatchObject({ id: u.id, urgent: true, kind: "announcement" });
     await p.submitJoke("d2", { name: "Ann", text: "Cake is on the back table at 3 o'clock.", kind: "announcement" });
     await p.adminAction({ action: "dropJokes" });
     const left = (await p.adminState()).jokes.filter((x) => ["pending", "preparing", "ready"].includes(x.status));
-    expect(left.map((x) => x.kind)).toEqual(["announcement"]);
+    expect(left.map((x) => x.kind)).toEqual(["announcement", "announcement"]);
   });
 });
 
