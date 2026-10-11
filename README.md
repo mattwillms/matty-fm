@@ -51,7 +51,8 @@ a Raspberry Pi:    the console: SomaFM, two song decks, the DJ and the sound pad
   studio goes quiet, SomaFM keeps playing.
 
 Every layer has a fallback, so a failure costs polish, never silence:
-- If ElevenLabs runs out, a free Cloudflare voice reads the line instead.
+- If ElevenLabs fails or runs out of credit, a second voice reads the line: Deepgram's Aura, which runs on
+  Cloudflare's own AI service (Workers AI). If that fails too, a stock clip plays.
 - If a download fails, the guest's request is marked failed and the next song plays.
 - If the home PC drops off, the Pi stays on SomaFM.
 
@@ -68,7 +69,7 @@ Every layer has a fallback, so a failure costs polish, never silence:
 
 | Service | Job | Cost for one party |
 |---|---|---|
-| Cloudflare Workers Paid | the queue, the pages, a backup voice | $5 a month |
+| Cloudflare Workers Paid | the queue, the pages, the backup voice (Aura on Workers AI) | $5 a month; the voice is pennies |
 | Anthropic (Claude) | writes the DJ's lines; checks that a request is a real song | pay as you go; small for one night |
 | ElevenLabs | the DJ's voice, the station IDs, the sung jingles | Starter plan or above |
 | YouTube Data API | finds songs | free (about 100 searches a day) |
