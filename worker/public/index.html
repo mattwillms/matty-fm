@@ -741,11 +741,8 @@
   .slots .ghost.golden, .slots .ghost.coin { border: 0; background: var(--heads) center / 100% 100% no-repeat; filter: drop-shadow(0 1.5px 1px #000a); }
   .slots .ghost.golden { background-image: url(/golden-heads.webp); filter: drop-shadow(0 1.5px 1px #000a) drop-shadow(0 0 4px #f0c04a88); }   /* the hen quarter */
   .slots .ghost.gone { visibility: hidden; }
-  /* Orrdle's sign starts tarnished; rubbing it brings the gold up */
+  /* Orrdle's sign is gold from the start; rubbing it throws sparkles */
   .plank-word { touch-action: pan-y; cursor: grab; }
-  .plank-word::after { content: attr(data-text); position: absolute; left: 0; top: 0; opacity: var(--tarn, 1); pointer-events: none;
-                       background: linear-gradient(100deg, #5b4a2a, #3e3a26 30%, #6a5530 55%, #2f2c1d 80%, #4d4128);
-                       -webkit-background-clip: text; background-clip: text; color: transparent; }
   .plank-word::before { content: attr(data-text); position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; z-index: 1;
                         background: linear-gradient(105deg, transparent 38%, #fffbe8 47%, #ffffff 50%, #fffbe8 53%, transparent 62%) 160% 0 / 300% 100% no-repeat;
                         -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -1045,7 +1042,7 @@
 
   <section class="orrdle-plank" id="orrdle" aria-label="Orrdle, the family Wordle">
     <div class="plank">
-      <span class="plank-word" aria-hidden="true" data-text="Orrdle">Orrdle</span>
+      <span class="plank-word shiny" aria-hidden="true" data-text="Orrdle">Orrdle</span>
       <svg class="plank-heart" viewBox="0 0 70 60" aria-hidden="true">
         <defs><g id="hcut">
           <path d="M35 53C19 41 9 32 9 20.5 9 12 15.5 6 23 6c5.5 0 9.6 3.3 12 7.6C37.4 9.3 41.5 6 47 6c7.5 0 14 6 14 14.5C61 32 51 41 35 53Z"/>
@@ -3221,31 +3218,30 @@ function sparkleAround(target, n, inset = .1, host = document.body) {   // n spa
       sparkle(r.left + r.width * (inset / 2 + Math.random() * (1 - inset)), r.top + r.height * (inset / 2 + Math.random() * (1 - inset)), 10 + Math.random() * 14, host);
     }, k * 90);
 }
-// the Orrdle sign: tarnished until it's rubbed; enough rubbing and it gleams (and that's a medal). Once shined it
-// stays shined: it catches the light now and then, and rubbing it again only makes it sparkle.
+// the Orrdle sign: gold from the start. Rubbing it throws sparkles, and enough rubbing makes it gleam (that's a
+// medal). It catches the light now and then.
 (() => {
   const word = document.querySelector(".plank-word");
-  let tarn = 1, prev = null, lastSpark = 0;
-  word.style.setProperty("--tarn", tarn);
-  // polished exactly when the Elbow Grease medal is earned: a hunt reset tarnishes it again
+  let rub = 1, prev = null, lastSpark = 0;   // rubbing left before the medal: 1 → 0
+  // 0 exactly when the Elbow Grease medal is earned: a hunt reset makes it earnable again
   window.signPolished = (on) => {
-    if (on === (tarn <= 0) || prev != null) return;   // no change, or someone's rubbing it right now
-    tarn = on ? 0 : 1; word.style.setProperty("--tarn", tarn); word.classList.toggle("shiny", on);
+    if (on === (rub <= 0) || prev != null) return;   // no change, or someone's rubbing it right now
+    rub = on ? 0 : 1;
   };
   const gleam = () => { word.classList.remove("gleaming"); void word.offsetWidth; word.classList.add("gleaming"); };
   const plank = word.closest(".plank");
   const shine = (n) => { gleam(); sparkleAround(word, n, .05, plank); };
-  setInterval(() => { if (tarn <= 0 && document.visibilityState === "visible" && word.getBoundingClientRect().top < innerHeight) shine(2); }, 7000);
+  setInterval(() => { if (document.visibilityState === "visible" && word.getBoundingClientRect().top < innerHeight) shine(2); }, 7000);
   word.addEventListener("pointerdown", (e) => { prev = e.clientX; });
   word.addEventListener("pointermove", (e) => {
     if (prev == null) return;
     if (e.pointerType === "mouse" && !e.buttons) { prev = null; return; }
     const moved = Math.abs(e.clientX - prev); prev = e.clientX;
-    if (tarn > 0) {
-      tarn = Math.max(0, tarn - moved / 1400);
-      word.style.setProperty("--tarn", tarn.toFixed(3));
-      if (tarn <= 0) { word.classList.add("shiny"); shine(10); earn("polish"); }
-    } else if (performance.now() - lastSpark > 140) {   // polished: rubbing throws sparkles, never dulls it
+    if (rub > 0) {
+      rub = Math.max(0, rub - moved / 1400);
+      if (rub <= 0) { shine(10); earn("polish"); return; }
+    }
+    if (performance.now() - lastSpark > 140) {
       lastSpark = performance.now();
       const r = word.getBoundingClientRect();
       sparkle(Math.min(r.right, Math.max(r.left, e.clientX)), r.top + Math.random() * r.height, 12 + Math.random() * 12, plank);
@@ -3253,7 +3249,7 @@ function sparkleAround(target, n, inset = .1, host = document.body) {   // n spa
     }
   });
   for (const ev of ["pointerup", "pointercancel", "pointerleave"]) word.addEventListener(ev, () => { prev = null; });
-  word.addEventListener("click", () => { if (tarn <= 0) shine(4); });
+  word.addEventListener("click", () => shine(4));
 })();
 // the four screws all spinning inside ten seconds
 const screwSpins = new Map();
