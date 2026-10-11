@@ -741,8 +741,11 @@
   .slots .ghost.golden, .slots .ghost.coin { border: 0; background: var(--heads) center / 100% 100% no-repeat; filter: drop-shadow(0 1.5px 1px #000a); }
   .slots .ghost.golden { background-image: url(/golden-heads.webp); filter: drop-shadow(0 1.5px 1px #000a) drop-shadow(0 0 4px #f0c04a88); }   /* the hen quarter */
   .slots .ghost.gone { visibility: hidden; }
-  /* Orrdle's sign is gold from the start; rubbing it throws sparkles */
+  /* Orrdle's sign starts gold with a light tarnish; rubbing it clears the rest and throws sparkles */
   .plank-word { touch-action: pan-y; cursor: grab; }
+  .plank-word::after { content: attr(data-text); position: absolute; left: 0; top: 0; opacity: var(--tarn, 0); pointer-events: none;
+                       background: linear-gradient(100deg, #5b4a2a, #3e3a26 30%, #6a5530 55%, #2f2c1d 80%, #4d4128);
+                       -webkit-background-clip: text; background-clip: text; color: transparent; }
   .plank-word::before { content: attr(data-text); position: absolute; left: 0; top: 0; pointer-events: none; opacity: 0; z-index: 1;
                         background: linear-gradient(105deg, transparent 38%, #fffbe8 47%, #ffffff 50%, #fffbe8 53%, transparent 62%) 160% 0 / 300% 100% no-repeat;
                         -webkit-background-clip: text; background-clip: text; color: transparent; }
@@ -3218,15 +3221,18 @@ function sparkleAround(target, n, inset = .1, host = document.body) {   // n spa
       sparkle(r.left + r.width * (inset / 2 + Math.random() * (1 - inset)), r.top + r.height * (inset / 2 + Math.random() * (1 - inset)), 10 + Math.random() * 14, host);
     }, k * 90);
 }
-// the Orrdle sign: gold from the start. Rubbing it throws sparkles, and enough rubbing makes it gleam (that's a
-// medal). It catches the light now and then.
+// the Orrdle sign: gold under a light tarnish. Rubbing clears it and throws sparkles; enough rubbing makes it gleam
+// (that's a medal). It catches the light now and then.
 (() => {
   const word = document.querySelector(".plank-word");
+  const TARN = .4;   // how dull it starts: a light film over the gold, never the full tarnish
   let rub = 1, prev = null, lastSpark = 0;   // rubbing left before the medal: 1 → 0
+  const film = () => word.style.setProperty("--tarn", (TARN * rub).toFixed(3));
+  film();
   // 0 exactly when the Elbow Grease medal is earned: a hunt reset makes it earnable again
   window.signPolished = (on) => {
     if (on === (rub <= 0) || prev != null) return;   // no change, or someone's rubbing it right now
-    rub = on ? 0 : 1;
+    rub = on ? 0 : 1; film();
   };
   const gleam = () => { word.classList.remove("gleaming"); void word.offsetWidth; word.classList.add("gleaming"); };
   const plank = word.closest(".plank");
@@ -3238,7 +3244,7 @@ function sparkleAround(target, n, inset = .1, host = document.body) {   // n spa
     if (e.pointerType === "mouse" && !e.buttons) { prev = null; return; }
     const moved = Math.abs(e.clientX - prev); prev = e.clientX;
     if (rub > 0) {
-      rub = Math.max(0, rub - moved / 1400);
+      rub = Math.max(0, rub - moved / 1400); film();
       if (rub <= 0) { shine(10); earn("polish"); return; }
     }
     if (performance.now() - lastSpark > 140) {
