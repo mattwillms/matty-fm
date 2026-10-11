@@ -40,4 +40,4 @@ New DNS may take a while to resolve at home: the Pi-hole caches "no such name" (
 5. Router: DHCP reservations for the workstation and the Pi (ethernet `b8:27:eb:f6:be:b2`, Edimax wifi `74:da:38:89:dc:5f`).
 
 ## 5. Print
-`.venv/bin/python tools/qr_card.py` → `media/qr-card.html`, print 6–8.
+`.venv/bin/python tools/qr_card.py` → `media/qr-card.html` (US Letter; print from a browser with background graphics on).
