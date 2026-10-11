@@ -38,7 +38,7 @@ The host gets a booth page with:
 guests' phones ──► Cloudflare Worker + one Durable Object (the queue: the single source of truth)
                         ▲ │  a heartbeat every ~3 s
                         │ ▼
-a PC at home:      the studio (Python): finds and downloads each song, writes and voices the DJ's line
+a PC at home:      the studio (Python): finds each song, writes and voices the DJ's line
                         │  push / skip / status over the home network
                         ▼
 a Raspberry Pi:    the console: SomaFM, two song decks, the DJ and the sound pads, mixed live ──► the PA
@@ -53,13 +53,13 @@ a Raspberry Pi:    the console: SomaFM, two song decks, the DJ and the sound pad
 Every layer has a fallback, so a failure costs polish, never silence:
 - If ElevenLabs fails or runs out of credit, a second voice reads the line: Deepgram's Aura, which runs on
   Cloudflare's own AI service (Workers AI). If that fails too, a stock clip plays.
-- If a download fails, the guest's request is marked failed and the next song plays.
+- If a song can't be found, the guest's request is marked failed and the next song plays.
 - If the home PC drops off, the Pi stays on SomaFM.
 
 | Folder | What lives there |
 |---|---|
 | `worker/` | The guest page (`public/index.html`), the booth (`public/admin.html`), the queue (`src/party.ts`) and its tests |
-| `studio/` | Song search and download, the DJ's writer and voice, the break scheduler, and their tests |
+| `studio/` | Finding songs, the DJ's writer and voice, the break scheduler, and their tests |
 | `pi/` | The console (`console.py`), its sound-card config, its service file and setup script |
 | `tools/` | One-off makers (station IDs, jingles, sound pads, icons, the QR card), the party simulator, deploy and log helpers |
 | `docs/` | Setup, the day-of checklist, hotfix rules, teardown, the code audit, the party-test reports |
@@ -72,8 +72,7 @@ Every layer has a fallback, so a failure costs polish, never silence:
 | Cloudflare Workers Paid | the queue, the pages, the backup voice (Aura on Workers AI) | $5 a month; the voice is pennies |
 | Anthropic (Claude) | writes the DJ's lines; checks that a request is a real song | pay as you go; small for one night |
 | ElevenLabs | the DJ's voice, the station IDs, the sung jingles | Starter plan or above |
-| YouTube Data API | finds songs | free (about 100 searches a day) |
-| Apify | downloads songs on its servers, so your home IP stays off YouTube's bot radar | about 2.5¢ a song |
+| Song sources | find the requested songs | a few dollars |
 | Apple search, LRCLIB | album, year, cover; lyrics | free |
 | SomaFM Seventies | the music between requests, played as an ordinary listener | free ([please donate](https://somafm.com/support/)) |
 
@@ -105,8 +104,7 @@ Secrets live only in `~/.config/mattyfm/env` and in the Worker's secrets, never 
 
 ## Things learned the hard way
 
-The [`CLAUDE.md`](CLAUDE.md) findings list holds them all. The ones most likely to bite you:
-- **YouTube flags a home IP after about 50 downloads.** Search with the official API and download somewhere else.
+The [`CLAUDE.md`](CLAUDE.md) findings list holds them all. A few that would bite anyone:
 - **SomaFM drops any listener whose software calls itself Liquidsoap** (its no-restreaming rule). Play it as an
   ordinary listener, and don't disguise the name.
 - **Cloudflare bills every database row a query looks at,** not only the rows it returns. An unindexed poll took

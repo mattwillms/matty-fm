@@ -7,8 +7,7 @@ the Cloudflare/ElevenLabs/Anthropic accounts. Values with spaces are quoted.
 - `ANTHROPIC_API_KEY` — the DJ's lines and the "is this a real song?" check.
 - `ELEVENLABS_API_KEY` — **Starter plan or above**: library voices need a paid plan. A party of ~100 intros
   uses about 35k characters.
-- `YOUTUBE_API_KEY` — YouTube Data API v3, for search only (~100 searches a day on the free quota; one key).
-- `APIFY_TOKEN` — downloads run on Apify's servers, so the home IP never pulls from YouTube (~$0.024 a song).
+- `YOUTUBE_API_KEY`, `APIFY_TOKEN` — the song sources (`studio/mattyfm/sources.py`).
 - `PARTY_CODE`, `ADMIN_TOKEN`, `STUDIO_SECRET`, `DEVICE_SECRET` — generate:
   `python3 -c 'import secrets;print(secrets.token_urlsafe(6))'` for the code, `openssl rand -hex 32` for the rest.
 - `PI_TOKEN` — `openssl rand -hex 16`; the studio and the Pi share it.
@@ -22,7 +21,7 @@ the Cloudflare/ElevenLabs/Anthropic accounts. Values with spaces are quoted.
 3. Units: `for u in files studio listen; do ln -sf ~/dev/mattyfm/systemd/mattyfm-$u.service ~/.config/systemd/user/; done; systemctl --user daemon-reload`,
    then `loginctl enable-linger $USER` so they come back after a power cut without a login.
 4. Assets and cache: `.venv/bin/python tools/make_assets.py`, then `.venv/bin/python tools/precache.py tools/precache.txt`
-   (downloads the songs you expect, ahead of time).
+   (fetches the songs you expect, ahead of time).
 
 ## 3. Worker (fm.willms.co)
 ```
