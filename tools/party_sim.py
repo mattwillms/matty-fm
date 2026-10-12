@@ -23,8 +23,8 @@ from mattyfm.config import load_env  # noqa: E402
 
 CREDIT_FLOOR = 12_000
 MEDALS = ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"]
-ORRDLE = ["LUCAS", "SETHY", "MARIE", "MATTY", "JULIE", "JULIA", "JAMES", "NANCY", "SHAWN", "BYRON", "AARON",
-          "GRIFF", "SARAH", "RYLEE", "TYLER", "JEFFY", "LYDIA", "FLORA", "REBEL", "DAWGS", "CAJUN"]
+ORRDLE = ["DISCO", "VINYL", "RADIO", "FUNKY", "DANCE", "MUSIC", "PARTY", "TUNES", "SWING", "BLUES", "LYRIC",
+          "CHORD", "TEMPO", "BANJO", "PIANO", "DRUMS", "BRASS", "ORGAN", "AUDIO", "HOUSE", "PORCH"]
 PRECACHE = Path(__file__).with_name("precache.txt")
 
 FRESH = [   # not pre-downloaded: these go through the YouTube lookup and a download
@@ -233,7 +233,7 @@ class Guest:
             elif r < 0.84:   # tries to cheat the hunt: every medal at once
                 await asyncio.gather(*[self.medal(m) for m in MEDALS])
             elif r < 0.9:    # tries someone else's name, then an emoji one
-                await self.claim(random.choice(["Ava", "Marie", "Hadley", "Matt"]))
+                await self.claim(random.choice(["Linda", "June", "Ray", "Matt"]))
                 await self.claim("💀💀💀")
             await self.sleep(20, 120)
 

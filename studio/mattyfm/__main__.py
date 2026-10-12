@@ -402,8 +402,8 @@ def main() -> None:
                 time.sleep(max(0.0, BEAT_S - (time.monotonic() - started)))
                 continue
             for c in reply["commands"]:
-                pad = re.fullmatch(r"pad([1-8])(?:-(ava|hadley|marie))?", c["type"])
-                if pad:   # a sound pad (admin or guest): straight to the console's fx channel; three guests have their own
+                pad = re.fullmatch(r"pad([1-8])(?:-([a-z]+))?", c["type"])
+                if pad:   # a sound pad (admin or guest): straight to the console's fx channel; a guest may have their own
                     log.info("command: pad %s%s", pad[1], f" ({pad[2]})" if pad[2] else "")
                     try:
                         station.fx(f"breaks/pad-{pad[2] or pad[1]}.mp3")

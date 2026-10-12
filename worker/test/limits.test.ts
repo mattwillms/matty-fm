@@ -437,14 +437,14 @@ describe("party clock", () => {
     expect(stats).toMatchObject({ played: 1, skipped: 0, requests: 2, guests: 3, messages: 0, medianWaitMin: 10 });
     void old;
     expect((await p.adminState()).party.end).toBeNull();
-    await p.adminAction({ action: "partyEnd", title: "Orr reunion 2026" });
+    await p.adminAction({ action: "partyEnd", title: "Family reunion 2026" });
     expect((await p.adminState()).party.end).toBeGreaterThan(0);
     expect((await p.adminAction({ action: "partyEnd" })).ok).toBe(false);   // ended once: not archived twice
     const { state } = (await p.adminAction({ action: "export" })) as unknown as { state: { items: unknown[]; requesters: unknown[]; jokes: unknown[] } };
     expect([state.items.length, state.requesters.length, state.jokes.length]).toEqual([2, 3, 1]);   // the host's copy of the whole night
     await p.adminAction({ action: "reset" });   // a wipe keeps the archive
     const { parties } = (await p.adminAction({ action: "archive" })) as { parties: { title: string; stats: { requests: number } }[] };
-    expect(parties.map((x) => [x.title, x.stats.requests])).toEqual([["Orr reunion 2026", 2]]);
+    expect(parties.map((x) => [x.title, x.stats.requests])).toEqual([["Family reunion 2026", 2]]);
     await p.adminAction({ action: "deleteParty", id: String((parties[0] as unknown as { id: number }).id) });
     expect(((await p.adminAction({ action: "archive" })) as { parties: unknown[] }).parties).toEqual([]);
   });
@@ -565,10 +565,10 @@ describe("names", () => {
   });
   it("one phone per name (any case), letters only; a kicked phone coming back with its name gets it numbered", async () => {
     const p = stub("names-1");
-    expect(await p.claimName("d1", "Ava")).toEqual({ ok: true, name: "Ava" });
-    expect((await p.claimName("d2", "ava")).ok).toBe(false);                 // taken, whatever the case
-    expect((await p.claimName("d2", "Ava 😀")).ok).toBe(false);              // letters only
-    expect((await p.claimName("d2", "Ava2")).ok).toBe(false);
+    expect(await p.claimName("d1", "Lena")).toEqual({ ok: true, name: "Lena" });
+    expect((await p.claimName("d2", "lena")).ok).toBe(false);                 // taken, whatever the case
+    expect((await p.claimName("d2", "Lena 😀")).ok).toBe(false);              // letters only
+    expect((await p.claimName("d2", "Lena2")).ok).toBe(false);
     expect(await p.claimName("d2", "Mary  Ann")).toEqual({ ok: true, name: "Mary Ann" });
     await p.adminAction({ action: "kick", device: "d1" });
     const g = (await p.adminAction({ action: "guests" })) as { guests: { device: string; names: string[] }[] };
@@ -576,10 +576,10 @@ describe("names", () => {
     await new Promise((r) => setTimeout(r, 5)); await p.guestState("d1");
     const g2 = (await p.adminAction({ action: "guests" })) as { guests: { device: string; names: string[] }[] };
     expect(g2.guests.find((x) => x.device === "d1")?.names).toEqual([]);   // ...until it's back, unnamed
-    expect(await p.claimName("d1", "AVA")).toEqual({ ok: true, name: "AVA 2" });   // back, same name: numbered
-    expect(await p.claimName("d3", "Ava")).toEqual({ ok: true, name: "Ava" });     // the plain name was free again
+    expect(await p.claimName("d1", "LENA")).toEqual({ ok: true, name: "LENA 2" });   // back, same name: numbered
+    expect(await p.claimName("d3", "Lena")).toEqual({ ok: true, name: "Lena" });     // the plain name was free again
     const r = await p.submit("d3", { ...T("SOS"), name: "Somebody" });          // sends something else: its own name wins
-    expect((await p.adminState()).items.find((i: { id: string }) => i.id === r.id)?.requesters[0].name).toBe("Ava");
+    expect((await p.adminState()).items.find((i: { id: string }) => i.id === r.id)?.requesters[0].name).toBe("Lena");
   });
 
   it("typed text loses emoji and symbols; accents stay", async () => {
@@ -602,14 +602,17 @@ describe("names, coming back", () => {
 });
 
 describe("custom sounds", () => {
-  it("Ava, Hadley and Marie's Applause button plays their own sound (any case, numbered names too)", async () => {
+  it("a guest with a sound of their own hears it on Applause (any case, numbered names too)", async () => {
+    const { customPad } = await import("../src/party");
+    const names = ["sam"];
+    expect([customPad(5, "sam", names), customPad(5, "bob", names), customPad(2, "sam", names)]).toEqual(["pad5-sam", "pad5", "pad2"]);
+    expect(customPad(5, "sam")).toBe("pad5");   // none set up: plain Applause for everyone
     const p = stub("custom-1");
     await p.adminAction({ action: "settings", settings: { freePlay: true } });
-    await p.claimName("d1", "ava"); await p.claimName("d2", "Bob"); await p.claimName("d3", "Hadley");
-    await p.guestPad("d1", 5); await p.guestPad("d2", 5); await p.guestPad("d3", 5); await p.guestPad("d1", 2);
+    await p.claimName("d1", "Sam 2"); await p.guestPad("d1", 5);
     const cmds = await runInDurableObject(p, async (_i: Party, s) =>
       s.storage.sql.exec("SELECT type FROM commands WHERE type LIKE 'pad%' ORDER BY id").toArray().map((r) => String(r.type)));
-    expect(cmds).toEqual(["pad5-ava", "pad5", "pad5-hadley", "pad2"]);
+    expect(cmds).toEqual(["pad5"]);
   });
 });
 
@@ -617,13 +620,13 @@ describe("first to finish the hunt", () => {
   it("is announced once, by the name they go by", async () => {
     const p = stub("hunt-first-1");
     const ALL = ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"];
-    await p.claimName("d1", "Ava"); await p.claimName("d2", "Bo");
+    await p.claimName("d1", "Lena"); await p.claimName("d2", "Bo");
     await earnAll(p, "d1", ALL);
     await earnAll(p, "d2", ALL);
     const msgs = (await p.adminState()).jokes.filter((j: { source: string }) => j.source === "host");
     expect(msgs).toHaveLength(1);
     expect(msgs[0]).toMatchObject({ kind: "announcement", urgent: false });
-    expect(msgs[0].text).toMatch(/Ava is the first tonight to find every medal/);
+    expect(msgs[0].text).toMatch(/Lena is the first tonight to find every medal/);
   });
 });
 

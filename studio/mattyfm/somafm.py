@@ -24,7 +24,7 @@ class NowPlaying:
         if time.monotonic() - self.fetched >= self.every_s:
             self.fetched = time.monotonic()
             try:
-                r = self.http.get(FEED, headers={"User-Agent": "OrrFM-studio/1.0"}, timeout=5)
+                r = self.http.get(FEED, headers={"User-Agent": "MattyFM-studio/1.0"}, timeout=5)
                 r.raise_for_status()
                 song = r.json()["songs"][0]
                 # a station ID or a gap can come with no artist or title: never let "None" reach the DJ

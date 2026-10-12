@@ -62,10 +62,10 @@ def test_pause_cues_go_to_elevenlabs_but_never_to_aura(tmp_path, monkeypatch):
     def aura(text):
         sent["aura"] = text
         return b"ID3voice"
-    tts.speak("You're on OrrFM. [pause] All requests, all night.", "funny", tmp_path / "v.mp3",
+    tts.speak("You're on MattyFM. [pause] All requests, all night.", "funny", tmp_path / "v.mp3",
               http=client(handler), aura=aura, assets=tmp_path, names={})
     assert "[pause]" in sent["eleven"]
-    assert "[" not in sent["aura"] and "OrrFM" in sent["aura"]
+    assert "[" not in sent["aura"] and "MattyFM" in sent["aura"]
 
 
 def test_voices_are_picked_by_weight_from_the_settings_file(tmp_path):

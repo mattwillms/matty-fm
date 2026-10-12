@@ -1,10 +1,10 @@
 [Unit]
-Description=OrrFM file server (song and DJ voice files for the Pi console, LAN only)
+Description=MattyFM file server (song and DJ voice files for the Pi console, LAN only)
 After=network-online.target
 
 [Service]
 WorkingDirectory=%h/dev/mattyfm/studio
-ExecStart=/usr/bin/systemd-inhibit --what=sleep:idle --who=OrrFM --why="Party radio on air" %h/dev/mattyfm/.venv/bin/python -m mattyfm.files
+ExecStart=/usr/bin/systemd-inhibit --what=sleep:idle --who=MattyFM --why="Party radio on air" %h/dev/mattyfm/.venv/bin/python -m mattyfm.files
 Restart=always
 RestartSec=3
 

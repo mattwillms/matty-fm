@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One-shot OrrFM console setup, run ON the Pi:
+# One-shot MattyFM console setup, run ON the Pi:
 #   sudo bash setup.sh http://<workstation-ip>:8040 <PI_TOKEN>
 set -euo pipefail
 files="$1"

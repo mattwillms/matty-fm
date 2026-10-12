@@ -37,7 +37,7 @@ no crash paths, no data loss.
   `ICON_SPENT`, the left cable's path, always-true `typeof` guards, the one-time `mfm_polished` cleanup; split
   `.presets` rules.
 - **Text size** — text below 16 px on a guest's screen: radio stamps (dial numbers 9.6, REQUESTED 10.4, RETURN ~10,
-  placard 11), the flip clock's AM (5.8), the For Marie burst (6–8), About diagram labels (11–12), Made by (12.5),
+  placard 11), the flip clock's AM (5.8), the For Y'all burst (6–8), About diagram labels (11–12), Made by (12.5),
   Orrdle's Enter (12.5), hints (15).
 
 ### Admin page (admin.html)

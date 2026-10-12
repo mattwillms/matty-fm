@@ -17,13 +17,17 @@ const MAX_WAITING_PER_DEVICE = 2;
 const MAX_ASKS_PER_SONG = 2;
 const PAD_EVERY_MS = 60_000;   // a guest's preset buttons: one sound a minute per phone
 const PAD_GAPS_S = [0, 5, 20, 60];   // the whole house shares the buttons: one sound per gap (admin; 0 = buttons off)
-// Orrdle (the family Wordle): the answers. Testing list; the real one comes from the host.
-const ORRDLE_WORDS = ["LUCAS", "SETHY", "MARIE", "MATTY", "JULIE", "JULIA", "JAMES", "NANCY", "SHAWN", "BYRON", "AARON",
-  "GRIFF", "SARAH", "RYLEE", "TYLER", "JEFFY", "LYDIA", "FLORA", "REBEL", "DAWGS", "CAJUN"];
+// Orrdle (the family Wordle): the answers, five letters each. Put your family's names and nicknames here; these are
+// stand-ins.
+const ORRDLE_WORDS = ["DISCO", "VINYL", "RADIO", "FUNKY", "DANCE", "MUSIC", "PARTY", "TUNES", "SWING", "BLUES", "LYRIC",
+  "CHORD", "TEMPO", "BANJO", "PIANO", "DRUMS", "BRASS", "ORGAN", "AUDIO", "HOUSE", "PORCH"];
 // The scavenger hunt: a medal for each hidden animation a guest makes happen. All of them: a golden quarter.
 export const MEDALS = ["eggs", "kaboom", "snap", "needle", "static", "colors", "screws", "gnat", "polish"] as const;
-// Three guests have a sound of their own in place of Applause (pad 5), by the name they go by ("Ava 2" counts)
-const CUSTOM_PAD = 5, CUSTOM_SOUNDS = ["ava", "hadley", "marie"];
+// Guests with a sound of their own in place of Applause (pad 5), by the name they go by ("Sam 2" counts), lowercase:
+// ["sam"] plays media/breaks/pad-sam.mp3. Keep CUSTOM in index.html and the pattern in studio/mattyfm/__main__.py in step.
+const CUSTOM_PAD = 5, CUSTOM_SOUNDS: string[] = [];
+export const customPad = (n: number, who: string, names: readonly string[] = CUSTOM_SOUNDS) =>
+  n === CUSTOM_PAD && names.includes(who) ? `pad${n}-${who}` as const : `pad${n}` as const;
 const TALK_S = 15;            // the DJ's intro and the crossfade, per song: for the wait estimate
 const JOKE_S = 25;            // a joke or announcement read between songs
 const PREP_S = 90;            // a song nobody's waiting behind still has to be found and downloaded
@@ -386,7 +390,7 @@ export class Party extends DurableObject<Env> {
   }
 
   /** The name a phone goes by tonight: one phone per name (case doesn't count), English letters and spaces only.
-   *  A phone the host kicked that comes back asking for its old name gets it numbered ("Ava 2"), if that's free. */
+   *  A phone the host kicked that comes back asking for its old name gets it numbered ("Ann 2"), if that's free. */
   async claimName(device: string, raw: unknown, auto = false) {   // auto: taken, so take the next number (a new guest: "Ann 2")
     const asked = String(raw ?? "").replace(/\s+/g, " ").trim();
     if (!/^[A-Za-z]+( [A-Za-z]+)*$/.test(asked) || asked.length > 24)
@@ -497,7 +501,7 @@ export class Party extends DurableObject<Env> {
     this.sql.exec("INSERT INTO pad_presses(device, pad, at) VALUES(?,?,?)", device, n, now);
     this.sql.exec("DELETE FROM pad_presses WHERE at<?", now - PAD_EVERY_MS);   // only the last minute matters
     const who = String(this.one("SELECT name FROM names WHERE device=?", device)?.name ?? "").toLowerCase().replace(/ \d+$/, "");
-    this.command(n === CUSTOM_PAD && CUSTOM_SOUNDS.includes(who) ? `pad${n}-${who}` : `pad${n}`);
+    this.command(customPad(n, who));
     return { ok: true };
   }
 

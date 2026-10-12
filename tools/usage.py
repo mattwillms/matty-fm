@@ -1,4 +1,4 @@
-"""Cloudflare usage for OrrFM, hour by hour: Worker requests and queue rows read/written.
+"""Cloudflare usage for MattyFM, hour by hour: Worker requests and queue rows read/written.
 
 Run: python3 tools/usage.py [hours]   (default 12; uses wrangler's login, run `npx wrangler login` if it fails)
 Rows read are what the free plan capped at 5M/day; on Workers Paid 25B/month are included.

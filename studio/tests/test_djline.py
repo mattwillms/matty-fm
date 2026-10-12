@@ -196,7 +196,7 @@ def test_stretched_and_split_words_are_caught_like_the_worker():
 def test_a_shortened_or_accented_song_name_counts_as_named():
     # seen live: "Furacão 2000 - Mimosa 2000" voiced as "...Here's Furacao 2000 with Mimosa. Here's Furacao 2000 with Mimosa 2000."
     it = {**item(), "artist": "Furacão 2000", "title": "Mimosa 2000"}
-    reply = json.dumps({"ok": True, "tone": "funny", "script": "This one's for you, Ava. Here's Furacao 2000 with Mimosa."})
+    reply = json.dumps({"ok": True, "tone": "funny", "script": "This one's for you, Linda. Here's Furacao 2000 with Mimosa."})
     assert djline.write_line(it, FakeClient(reply)).script.count("Here's") == 1
     it = {**item(), "artist": "Earth, Wind & Fire", "title": "September (Remastered 2003)"}
     reply = json.dumps({"ok": True, "tone": "funny", "script": "For Bob, here's Earth, Wind and Fire with September."})
@@ -206,7 +206,7 @@ def test_a_shortened_or_accented_song_name_counts_as_named():
 
 
 def test_prompt_says_the_requester_sends_the_song_not_receives_it():
-    # live 2026-10-08: "This one goes out to Marie" when Marie requested it for her sweetheart
+    # live 2026-10-08: "This one goes out to <name>" when a guest requested it for her sweetheart
     s = djline.SYSTEM.lower()
     assert "from them" in s and "never say it goes out to" in s
 

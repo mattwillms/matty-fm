@@ -70,7 +70,7 @@ describe("smoke 2", () => {
     await runInDurableObject(p, async (_i: Party, s) => { s.storage.sql.exec("UPDATE items SET started_at=started_at-300000"); });
     await p.beat({ ...beat });
     const now = Date.now();
-    await p.beat({ ...beat, aired: Array.from({ length: 20 }, (_, i) => ({ kind: "id", text: "OrrFM", at: now + i })) });
+    await p.beat({ ...beat, aired: Array.from({ length: 20 }, (_, i) => ({ kind: "id", text: "MattyFM", at: now + i })) });
     await p.beat({ ...beat, aired: Array.from({ length: 20 }, (_, i) => ({ kind: "goof", text: "ha", at: now + 100 + i })) });
     const st = await p.adminState();
     expect(st.history.some((h: any) => h.id === a), "the one song played is gone from the timeline after 40 bumpers").toBe(true);

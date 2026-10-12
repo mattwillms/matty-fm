@@ -66,7 +66,7 @@ async function cachedLyrics(artist: string, title: string, seconds: number, fami
   const hit = await caches.default.match(key);
   if (hit) found = await hit.json();
   else {
-    const ua = { "user-agent": "OrrFM/1.0 (a family party radio)" };
+    const ua = { "user-agent": "MattyFM/1.0 (a family party radio)" };
     const q = new URLSearchParams({ artist_name: artist, track_name: title, ...(seconds ? { duration: String(Math.round(seconds)) } : {}) });
     const get = async (u: string) => { try { const r = await fetch(u, { headers: ua, signal: AbortSignal.timeout(5000) }); return r.ok ? await r.json() : null; } catch { return null; } };
     let row = await get(`https://lrclib.net/api/get?${q}`) as Record<string, unknown> | null;

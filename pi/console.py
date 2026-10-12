@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The OrrFM console on the Pi: SomaFM, two song decks and a DJ channel, mixed here.
+"""The MattyFM console on the Pi: SomaFM, two song decks and a DJ channel, mixed here.
 
 Channels (each an ALSA softvol control into dmix on the USB card):
   soma  SomaVol   SomaFM, streamed live (the Pi is an ordinary listener)
@@ -71,7 +71,7 @@ SOMA_STEADY_S = 5.0     # a stream that reconnects, bursts and stalls stays "dow
 CHUNK = 4096
 PIPE_BYTES = 4096
 F_SETPIPE_SZ = 1031
-USER_AGENT = "OrrFM-Pi/1.0 (personal listener; mpg123)"
+USER_AGENT = "MattyFM-Pi/1.0 (personal listener; mpg123)"
 CONTROLS = {"soma": "SomaVol", "deckA": "DeckAVol", "deckB": "DeckBVol", "dj": "DjVol"}
 DECKS = ("deckA", "deckB")
 

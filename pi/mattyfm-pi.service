@@ -1,5 +1,5 @@
 [Unit]
-Description=OrrFM console (SomaFM, two song decks and the DJ, mixed on the Pi)
+Description=MattyFM console (SomaFM, two song decks and the DJ, mixed on the Pi)
 After=network-online.target sound.target
 Wants=network-online.target
 StartLimitIntervalSec=0

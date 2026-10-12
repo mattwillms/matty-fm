@@ -1,4 +1,4 @@
-// Home-screen icons: the "O" (for Orr) of the wordmark, drawn by the page's own font and 70s
+// Home-screen icons: the "O" of the wordmark, drawn by the page's own font and 70s
 // offset stack on the cocoa ground. Renders in headless Chromium so the letter is the real
 // Fraunces glyph, then writes worker/public/icon-{512,192,180}.png.
 // Usage: NODE_PATH=<dir with playwright>/node_modules node tools/make_icons.mjs

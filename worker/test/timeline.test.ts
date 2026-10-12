@@ -320,7 +320,7 @@ describe("smoke 1: export/import + purge", () => {
     const old = stub("exp-old");
     const a = await readyItem(old, "SOS", "d1");
     await old.submitJoke("d1", { name: "Ann", text: "why did the chicken cross" });
-    await old.beat({ ...beat, aired: [{ kind: "bumper", text: "OrrFM", at: Date.now() - 1000 }] });
+    await old.beat({ ...beat, aired: [{ kind: "bumper", text: "MattyFM", at: Date.now() - 1000 }] });
     await old.adminAction({ action: "mute", device: "zz" });
     const s = await old.exportState();
     const fresh = stub("exp-new");
@@ -342,9 +342,9 @@ describe("smoke 1: export/import + purge", () => {
 
   it("purge wipes guest names and texts everywhere", async () => {
     const p = stub("purge");
-    await p.submit("d1", { track: T("SOS"), name: "Grandma Orr", message: "for my love" });
-    await p.submitJoke("d1", { name: "Grandma Orr", text: "secret family joke here" });
-    await p.beat({ ...beat, aired: [{ kind: "backannounce", text: "That was for Grandma Orr", at: Date.now() }] });
+    await p.submit("d1", { track: T("SOS"), name: "Grandma June", message: "for my love" });
+    await p.submitJoke("d1", { name: "Grandma June", text: "secret family joke here" });
+    await p.beat({ ...beat, aired: [{ kind: "backannounce", text: "That was for Grandma June", at: Date.now() }] });
     await runInDurableObject(p, async (i: Party) => { await i.alarm(); });
     const dump = JSON.stringify(await p.exportState()) + JSON.stringify(await p.adminState());
     console.log("after purge contains name?", dump.includes("Grandma"));

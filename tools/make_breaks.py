@@ -33,15 +33,9 @@ CLIPS = [
     ("goof", "funny", "small crowd cheering briefly", f"Breaking news on {S}: the dance floor is open, and nobody is judging. Much."),
     ("goof", "funny", "game show ding ding ding correct answer", f"If you can hear this, congratulations. You're already having fun on {S}."),
     ("goof", "funny", "retro telephone ringing twice", f"The {S} request line is open. Don't be shy, the DJ needs material."),
-    # the family is Mississippi State and Ole Miss (rivals); everyone dislikes LSU (and Bama)
-    ("goof", "funny", "single cowbell clang, stadium echo", f"[smug] {S} house rules. Cowbells, allowed. Hotty Toddy, allowed. [long pause] Purple and gold can wait in the truck."),
-    ("goof", "funny", "news helicopter rotor whir, short", f"{S} traffic. Cowbells in the left lane, Hotty Toddy in the right. [long pause] [deadpan] Purple and gold, you're on the shoulder. Stay there."),
-    ("goof", "funny", "boxing ring bell, two dings", "Hail State and Hotty Toddy in the same backyard, and nobody's bleeding. [long pause] [deadpan] Turns out you'll forgive anybody once Lane Kiffin moves to Baton Rouge."),
-    ("goof", "funny", "marching band snare drum roll, short", "The Egg Bowl's a month out. Today, it's a truce. [long pause] [smug] We're all family here. Except Bama. Bama's still waiting by the phone for Saban."),
-    # the food: Matt is frying fish and hush puppies; boiled peanuts; beer
+    # the house jokes: write your own family's teams, rivalries and food here
     ("goof", "funny", "hot oil sizzling in a fryer, short", "[smug] The fish just hit the grease. [long pause] If you can smell that and you're still sitting down, I can't help you."),
     ("goof", "funny", "kitchen timer ding", "Matt's on the fryer. [long pause] [deadpan] If the fish is perfect, tell him. If it isn't, tell him louder."),
-    ("goof", "funny", "paper bag rustling, peanuts shaking", "[deadpan] Public service announcement. Boiled peanuts go in your mouth. [long pause] The shells go wherever you want. We're in the country. There is no HOA."),
     ("goof", "funny", "dinner bell triangle ringing", "RETIRED [excited] Hush puppies are up. [long pause] Fair warning: there is no line. Just fast people and hungry people."),
     ("goof", "funny", "beer can cracking open with a fizz", f"That sound means the cooler's open. [long pause] [playful] {S} reminds you: one beer, one water. We're not your mom. Mostly."),
     ("skip", "funny", "vinyl record scratch, fast", "Whoa! Let's try something else."),

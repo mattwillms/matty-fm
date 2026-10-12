@@ -959,7 +959,7 @@
 
   <dialog class="sleeve-box orrdle-box" id="orrdleBox" aria-label="Orrdle">
     <button class="sleeve-close" id="orrdleClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-    <h2 class="od-title">ORRDLE<span class="od-burst" aria-hidden="true"><i></i><em></em><span>For<b>Marie!</b></span></span></h2>
+    <h2 class="od-title">ORRDLE<span class="od-burst" aria-hidden="true"><i></i><em></em><span>For<b>Y'all!</b></span></span></h2>
     <button class="sleeve-close od-statsbtn" id="odMine" type="button" aria-label="Your stats"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20V12M12 20V5M19 20v-9"/></svg></button>
     <div class="od-board" id="odBoard"></div>
     <div class="od-msg" id="odMsg" role="status"></div>
@@ -1074,7 +1074,7 @@
     <button class="sleeve-close" id="aboutClose" type="button" aria-label="Close"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <article class="about">
       <img class="ab-sig" src="/matty-sig.webp" alt="matty">
-      <p class="ab-lede">WORR is a radio station made for one night: the Orr family reunion.</p>
+      <p class="ab-lede">WORR is a radio station made for one night: one family reunion.</p>
       <h3>Who made it</h3>
       <p>Matt Williams (matty) builds websites and software. He works on two Arch Linux computers he built himself, set up exactly
         alike. He builds with an AI partner: Claude, made by Anthropic, working in a tool called Claude Code.</p>
@@ -2295,7 +2295,7 @@ function showName() {
   document.querySelectorAll(".myName").forEach((b) => b.textContent = n);
 }
 // The name is claimed with the Worker: one phone per name tonight (any case), letters only. It may come back
-// numbered ("Ava 2": this phone was kicked and asked for its old name again).
+// numbered ("Ann 2": this phone was kicked and asked for its old name again).
 async function claimName(n, auto = false) {
   return api("/api/name", { method: "POST", headers: { "content-type": "application/json" },
     body: JSON.stringify({ name: n, auto }), signal: AbortSignal.timeout(10000) });
@@ -2520,9 +2520,9 @@ function showPresets() {
   const next = Math.max(wait, share);
   if (next > 0) padTimer = setTimeout(showPresets, next + 50);   // pops back up when the wait is over
 }
-// Ava, Hadley and Marie (by the name they go by: "ava 2" counts) have their own sound in place of Applause
-const CUSTOM = { ava: { img: "/pads/icon-ava.webp", label: "Ava's sound" }, hadley: { img: "/pads/icon-hadley.webp", label: "Hadley's sound" },
-                 marie: { ico: "🔍", label: "Mystery" } };
+// Guests with their own sound in place of Applause, by the name they go by ("sam 2" counts), with CUSTOM_SOUNDS in
+// party.ts: e.g. sam: { img: "/pads/icon-sam.webp", label: "Sam's sound" } or { ico: "🔍", label: "Mystery" }
+const CUSTOM = {};
 const CUSTOM_AT = 4;   // the Applause button
 const customFor = () => CUSTOM[myName().toLowerCase().replace(/ \d+$/, "")] ? myName().toLowerCase().replace(/ \d+$/, "") : "";
 function showCustomPad() {
@@ -2932,7 +2932,7 @@ async function odStart() {
     Object.assign(od, { id: r.id, stats: r.stats }); odSay("");
   } catch { odSay("Couldn't reach the DJ booth. Try again in a moment."); }
 }
-// "Juliarific!", "Aaronarific!", "Mattytastic!": the name, then a suffix that joins it the way you'd say it
+// "Lindarific!", "Kevinarific!", "Mattytastic!": the name, then a suffix that joins it the way you'd say it
 function odCheer(word) {
   const name = word[0] + word.slice(1).toLowerCase(), vowel = /[aeiouy]$/i.test(word);
   const ends = vowel ? ["rific", "tastic", "licious", "riffic"] : ["arific", "tastic", "alicious", "arama"];
@@ -3265,8 +3265,8 @@ document.querySelectorAll(".screw").forEach((sc) => sc.addEventListener("click",
 }));
 // Made by: the story of the app, for anyone who asks
 $("aboutBtn").onclick = () => { const d = $("about"); if (overlayUp(d)) return;
-  const dear = /^(marie|hadley|ava)\b/i.exec(myName());   // by name, just for them
-  $("abLove").firstChild.textContent = dear ? `I love you, ${dear[1][0].toUpperCase() + dear[1].slice(1).toLowerCase()} ` : "I love you ";
+  const dear = customFor();   // by name, for the guests with their own sound
+  $("abLove").firstChild.textContent = dear ? `I love you, ${dear[0].toUpperCase() + dear.slice(1)} ` : "I love you ";
   fadeShow(d); document.documentElement.classList.add("od-open"); };
 $("aboutClose").onclick = () => fadeClose($("about"));
 $("about").addEventListener("close", () => document.documentElement.classList.remove("od-open"));

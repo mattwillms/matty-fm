@@ -613,7 +613,7 @@ describe("QA round", () => {
     await runInDurableObject(p, async (_i: Party, state) => { state.storage.sql.exec("UPDATE items SET started_at=? WHERE id=?", t0 - 300_000, a); });
     await p.beat({ ...beat, source: "soma" });                    // the song ends...
     await new Promise((r) => setTimeout(r, 5));
-    const ident = { kind: "id", text: "You're tuned to OrrFM.", at: Date.now() };
+    const ident = { kind: "id", text: "You're tuned to MattyFM.", at: Date.now() };
     await p.beat({ ...beat, source: "soma", aired: [ident] });   // ...then a station ID plays
     await new Promise((r) => setTimeout(r, 5));
     const { id: j } = await p.submitJoke("m", { name: "Matt", text: "This is two tents, a pun." });

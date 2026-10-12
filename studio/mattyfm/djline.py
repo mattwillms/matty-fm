@@ -175,7 +175,7 @@ stage directions, no quotation marks.
 their message in a few words, if there is one.
 - A requester who paid with the golden quarter earned it by finding every medal in the radio's \
 scavenger hunt: make a little ceremony of it (one short phrase: a golden quarter, a champion's pick).
-- The requester is the sender: the song comes from them ("From Marie...", "Marie \
+- The requester is the sender: the song comes from them ("From Linda...", "Linda \
 sends this one..."). Never say it goes out to, is for, or is dedicated to the \
 requester; if their message names who it's for, it goes out to that person.
 - Never assume relationships, ages or roles (no grandparents, kids, couples, \
@@ -564,7 +564,7 @@ unless the sender listed them).
 - Examples of the right size and touch:
   "Buffet is open! Snooze you loose" -> "The buffet is open, folks. Snooze you lose!"
   "we are out of beer" -> "Heads up, folks: we are out of beer."
-  "group photo by the big oak tree at 4pm" (from Marie) -> "Marie says everybody gather by the big oak tree at 4 for the group photo."
+  "group photo by the big oak tree at 4pm" (from Linda) -> "Linda says everybody gather by the big oak tree at 4 for the group photo."
 - If it isn't an announcement (an ad, spam), or has slurs, sexual content or cruelty toward a real \
 person, set ok to false.
 - Set is_joke to true when it's really a joke, a bit or a shout-out rather than news people \
