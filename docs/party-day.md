@@ -27,8 +27,7 @@ day before the privacy wipe; names and messages stay out of this repo.
   test in `limits.test.ts`). Two messages sent before the fix aired late.
 - **The booth's Station Off switch was on** after the Pi moved outside, so the Pi was silent. Switched back on from
   the booth API.
-- **One song matched the wrong video** ("Video is the ending of a different song"): the doubt check flagged it, it
-  played anyway.
+- **One song matched the wrong recording.** The studio noted the mismatch, but the song played anyway.
 - **Guests' phones ran hot with heavy use** (several guests). Not measured; likely the page never idles (see the
   `CLAUDE.md` finding).
 
