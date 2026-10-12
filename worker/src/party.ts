@@ -380,7 +380,7 @@ export class Party extends DurableObject<Env> {
     this.sql.exec(`UPDATE jokes SET status=?, file=?, seconds=?, script=?, lease_until=0, ended_at=? WHERE id=? AND status IN ('preparing','pending')`,
       status, status === "ready" ? String(r.file ?? "") : null, Number.isFinite(secs) ? secs : null, clean(r.script ?? "", 1000),
       status === "ready" ? null : Date.now(), String(r.id));
-    // an urgent stays urgent even when the DJ hears a shout-out ("Coco, get over here!" is one, and it can't wait):
+    // an urgent stays urgent even when the DJ hears a shout-out ("come find me, now" is one, and it can't wait):
     // the one-an-hour and one-per-10-minutes limits already keep urgent rare (party 2026-10-11)
     return { ok: true };
   }

@@ -41,3 +41,9 @@ Version 0.1.0 (semver = big.small.bug).
 - Bumpers rotate as a shuffle bag per kind (media/breaks/plays.json): every clip plays before any repeats.
 - **Every row a queue query looks at is billed** (free plan: 5M rows read/day; it took the queue down on 2026-10-08; the account is now on Workers Paid). Polls must stay indexed: `worker/test/reads.test.ts` pins rows per poll, queries over 500 rows log "heavy query" to Workers Logs, and `python3 tools/usage.py [hours]` shows hourly requests and rows read.
 - **Match confidence is not a junk test** (party test 2026-10-09: real songs scored 25–45, "lol" scored 55). The studio asks the DJ's model whether a request is a real song and the video plausibly it (`djline.doubt`); the Worker holds the song for the host on that word. The page's `freeText` flag is the guest's claim and gates nothing.
+- **Guests' phones ran hot with heavy use (party 2026-10-11, reported by several guests).** Not yet measured. Likely
+  cause: the guest page never idles. `scrollFrame` (index.html) runs a requestAnimationFrame loop every frame for the
+  life of the page (60–120 Hz) and rewrites each scroller's transform even when nothing moves; on top of it run CSS
+  `infinite` animations (spinning record, lamp throb, prep pulse), a 250 ms clock tick and the 15 s poll, with Reduce
+  Motion deliberately ignored. Next time: profile on a real phone (Safari Web Inspector → Timelines), run the loop only
+  while a line actually scrolls, and pause scrollers and spins when off screen or after a minute of no touch.
