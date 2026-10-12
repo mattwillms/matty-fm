@@ -440,6 +440,8 @@ describe("party clock", () => {
     await p.adminAction({ action: "partyEnd", title: "Orr reunion 2026" });
     expect((await p.adminState()).party.end).toBeGreaterThan(0);
     expect((await p.adminAction({ action: "partyEnd" })).ok).toBe(false);   // ended once: not archived twice
+    const { state } = (await p.adminAction({ action: "export" })) as unknown as { state: { items: unknown[]; requesters: unknown[]; jokes: unknown[] } };
+    expect([state.items.length, state.requesters.length, state.jokes.length]).toEqual([2, 3, 1]);   // the host's copy of the whole night
     await p.adminAction({ action: "reset" });   // a wipe keeps the archive
     const { parties } = (await p.adminAction({ action: "archive" })) as { parties: { title: string; stats: { requests: number } }[] };
     expect(parties.map((x) => [x.title, x.stats.requests])).toEqual([["Orr reunion 2026", 2]]);

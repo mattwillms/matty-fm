@@ -928,7 +928,7 @@ export class Party extends DurableObject<Env> {
       muted,
       health: { ...h, ageS: h.at ? Math.round((Date.now() - h.at) / 1000) : null },
       serverNow: Date.now(),   // "N min ago" is worked out against this, not the phone's clock
-      code: "urgent-stays-1",
+      code: "export-1",
       party: { start: Number(this.setting("partyStart", "0")) || null, end: Number(this.setting("partyEnd", "0")) || null },         // read back after a deploy: proves the queue runs this code (no bump needed)
       settings: this.flags(),
       jokes: [...this.all("SELECT * FROM jokes WHERE status IN ('pending','preparing','ready') ORDER BY urgent DESC, kind='announcement' DESC, created_at"),
@@ -1078,6 +1078,8 @@ export class Party extends DurableObject<Env> {
       case "archive":   // every party ended so far, oldest first (a wipe never touches these)
         return { ok: true, parties: this.all("SELECT * FROM parties ORDER BY start").map((p) => ({
           id: Number(p.id), title: String(p.title), start: Number(p.start), end: Number(p.end), stats: JSON.parse(String(p.stats)) })) };
+      case "export":   // the whole night, every table, for the host's own archive before the privacy wipe (teardown)
+        return { ok: true, state: await this.exportState() };
       case "stats":   // asked for by the admin page about once a minute, not with every poll: it reads the whole night
         return { ok: true, stats: this.partyStats() };
       case "dropJokes": {   // every guest joke still waiting (announcements stay)
