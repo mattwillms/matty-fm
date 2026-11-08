@@ -23,9 +23,15 @@ async function readyItem(p: ReturnType<typeof stub>, title: string, device = "d1
 describe("QA round", () => {
   it("wipes names after the party, never during it", async () => {
     const p = stub("alarm");
+    const purgeAt = Date.UTC(2026, 9, 13, 12), before = Date.now();
     await p.submit("d1", { track: T("Waterloo"), name: "Ann" });
-    const at = await runInDurableObject(p, async (_i: Party, state) => state.storage.getAlarm());
-    expect(at).toBe(Date.UTC(2026, 9, 13, 12));
+    const at = (await runInDurableObject(p, async (_i: Party, state) => state.storage.getAlarm()))!;
+    if (before < purgeAt) expect(at).toBe(purgeAt);
+    else {   // that date has passed (the code reused for another party): three days after the first name
+      const days3 = 3 * 24 * 3600_000;
+      expect(at).toBeGreaterThanOrEqual(before + days3);
+      expect(at).toBeLessThan(Date.now() + days3 + 1);
+    }
   });
 
   it("joining a ready song adds the guest without preparing it again", async () => {
