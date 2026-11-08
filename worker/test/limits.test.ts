@@ -483,8 +483,8 @@ describe("orrdle", () => {
   it("scores repeats like Wordle", async () => {
     const p = stub("orrdle-2");
     const g = await p.orrdleStart("d1", "Ann");
-    await sql(p, "UPDATE orrdle SET word='SARAH' WHERE id=?", g.id!);
-    expect((await p.orrdleGuess("d1", { id: g.id, guess: "AARON" })).marks).toEqual(["near", "ok", "ok", "no", "no"]);   // first A: the other A of SARAH; second A and R: right place
+    await sql(p, "UPDATE orrdle SET word='CARAT' WHERE id=?", g.id!);
+    expect((await p.orrdleGuess("d1", { id: g.id, guess: "AARON" })).marks).toEqual(["near", "ok", "ok", "no", "no"]);   // first A: the other A of CARAT; second A and R: right place
   });
 
   it("the privacy wipe takes Orrdle names out of the archive too", async () => {
